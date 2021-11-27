@@ -1,0 +1,35 @@
+load("@bzlws//:index.bzl", "bzlws_copy")
+
+platform(
+    name = "windows",
+    visibility = ["//:__subpackages__"],
+    constraint_values = [
+        "@com_github_bazelboost_stacktrace//:use_windbg",
+        "@com_github_bazelboost_thread//:threadapi_win32",
+        "@platforms//cpu:x86_64",
+        "@platforms//os:windows",
+        "@bazel_tools//tools/cpp:msvc",
+    ],
+)
+
+platform(
+    name = "linux",
+    visibility = ["//:__subpackages__"],
+    constraint_values = [
+        "@com_github_bazelboost_stacktrace//:use_addr2line",
+        "@com_github_bazelboost_thread//:threadapi_pthread",
+        "@platforms//cpu:x86_64",
+        "@platforms//os:linux",
+        "@bazel_tools//tools/cpp:clang",
+    ],
+)
+
+# bzlws_copy(
+#     name = "copy_codegen_executables",
+#     visibility = ["//visibility:private"],
+#     out = ""
+#     testonly = True,
+#     srcs = [
+#         "@ecs_idl//generator/unity_sync:cli",
+#     ],
+# )

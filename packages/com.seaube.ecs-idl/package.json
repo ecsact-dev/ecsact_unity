@@ -1,0 +1,7 @@
+{
+  "name": "com.seaube.ecs-idl",
+  "version": "0.1.0",
+  "description": "ECS IDL Integration",
+  "displayName": "ECS IDL Integration",
+  "unity": "2021.2"
+}
