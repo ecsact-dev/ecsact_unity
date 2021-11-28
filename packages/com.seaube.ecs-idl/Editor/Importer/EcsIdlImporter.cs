@@ -43,7 +43,3 @@ public class EcsIdlImporter : ScriptedImporter {
 		AssetDatabase.ImportAsset(scriptPath);
 	}
 }
-
-[CustomEditor(typeof(EcsIdlImporter))]
-public class EcsIdlImporterEditor : ScriptedImporterEditor {
-}

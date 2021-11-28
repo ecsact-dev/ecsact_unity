@@ -27,9 +27,10 @@ bzlws_copy(
     visibility = ["//visibility:private"],
     testonly = True,
     force = True,
-    out = ".tmp/{FILEPATH}",
+    out = "packages/com.seaube.ecs-idl/.tmp/{FILENAME}",
     metafile_path = ".tmp/.copy_for_dev.yml",
-    srcs = glob(["com.seaube.ecs-idl/**/*"]) + [
+    srcs = [
         "@ecs_idl//generator/unity_sync:cli",
+        "@ecs_idl//generator/csharp:cli",
     ],
 )
