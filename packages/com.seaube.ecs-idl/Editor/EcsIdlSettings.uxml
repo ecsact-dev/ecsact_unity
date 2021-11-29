@@ -1,0 +1,8 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <ui:Foldout text="Plugins">
+        <ui:Toggle label="C# Base" value="true" name="csharp_plugin_toggle" />
+        <ui:Toggle label="Unity Sync" name="unity_sync_plugin_toggle" />
+        <ui:Button text="Force Generate" display-tooltip-when-elided="true" enable-rich-text="false" tooltip="Re-execute all plugins to generate files. This is equivalent to re-importing all .ecs-idl files" style="max-width: 200px;" />
+    </ui:Foldout>
+    <ui:DropdownField label="Runtime Library" index="0" choices="Reference, EnTT, Custom" />
+</ui:UXML>
