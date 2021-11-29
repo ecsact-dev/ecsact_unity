@@ -5,6 +5,7 @@ using UnityEditor.UIElements;
 using System.IO;
 using System.Collections.Generic;
 
+[System.Serializable]
 class EcsIdlSettings : ScriptableObject {
 	public const string assetPath = "Assets/Editor/EcsIdlSettings.asset";
 	public const string path = "Project/EcsIdlProjectSettings";
