@@ -32,5 +32,6 @@ bzlws_copy(
     srcs = [
         "@ecs_idl//generator/unity_sync:cli",
         "@ecs_idl//generator/csharp:cli",
+        "@ecs_idl//generator/parser_info:cli",
     ],
 )

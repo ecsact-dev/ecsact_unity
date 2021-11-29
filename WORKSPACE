@@ -37,3 +37,22 @@ http_archive(
 
 load("@rules_7zip//:setup.bzl", "setup_7zip")
 setup_7zip()
+
+_nlohmann_json_build_file = """
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "json",
+    visibility = ["//visibility:public"],
+    includes = ["include"],
+    hdrs = glob(["include/**/*.hpp"]),
+    strip_include_prefix = "include",
+)
+"""
+
+http_archive(
+    name = "nlohmann_json",
+    url = "https://github.com/nlohmann/json/releases/download/v3.10.4/include.zip",
+    sha256 = "62c585468054e2d8e7c2759c0d990fd339d13be988577699366fe195162d16cb",
+    build_file_content = _nlohmann_json_build_file,
+)
