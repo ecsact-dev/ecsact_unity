@@ -51,8 +51,13 @@ namespace EcsIdl.UnitySync {
 
 			if(addedTypes.Any()) {
 				var gameObject = EnsureEntityGameObject(entityId);
+				gameObject.SetActive(true);
 				foreach(var type in addedTypes) {
-					var addedComponent = gameObject.AddComponent(type);
+					UnitySyncMonoBehaviours.InvokeOnInit(
+						(MonoBehaviour)gameObject.AddComponent(type),
+						componentId,
+						component
+					);
 				}
 			}
 		}
@@ -63,7 +68,15 @@ namespace EcsIdl.UnitySync {
 			, object        component
 			)
 		{
-
+			if(entityGameObjects[entityId] != null) {
+				var gameObject = entityGameObjects[entityId];
+				UnitySyncMonoBehaviours.InvokeOnUpdate(
+					gameObject,
+					entityComponentIds[entityId],
+					componentId,
+					component
+				);
+			}
 		}
 
 		public void RemoveComponent
@@ -73,6 +86,21 @@ namespace EcsIdl.UnitySync {
 			)
 		{
 			entityComponentIds[entityId].Remove(componentId);
+
+			if(entityGameObjects[entityId] != null) {
+				var gameObject = entityGameObjects[entityId]!;
+				UnitySyncMonoBehaviours.InvokeOnRemove(
+					gameObject,
+					entityComponentIds[entityId],
+					componentId,
+					component
+				);
+
+				if(!entityComponentIds[entityId].Any()) {
+					gameObject.SetActive(false);
+					gameObject.name = $"entity ({entityId})";
+				}
+			}
 		}
 
 		private GameObject EnsureEntityGameObject

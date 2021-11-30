@@ -5,6 +5,8 @@ using System.Reflection;
 
 using ComponentIdsList = System.Collections.Generic.SortedSet<System.Int32>;
 
+#nullable enable
+
 namespace EcsIdl {
 	/// <summary>ECS IDL Component Marker Interface</summary>
 	public interface Component {}
@@ -13,10 +15,6 @@ namespace EcsIdl {
 	public interface Action {}
 
 	public static class Util {
-
-		public static System.Int32 GetComponentID<T>() where T : EcsIdl.Component {
-			return GetComponentID(typeof(T));
-		}
 
 		public static bool IsComponent
 			( System.Type componentType
@@ -29,6 +27,28 @@ namespace EcsIdl {
 			}
 
 			return false;
+		}
+
+		public static System.Type? GetComponentType
+			( System.Int32 componentId
+			)
+		{
+			foreach(var assembly in System.AppDomain.CurrentDomain.GetAssemblies()) {
+				foreach(var type in assembly.GetTypes()) {
+					if(IsComponent(type)) {
+						var typeComponentId = GetComponentID(type);
+						if(typeComponentId == componentId) {
+							return type;
+						}
+					}
+				}
+			}
+
+			return null;
+		}
+
+		public static System.Int32 GetComponentID<T>() where T : EcsIdl.Component {
+			return GetComponentID(typeof(T));
 		}
 
 		public static System.Int32 GetComponentID

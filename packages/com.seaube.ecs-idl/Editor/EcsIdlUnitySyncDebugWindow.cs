@@ -5,8 +5,41 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using EcsIdl.UnitySync;
+using UnityEngine.SceneManagement;
+using UnityEditor.SceneManagement;
 
 using ComponentIdsList = System.Collections.Generic.SortedSet<System.Int32>;
+
+class EcsIdlUnitySyncGameObjectPreview : PreviewSceneStage {
+
+	public static EcsIdlUnitySyncGameObjectPreview CreateInstance() {
+		return (EcsIdlUnitySyncGameObjectPreview)PreviewSceneStage.CreateInstance(
+			typeof(EcsIdlUnitySyncGameObjectPreview)
+		);
+	}
+	
+	public GameObject gameObject;
+
+	protected override void OnEnable() {
+		base.OnEnable();
+		scene = EditorSceneManager.NewPreviewScene();
+	}
+
+	protected override bool OnOpenStage() {
+		gameObject = new GameObject("Preview Entity Game Object");
+		SceneManager.MoveGameObjectToScene(gameObject, scene);
+		return true;
+	}
+
+	protected override void OnDisable() {
+		base.OnDisable();
+		EditorSceneManager.ClosePreviewScene(scene);
+	}
+
+	protected override GUIContent CreateHeaderContent() {
+		return new GUIContent("Unity Sync Debug Preview");
+	}
+}
 
 public class EcsIdlUnitySyncDebugWindow : EditorWindow {
 	static bool allMonoBehavioursFoldout = false;
@@ -21,6 +54,7 @@ public class EcsIdlUnitySyncDebugWindow : EditorWindow {
 	private List<System.Type> allMonoBehaviourTypes = new List<System.Type>();
 	private List<System.Type> monoBehaviourTypes = new List<System.Type>();
 	private List<System.Type> componentTypes = new List<System.Type>();
+	private EcsIdlUnitySyncGameObjectPreview previewSceneStage;
 
 	void OnEnable() {
 		titleContent = new GUIContent("Unity Sync Debug");
@@ -32,6 +66,7 @@ public class EcsIdlUnitySyncDebugWindow : EditorWindow {
 
 	void OnDisable() {
 		CompilationPipeline.compilationFinished -= OnCompilationFinished;
+		UnityEngine.Object.DestroyImmediate(previewSceneStage);
 	}
 
 	void OnCompilationFinished
@@ -120,8 +155,20 @@ public class EcsIdlUnitySyncDebugWindow : EditorWindow {
 		}
 
 		EditorGUILayout.Space();
-
+		
 		EditorGUILayout.LabelField("MonoBehaviour Scripts", EditorStyles.boldLabel);
+
+		GUILayout.BeginHorizontal();
+		GUILayout.Space(EditorGUI.indentLevel * 20);
+		var showPreview = GUILayout.Button("Preview", new GUILayoutOption[]{
+			GUILayout.MaxWidth(200)
+		});
+
+		if(showPreview) {
+			OpenPreviewScene();
+		}
+
+		GUILayout.EndHorizontal();
 
 		if(monoBehaviourTypes.Any()) {
 			foreach(var monobehaviourType in monoBehaviourTypes) {
@@ -138,5 +185,10 @@ public class EcsIdlUnitySyncDebugWindow : EditorWindow {
 		}
 
 		--EditorGUI.indentLevel;
+	}
+
+	void OpenPreviewScene() {
+		previewSceneStage = EcsIdlUnitySyncGameObjectPreview.CreateInstance();
+		StageUtility.GoToStage(previewSceneStage, true);
 	}
 }
