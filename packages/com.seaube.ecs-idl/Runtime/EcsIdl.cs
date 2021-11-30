@@ -48,29 +48,32 @@ namespace EcsIdl {
 			)
 		{
 			// Adapted originally from https://stackoverflow.com/a/42842770
-			var componentIdsList = componentIds.ToList<Int32>();
+			var componentIdsList = new List<Int32>(componentIds);
 			var count = componentIds.Count;
-			if( count == 0 ) yield return new ComponentIdsList();
-			if( count == componentIds.Count ) yield return componentIds;
-			if( count > componentIds.Count ) yield break;
-			var ptrs = Enumerable.Range(0, count).ToArray();
+			if(count == 0) yield return new ComponentIdsList();
 
-			while(ptrs[0] <= componentIds.Count - count) {
-				yield return new ComponentIdsList(
-					ptrs.Select(p => componentIdsList[p])
-				);
+			for(;count > 0; --count) {
+				if( count == componentIds.Count ) yield return componentIds;
+				if( count > componentIds.Count ) yield break;
+				var ptrs = Enumerable.Range(0, count).ToArray();
 
-				++ptrs[count - 1];
+				while(ptrs[0] <= componentIdsList.Count - count) {
+					yield return new ComponentIdsList(
+						ptrs.Select(p => componentIdsList[p])
+					);
 
-				int i = count - 2;
-				while(ptrs[count - 1] >= componentIds.Count && i >= 0) {
-					++ptrs[i];
+					++ptrs[count - 1];
 
-					for(int j = i + 1; j < count; ++j) {
-						ptrs[j] = ptrs[j - 1] + 1;
+					int i = count - 2;
+					while(ptrs[count - 1] >= componentIdsList.Count && i >= 0) {
+						++ptrs[i];
+
+						for(int j = i + 1; j < count; ++j) {
+							ptrs[j] = ptrs[j - 1] + 1;
+						}
+
+						--i;
 					}
-
-					--i;
 				}
 			}
 		}
