@@ -1,7 +1,9 @@
 {
 	"name": "EcsIdl.Editor",
 	"rootNamespace": "",
-	"references": [],
+	"references": [
+		"EcsIdl"
+	],
 	"includePlatforms": [
 		"Editor"
 	],

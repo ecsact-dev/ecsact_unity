@@ -34,7 +34,7 @@ public class EcsIdlPackageEditor : Editor {
 
 			EditorGUILayout.Toggle("Main Package", pkg.main);
 			EditorGUILayout.LabelField(
-				"Imports:",
+				"Imports",
 				pkg.imports.Count == 0 ? "(none)" : pkg.imports[0]
 			);
 

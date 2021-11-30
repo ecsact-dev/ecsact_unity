@@ -1,4 +1,6 @@
 using UnityEngine;
+using System;
+using System.Linq;
 using System.Collections.Generic;
 
 using ComponentIdsList = System.Collections.Generic.SortedSet
@@ -39,7 +41,7 @@ namespace EcsIdl.UnitySync {
 			);
 
 			if(removedTypes.Any() && entityGameObjects[entityId] != null) {
-				var gameObject = entityGameObjects[entityId];
+				var gameObject = entityGameObjects[entityId]!;
 				foreach(var type in removedTypes) {
 					if(gameObject.TryGetComponent(type, out var removedComponent)) {
 						UnityEngine.Object.Destroy(removedComponent);
@@ -77,11 +79,13 @@ namespace EcsIdl.UnitySync {
 			( System.Int32 entityId
 			)
 		{
-			if(entityGameObjects[entityId] == null) {
-				entityGameObjects[entityId] = new GameObject($"entity ({entityId})");
+			GameObject? gameObject = entityGameObjects[entityId];
+			if(gameObject == null) {
+				gameObject = new GameObject($"entity ({entityId})");
+				entityGameObjects[entityId] = gameObject;
 			}
 
-			return entityGameObjects[entityId];
+			return gameObject;
 		}
 
 		private void EnsureEntityLists
