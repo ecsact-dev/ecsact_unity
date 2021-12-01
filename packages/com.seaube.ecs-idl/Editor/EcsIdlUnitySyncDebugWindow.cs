@@ -17,17 +17,19 @@ class EcsIdlUnitySyncGameObjectPreview : PreviewSceneStage {
 			typeof(EcsIdlUnitySyncGameObjectPreview)
 		);
 	}
-	
-	public GameObject gameObject;
+
+	public EntityGameObjectPool pool;
+	public event System.Action onOpenStage;
 
 	protected override void OnEnable() {
 		base.OnEnable();
 		scene = EditorSceneManager.NewPreviewScene();
+		pool = EntityGameObjectPool.CreateInstance();
+		pool.targetScene = scene;
 	}
 
 	protected override bool OnOpenStage() {
-		gameObject = new GameObject("Preview Entity Game Object");
-		SceneManager.MoveGameObjectToScene(gameObject, scene);
+		onOpenStage?.Invoke();
 		return true;
 	}
 
@@ -66,7 +68,10 @@ public class EcsIdlUnitySyncDebugWindow : EditorWindow {
 
 	void OnDisable() {
 		CompilationPipeline.compilationFinished -= OnCompilationFinished;
-		UnityEngine.Object.DestroyImmediate(previewSceneStage);
+		if(previewSceneStage != null) {
+			previewSceneStage.onOpenStage -= OnOpenPreviewStage;
+			previewSceneStage = null;
+		}
 	}
 
 	void OnCompilationFinished
@@ -75,6 +80,12 @@ public class EcsIdlUnitySyncDebugWindow : EditorWindow {
 	{
 		RefreshTypes();
 		RefreshComponentMonoBehaviourTypes();
+
+		// Re-open preview scene if it was open before a compilation started. It can
+		// get messed up after a compile is done.
+		if(previewSceneStage != null) {
+			OpenPreviewScene();
+		}
 	}
 
 	void RefreshTypes() {
@@ -106,6 +117,58 @@ public class EcsIdlUnitySyncDebugWindow : EditorWindow {
 		foreach(var type in types) {
 			monoBehaviourTypes.Add(type);
 		}
+	}
+
+	void RefreshPreviewEntityGameObjectPool() {
+		if(previewSceneStage == null || previewSceneStage.pool == null) return;
+		var pool = previewSceneStage.pool;
+
+		pool.Clear();
+		foreach(var componentId in testComponentIds) {
+			var componentType = EcsIdl.Util.GetComponentType(componentId);
+			if(componentType != null) {
+				var component = System.Activator.CreateInstance(componentType);
+				pool.InitComponent(0, componentId, component);
+			} else {
+				Debug.LogWarning($"Cannot find component type from id {componentId}");
+			}
+		}
+	}
+
+	void PreviewEntityGameObjectPoolAdd
+		( System.Int32 componentId
+		)
+	{
+		if(previewSceneStage == null || previewSceneStage.pool == null) return;
+		var pool = previewSceneStage.pool;
+
+		var componentType = EcsIdl.Util.GetComponentType(componentId);
+		var component = System.Activator.CreateInstance(componentType);
+		pool.InitComponent(0, componentId, component);
+	}
+
+	void PreviewEntityGameObjectPoolUpdate
+		( System.Int32 componentId
+		)
+	{
+		if(previewSceneStage == null || previewSceneStage.pool == null) return;
+		var pool = previewSceneStage.pool;
+		var componentType = EcsIdl.Util.GetComponentType(componentId);
+		// Fake component for the sake of preview purposes only
+		var component = System.Activator.CreateInstance(componentType);
+		pool.UpdateComponent(0, componentId, component);
+	}
+
+	void PreviewEntityGameObjectPoolRemove
+		( System.Int32 componentId
+		)
+	{
+		if(previewSceneStage == null || previewSceneStage.pool == null) return;
+		var pool = previewSceneStage.pool;
+		var componentType = EcsIdl.Util.GetComponentType(componentId);
+		// Fake component for the sake of preview purposes only
+		var component = System.Activator.CreateInstance(componentType);
+		pool.RemoveComponent(0, componentId, component);
 	}
 
 	void OnGUI() {
@@ -148,9 +211,13 @@ public class EcsIdlUnitySyncDebugWindow : EditorWindow {
 			if(enabled && !testComponentIds.Contains(componentId)) {
 				testComponentIds.Add(componentId);
 				RefreshComponentMonoBehaviourTypes();
+				PreviewEntityGameObjectPoolAdd(componentId);
+				SelectPreviewEntityGameObjectIfNoneActive();
 			} else if(!enabled && testComponentIds.Contains(componentId)) {
 				testComponentIds.Remove(componentId);
 				RefreshComponentMonoBehaviourTypes();
+				PreviewEntityGameObjectPoolRemove(componentId);
+				SelectPreviewEntityGameObjectIfNoneActive();
 			}
 		}
 
@@ -165,7 +232,7 @@ public class EcsIdlUnitySyncDebugWindow : EditorWindow {
 		});
 
 		if(showPreview) {
-			OpenPreviewScene();
+			EditorApplication.delayCall += () => OpenPreviewScene();
 		}
 
 		GUILayout.EndHorizontal();
@@ -187,8 +254,23 @@ public class EcsIdlUnitySyncDebugWindow : EditorWindow {
 		--EditorGUI.indentLevel;
 	}
 
-	void OpenPreviewScene() {
+	private void OpenPreviewScene() {
 		previewSceneStage = EcsIdlUnitySyncGameObjectPreview.CreateInstance();
+		previewSceneStage.onOpenStage += OnOpenPreviewStage;
 		StageUtility.GoToStage(previewSceneStage, true);
+	}
+
+	private void OnOpenPreviewStage() {
+		RefreshPreviewEntityGameObjectPool();
+		SelectPreviewEntityGameObjectIfNoneActive();
+	}
+
+	private void SelectPreviewEntityGameObjectIfNoneActive() {
+		if(Selection.activeGameObject == null) {
+			if(previewSceneStage != null && previewSceneStage.pool != null) {
+				var gameObject = previewSceneStage.pool.GetEntityGameObject(0);
+				Selection.activeGameObject = gameObject;
+			}
+		}
 	}
 }

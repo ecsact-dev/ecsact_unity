@@ -119,6 +119,10 @@ namespace EcsIdl.UnitySync {
 		{
 			if(!knownComponentIds.Contains(componentId)) return;
 
+			componentIds = new ComponentIdsList(
+				knownComponentIds.Intersect(componentIds)
+			);
+
 			foreach(var monoBehaviourType in monoBehaviourTypes[componentIds]) {
 				if(gameObject.TryGetComponent(monoBehaviourType, out var mb)) {
 					InvokeOnUpdate((MonoBehaviour)mb, componentId, component);
@@ -169,6 +173,10 @@ namespace EcsIdl.UnitySync {
 			)
 		{
 			if(!knownComponentIds.Contains(componentId)) return;
+
+			componentIds = new ComponentIdsList(
+				knownComponentIds.Intersect(componentIds)
+			);
 
 			foreach(var monoBehaviourType in monoBehaviourTypes[componentIds]) {
 				if(gameObject.TryGetComponent(monoBehaviourType, out var mb)) {
@@ -237,7 +245,7 @@ namespace EcsIdl.UnitySync {
 			var previousTypes = GetTypes(previousComponentIds);
 			var currentTypes = GetTypes(currentComponentIds);
 
-			return previousTypes.Except(currentTypes);
+			return currentTypes.Except(previousTypes);
 		}
 
 		public static IEnumerable<Type> GetRemovedTypes
@@ -248,7 +256,7 @@ namespace EcsIdl.UnitySync {
 			var previousTypes = GetTypes(previousComponentIds);
 			var currentTypes = GetTypes(currentComponentIds);
 
-			return currentTypes.Except(previousTypes);
+			return previousTypes.Except(currentTypes);
 		}
 
 		public static IEnumerable<Type> GetInterfaces
