@@ -54,6 +54,7 @@ public class EcsIdlPackagesPostprocessor : AssetPostprocessor {
 			}
 		}
 
+		UnityEngine.Debug.Log("any packages update?!");
 		if(importedPkgs.Count > 0 || deletedPkgs.Count > 0 || movedPkgs.Count > 0) {
 			RefreshEcsIdlCodegen(importedPkgs, deletedPkgs, movedPkgs);
 		}
@@ -115,5 +116,37 @@ public class EcsIdlPackagesPostprocessor : AssetPostprocessor {
 
 		Progress.Report(progressId, 0.1f);
 		codegen.Start();
+		
+		UnityEngine.Debug.Log("getting plugins!");
+		foreach(var plugin in GetCodegenPlugins()) {
+			UnityEngine.Debug.Log("plugin!");
+		}
+	}
+
+	static IEnumerable<EcsIdlCodegenPlugin> GetCodegenPlugins() {
+		var assemblies = System.AppDomain.CurrentDomain.GetAssemblies();
+
+		foreach(var assembly in assemblies) {
+			foreach(var type in assembly.GetTypes()) {
+				var pluginAttrs = type.GetCustomAttributes(
+					typeof(EcsIdlCodegenPluginAttribute),
+					inherit: true
+				);
+
+				if(pluginAttrs.Length > 0) {
+					var pluginAttr = pluginAttrs[0] as EcsIdlCodegenPluginAttribute;
+					UnityEngine.Debug.Log($"Plugin Name: {pluginAttr!.name}");
+					var plugin =
+						System.Activator.CreateInstance(type) as EcsIdlCodegenPlugin;
+					if(plugin == null) {
+						UnityEngine.Debug.Log(
+							$"Invalid EcsIdlCodegenPlugin: {pluginAttr!.name}"
+						);
+					} else {
+						yield return plugin;
+					}
+				}
+			}
+		}
 	}
 }

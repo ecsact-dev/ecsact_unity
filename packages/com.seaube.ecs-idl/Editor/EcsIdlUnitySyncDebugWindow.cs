@@ -7,8 +7,13 @@ using System.Reflection;
 using EcsIdl.UnitySync;
 using UnityEngine.SceneManagement;
 using UnityEditor.SceneManagement;
+using Unity.EditorCoroutines.Editor;
+using System.Threading.Tasks;
+using System.Collections.Concurrent;
 
 using ComponentIdsList = System.Collections.Generic.SortedSet<System.Int32>;
+
+#nullable enable
 
 class EcsIdlUnitySyncGameObjectPreview : PreviewSceneStage {
 
@@ -18,14 +23,21 @@ class EcsIdlUnitySyncGameObjectPreview : PreviewSceneStage {
 		);
 	}
 
-	public EntityGameObjectPool pool;
-	public event System.Action onOpenStage;
+	public EntityGameObjectPool? pool;
+	public event System.Action? onOpenStage;
 
 	protected override void OnEnable() {
 		base.OnEnable();
 		scene = EditorSceneManager.NewPreviewScene();
 		pool = EntityGameObjectPool.CreateInstance();
 		pool.targetScene = scene;
+
+		if(Camera.main != null) {
+			SceneManager.MoveGameObjectToScene(
+				Instantiate(Camera.main.gameObject),
+				scene
+			);
+		}
 	}
 
 	protected override bool OnOpenStage() {
@@ -45,6 +57,8 @@ class EcsIdlUnitySyncGameObjectPreview : PreviewSceneStage {
 
 public class EcsIdlUnitySyncDebugWindow : EditorWindow {
 	static bool allMonoBehavioursFoldout = false;
+	static bool refreshing = false;
+	static Vector2 scrollPosition = new Vector2();
 	static ComponentIdsList testComponentIds = new ComponentIdsList();
 
 	[MenuItem("Window/ECS IDL/Unity Sync Debug")]
@@ -56,12 +70,11 @@ public class EcsIdlUnitySyncDebugWindow : EditorWindow {
 	private List<System.Type> allMonoBehaviourTypes = new List<System.Type>();
 	private List<System.Type> monoBehaviourTypes = new List<System.Type>();
 	private List<System.Type> componentTypes = new List<System.Type>();
-	private EcsIdlUnitySyncGameObjectPreview previewSceneStage;
+	private EcsIdlUnitySyncGameObjectPreview? previewSceneStage;
 
 	void OnEnable() {
 		titleContent = new GUIContent("Unity Sync Debug");
-		RefreshTypes();
-		RefreshComponentMonoBehaviourTypes();
+		StartRefresh();
 
 		CompilationPipeline.compilationFinished += OnCompilationFinished;
 	}
@@ -78,26 +91,59 @@ public class EcsIdlUnitySyncDebugWindow : EditorWindow {
 		( object _
 		)
 	{
-		RefreshTypes();
-		RefreshComponentMonoBehaviourTypes();
+		StartRefresh();
+	}
 
-		// Re-open preview scene if it was open before a compilation started. It can
-		// get messed up after a compile is done.
-		if(previewSceneStage != null) {
-			OpenPreviewScene();
+	void StartRefresh() {
+		refreshing = true;
+		EditorCoroutineUtility.StartCoroutine(Refresh(), this);
+	}
+
+	IEnumerator<string> Refresh() {
+		int progressId = Progress.Start("Finding ECS IDL types");
+		bool cancelledRequested = false;
+		bool cancelled = false;
+
+		Progress.RegisterCancelCallback(progressId, () => {
+			if(cancelled) return true;
+
+			cancelledRequested = true;
+			return false;
+		});
+		UnityEngine.Debug.Log("Refresh()?");
+
+		try {
+			foreach(var (pc, typeName) in RefreshTypes()) {
+				if(cancelledRequested) {
+					cancelled = true;
+					Progress.Cancel(progressId);
+					refreshing = false;
+					yield break;
+				}
+
+				Progress.Report(progressId, pc, typeName);
+
+				yield return "";
+			}
+
+			RefreshComponentMonoBehaviourTypes();
+		} finally {
+			Progress.Remove(progressId);
+			refreshing = false;
 		}
 	}
 
-	void RefreshTypes() {
+	IEnumerable<(float, string)> RefreshTypes() {
 		if(!EditorApplication.isPlaying) {
 			UnitySyncMonoBehaviours.ClearRegisteredMonoBehaviourTypes();
+			yield return (0F, "");
 		}
+
+		allMonoBehaviourTypes.Clear();
+		componentTypes.Clear();
+
 		foreach(var assembly in System.AppDomain.CurrentDomain.GetAssemblies()) {
 			foreach(var type in assembly.GetTypes()) {
-				if(!EditorApplication.isPlaying) {
-					UnitySyncMonoBehaviours.RegisterMonoBehaviourType(type);
-				}
-
 				if(EcsIdl.Util.IsComponent(type)) {
 					componentTypes.Add(type);
 				} else {
@@ -107,6 +153,29 @@ public class EcsIdlUnitySyncDebugWindow : EditorWindow {
 					}
 				}
 			}
+		}
+
+		componentTypes = componentTypes.OrderBy(t => t.FullName).ToList();
+		allMonoBehaviourTypes =
+			allMonoBehaviourTypes.OrderBy(t => t.FullName).ToList();
+
+		yield return (0F, "");
+
+		if(!EditorApplication.isPlaying) {
+			var registerProgress =
+				UnitySyncMonoBehaviours.RegisterMonoBehaviourTypes(
+					allMonoBehaviourTypes
+				);
+			int registeredTypes = 0;
+			foreach(var type in registerProgress) {
+				yield return (
+					((float)registeredTypes / (float)allMonoBehaviourTypes.Count()),
+					type.FullName
+				);
+				registeredTypes += 1;
+			}
+		} else {
+			yield return (1F, "");
 		}
 	}
 
@@ -172,6 +241,7 @@ public class EcsIdlUnitySyncDebugWindow : EditorWindow {
 	}
 
 	void OnGUI() {
+		scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
 		allMonoBehavioursFoldout = EditorGUILayout.BeginFoldoutHeaderGroup(
 			allMonoBehavioursFoldout,
 			"All MonoBehaviour Scripts"
@@ -202,6 +272,7 @@ public class EcsIdlUnitySyncDebugWindow : EditorWindow {
 		EditorGUILayout.Space();
 
 		++EditorGUI.indentLevel;
+
 		EditorGUILayout.LabelField("Test Components", EditorStyles.boldLabel);
 		foreach(var componentType in componentTypes) {
 			var componentId = EcsIdl.Util.GetComponentID(componentType);
@@ -252,6 +323,10 @@ public class EcsIdlUnitySyncDebugWindow : EditorWindow {
 		}
 
 		--EditorGUI.indentLevel;
+
+		GUILayout.Space(20);
+
+		EditorGUILayout.EndScrollView();
 	}
 
 	private void OpenPreviewScene() {

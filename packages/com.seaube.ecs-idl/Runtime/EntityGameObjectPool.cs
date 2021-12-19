@@ -70,7 +70,7 @@ namespace EcsIdl.UnitySync {
 
 		public void InitComponent<T>
 			( System.Int32  entityId
-			, T             component
+			, in T          component
 			) where T : EcsIdl.Component
 		{
 			InitComponent(
@@ -83,7 +83,7 @@ namespace EcsIdl.UnitySync {
 		public void InitComponent
 			( System.Int32  entityId
 			, System.Int32  componentId
-			, object        component
+			, in object     component
 			)
 		{
 			EnsureEntityLists(entityId);
@@ -117,7 +117,7 @@ namespace EcsIdl.UnitySync {
 					UnitySyncMonoBehaviours.InvokeOnInit(
 						(MonoBehaviour)gameObject.AddComponent(type),
 						componentId,
-						component
+						in component
 					);
 				}
 			}
@@ -129,11 +129,10 @@ namespace EcsIdl.UnitySync {
 			, object        component
 			)
 		{
-			if(entityGameObjects[entityId] != null) {
-				var gameObject = entityGameObjects[entityId];
+			var gameObject = entityGameObjects[entityId];
+			if(gameObject != null) {
 				UnitySyncMonoBehaviours.InvokeOnUpdate(
 					gameObject,
-					entityComponentIds[entityId],
 					componentId,
 					component
 				);
@@ -164,7 +163,6 @@ namespace EcsIdl.UnitySync {
 				var gameObject = entityGameObjects[entityId]!;
 				UnitySyncMonoBehaviours.InvokeOnRemove(
 					gameObject,
-					entityComponentIds[entityId],
 					componentId,
 					component
 				);
@@ -183,7 +181,7 @@ namespace EcsIdl.UnitySync {
 					UnitySyncMonoBehaviours.InvokeOnInit(
 						(MonoBehaviour)gameObject.AddComponent(type),
 						componentId,
-						component
+						in component
 					);
 				}
 

@@ -1,7 +1,9 @@
- using UnityEngine;
- using System.Collections.Generic;
- using UnityEditor;
+using UnityEngine;
+using System.Collections.Generic;
+using UnityEditor;
  
+#nullable enable
+
 [CustomEditor(typeof(EcsIdlPackage))]
 [CanEditMultipleObjects]
 public class EcsIdlPackageEditor : Editor {
@@ -9,7 +11,7 @@ public class EcsIdlPackageEditor : Editor {
 		new Dictionary<string, bool>();
 
 	public override void OnInspectorGUI() {
-		EcsIdlPackage mainPkg = null;
+		EcsIdlPackage? mainPkg = null;
 		List<EcsIdlPackage> pkgList = new List<EcsIdlPackage>();
 
 		foreach(var target in targets) {

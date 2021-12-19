@@ -63,6 +63,22 @@ namespace EcsIdl {
 			return (System.Int32)idField.GetValue(null);
 		}
 
+		public static System.Int32 GetActionID<T>() where T : EcsIdl.Action {
+			return GetActionID(typeof(T));
+		}
+
+		public static System.Int32 GetActionID
+			( System.Type actionType
+			)
+		{
+			var idField = actionType.GetField(
+				"id",
+				BindingFlags.Static | BindingFlags.Public
+			);
+
+			return (System.Int32)idField.GetValue(null);
+		}
+
 		public static IEnumerable<ComponentIdsList> GetComponentIdPermutations
 			( ComponentIdsList componentIds
 			)
@@ -72,15 +88,24 @@ namespace EcsIdl {
 			var count = componentIds.Count;
 			if(count == 0) yield return new ComponentIdsList();
 
+			UnityEngine.Debug.Log("PERMUTATION START");
 			for(;count > 0; --count) {
 				if( count == componentIds.Count ) yield return componentIds;
 				if( count > componentIds.Count ) yield break;
 				var ptrs = Enumerable.Range(0, count).ToArray();
 
 				while(ptrs[0] <= componentIdsList.Count - count) {
-					yield return new ComponentIdsList(
+					var permutationList = new ComponentIdsList(
 						ptrs.Select(p => componentIdsList[p])
 					);
+					yield return permutationList;
+					string msg = "\t{";
+					foreach(var id in permutationList) {
+						msg += id + ", ";
+					}
+					msg = msg.TrimEnd(new char[]{',', ' '});
+					msg += "}";
+					UnityEngine.Debug.Log(msg);
 
 					++ptrs[count - 1];
 
@@ -96,6 +121,7 @@ namespace EcsIdl {
 					}
 				}
 			}
+			UnityEngine.Debug.Log("PERMUTATION END");
 		}
 
 	}

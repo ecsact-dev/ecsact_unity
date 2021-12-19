@@ -8,13 +8,13 @@ using TypeComponentIdsMap = System.Collections.Generic.Dictionary
 	, System.Collections.Generic.SortedSet<System.Int32>
 	>;
 
-using ComponentIdsList = System.Collections.Generic.SortedSet
+using ComponentIdBehavioursMap = System.Collections.Generic.Dictionary
 	< System.Int32
+	, System.Collections.Generic.HashSet<System.Type>
 	>;
 
-using ComponentIdsTypesMap = System.Collections.Generic.Dictionary
-	< System.Collections.Generic.SortedSet<System.Int32>
-	, System.Collections.Generic.HashSet<System.Type>
+using ComponentIdsList = System.Collections.Generic.SortedSet
+	< System.Int32
 	>;
 
 namespace EcsIdl.UnitySync {
@@ -40,37 +40,45 @@ namespace EcsIdl.UnitySync {
 	public static class UnitySyncMonoBehaviours {
 		private static ComponentIdsList knownComponentIds;
 		private static Dictionary<Int32, Type> knownComponentTypes;
+
 		private static TypeComponentIdsMap requiredComponentsMap;
 		private static TypeComponentIdsMap onInitComponentsMap;
 		private static TypeComponentIdsMap onUpdateComponentsMap;
 		private static TypeComponentIdsMap onRemoveComponentsMap;
 
-		private static ComponentIdsTypesMap monoBehaviourTypes;
+		private static ComponentIdBehavioursMap requiredBehavioursMap;
+		private static ComponentIdBehavioursMap onInitBehavioursMap;
+		private static ComponentIdBehavioursMap onUpdateBehavioursMap;
+		private static ComponentIdBehavioursMap onRemoveBehavioursMap;
 
 		static UnitySyncMonoBehaviours() {
 			knownComponentIds = new ComponentIdsList();
 			knownComponentTypes = new Dictionary<Int32, Type>();
+
 			requiredComponentsMap = new TypeComponentIdsMap();
 			onInitComponentsMap = new TypeComponentIdsMap();
 			onUpdateComponentsMap = new TypeComponentIdsMap();
 			onRemoveComponentsMap = new TypeComponentIdsMap();
-			monoBehaviourTypes = new ComponentIdsTypesMap(
-				ComponentIdsList.CreateSetComparer()
-			);
+
+			requiredBehavioursMap = new ComponentIdBehavioursMap();
+			onInitBehavioursMap = new ComponentIdBehavioursMap();
+			onUpdateBehavioursMap = new ComponentIdBehavioursMap();
+			onRemoveBehavioursMap = new ComponentIdBehavioursMap();
 		}
 
 		public static void InvokeOnInit
-			( GameObject        gameObject
-			, ComponentIdsList  componentIds
-			, Int32             componentId
-			, object            component
+			( GameObject  gameObject
+			, Int32       componentId
+			, in object   component
 			)
 		{
 			if(!knownComponentIds.Contains(componentId)) return;
 
-			foreach(var monoBehaviourType in monoBehaviourTypes[componentIds]) {
-				if(gameObject.TryGetComponent(monoBehaviourType, out var mb)) {
-					InvokeOnInit((MonoBehaviour)mb, componentId, component);
+			if(onInitBehavioursMap.TryGetValue(componentId, out var s)) {
+				foreach(var monoBehaviourType in s) {
+					if(gameObject.TryGetComponent(monoBehaviourType, out var mb)) {
+						InvokeOnInit((MonoBehaviour)mb, componentId, in component);
+					}
 				}
 			}
 		}
@@ -78,7 +86,7 @@ namespace EcsIdl.UnitySync {
 		public static void InvokeOnInit
 			( MonoBehaviour  monoBehaviour
 			, Int32          componentId
-			, object         component
+			, in object      component
 			)
 		{
 			if(!knownComponentIds.Contains(componentId)) return;
@@ -101,31 +109,19 @@ namespace EcsIdl.UnitySync {
 			}
 		}
 
-		public static void InvokeOnInit<T>
-			( T       monoBehaviour
-			, Int32   componentId
-			, object  component
-			) where T : MonoBehaviour
-		{
-			InvokeOnInit(monoBehaviour, componentId, component);
-		}
-
 		public static void InvokeOnUpdate
-			( GameObject        gameObject
-			, ComponentIdsList  componentIds
-			, Int32             componentId
-			, object            component
+			( GameObject  gameObject
+			, Int32       componentId
+			, in object   component
 			)
 		{
 			if(!knownComponentIds.Contains(componentId)) return;
 
-			componentIds = new ComponentIdsList(
-				knownComponentIds.Intersect(componentIds)
-			);
-
-			foreach(var monoBehaviourType in monoBehaviourTypes[componentIds]) {
-				if(gameObject.TryGetComponent(monoBehaviourType, out var mb)) {
-					InvokeOnUpdate((MonoBehaviour)mb, componentId, component);
+			if(onUpdateBehavioursMap.TryGetValue(componentId, out var s)) {
+				foreach(var monoBehaviourType in s) {
+					if(gameObject.TryGetComponent(monoBehaviourType, out var mb)) {
+						InvokeOnUpdate((MonoBehaviour)mb, componentId, in component);
+					}
 				}
 			}
 		}
@@ -133,7 +129,7 @@ namespace EcsIdl.UnitySync {
 		public static void InvokeOnUpdate
 			( MonoBehaviour  monoBehaviour
 			, Int32          componentId
-			, object         component
+			, in object      component
 			)
 		{
 			if(!knownComponentIds.Contains(componentId)) return;
@@ -156,31 +152,19 @@ namespace EcsIdl.UnitySync {
 			}
 		}
 
-		public static void InvokeOnUpdate<T>
-			( T       monoBehaviour
-			, Int32   componentId
-			, object  component
-			) where T : MonoBehaviour
-		{
-			InvokeOnUpdate(monoBehaviour, componentId, component);
-		}
-
 		public static void InvokeOnRemove
-			( GameObject        gameObject
-			, ComponentIdsList  componentIds
-			, Int32             componentId
-			, object            component
+			( GameObject  gameObject
+			, Int32       componentId
+			, in object   component
 			)
 		{
 			if(!knownComponentIds.Contains(componentId)) return;
 
-			componentIds = new ComponentIdsList(
-				knownComponentIds.Intersect(componentIds)
-			);
-
-			foreach(var monoBehaviourType in monoBehaviourTypes[componentIds]) {
-				if(gameObject.TryGetComponent(monoBehaviourType, out var mb)) {
-					InvokeOnRemove((MonoBehaviour)mb, componentId, component);
+			if(onRemoveBehavioursMap.TryGetValue(componentId, out var s)) {
+				foreach(var monoBehaviourType in s) {
+					if(gameObject.TryGetComponent(monoBehaviourType, out var mb)) {
+						InvokeOnRemove((MonoBehaviour)mb, componentId, in component);
+					}
 				}
 			}
 		}
@@ -188,7 +172,7 @@ namespace EcsIdl.UnitySync {
 		public static void InvokeOnRemove
 			( MonoBehaviour  monoBehaviour
 			, Int32          componentId
-			, object         component
+			, in object      component
 			)
 		{
 			if(!knownComponentIds.Contains(componentId)) return;
@@ -211,15 +195,6 @@ namespace EcsIdl.UnitySync {
 			}
 		}
 
-		public static void InvokeOnRemove<T>
-			( T       monoBehaviour
-			, Int32   componentId
-			, object  component
-			) where T : MonoBehaviour
-		{
-			InvokeOnRemove(monoBehaviour, componentId, component);
-		}
-
 		/// <summary>Get all <c>MonoBehaviour</c> types that should be added to an
 		/// Entity <c>GameObject</c> when it has <c>componentIds</c>.</summary>
 		public static IEnumerable<Type> GetTypes
@@ -230,9 +205,76 @@ namespace EcsIdl.UnitySync {
 				knownComponentIds.Intersect(componentIds)
 			);
 
-			if(monoBehaviourTypes.TryGetValue(compIds, out var types)) {
-				foreach(var type in types) {
-					yield return type;
+			var usedTypes = new HashSet<Type>();
+
+			foreach(var compId in compIds) {
+				if(onInitBehavioursMap.TryGetValue(compId, out var types)) {
+					foreach(var type in types) {
+						if(usedTypes.Contains(type)) continue;
+
+						if(requiredComponentsMap.TryGetValue(type, out var reqCompIds)) {
+							bool missingRequired = false;
+							foreach(var reqCompId in reqCompIds) {
+								if(!compIds.Contains(reqCompId)) {
+									missingRequired = true;
+									break;
+								}
+							}
+
+							if(missingRequired) {
+								continue;
+							}
+						}
+
+						yield return type;
+						usedTypes.Add(type);
+					}
+				}
+
+				if(onUpdateBehavioursMap.TryGetValue(compId, out types)) {
+					foreach(var type in types) {
+						if(usedTypes.Contains(type)) continue;
+
+						if(requiredComponentsMap.TryGetValue(type, out var reqCompIds)) {
+							bool missingRequired = false;
+							foreach(var reqCompId in reqCompIds) {
+								if(!compIds.Contains(reqCompId)) {
+									missingRequired = true;
+									break;
+								}
+							}
+
+							if(missingRequired) {
+								continue;
+							}
+						}
+
+						yield return type;
+						usedTypes.Add(type);
+					}
+				}
+
+				if(onRemoveBehavioursMap.TryGetValue(compId, out types)) {
+					foreach(var type in types) {
+						if(usedTypes.Contains(type)) continue;
+
+						if(requiredComponentsMap.TryGetValue(type, out var reqCompIds)) {
+							bool missingRequired = false;
+							foreach(var reqCompId in reqCompIds) {
+								if(!compIds.Contains(reqCompId)) {
+									missingRequired = true;
+									break;
+								}
+							}
+
+							if(missingRequired) {
+								continue;
+							}
+						}
+
+						yield return type;
+						usedTypes.Add(type);
+					}
 				}
 			}
 		}
@@ -257,6 +299,30 @@ namespace EcsIdl.UnitySync {
 			var currentTypes = GetTypes(currentComponentIds);
 
 			return previousTypes.Except(currentTypes);
+		}
+
+		public static bool HasInterfaces
+			( Type type
+			)
+		{
+			foreach(var i in type.GetInterfaces()) {
+				// All unity sync interfaces are generic. Skip.
+				if(!i.IsGenericType) continue;
+
+				var genericTypeDef = i.GetGenericTypeDefinition();
+
+				if(genericTypeDef == typeof(IRequired<>)) {
+					return true;
+				} else if(genericTypeDef == typeof(IOnInitComponent<>)) {
+					return true;
+				} else if(genericTypeDef == typeof(IOnUpdateComponent<>)) {
+					return true;
+				} else if(genericTypeDef == typeof(IOnRemoveComponent<>)) {
+					return true;
+				}
+			}
+
+			return false;
 		}
 
 		public static IEnumerable<Type> GetInterfaces
@@ -284,21 +350,54 @@ namespace EcsIdl.UnitySync {
 		public static void ClearRegisteredMonoBehaviourTypes() {
 			knownComponentIds.Clear();
 			knownComponentTypes.Clear();
+
 			requiredComponentsMap.Clear();
 			onInitComponentsMap.Clear();
 			onUpdateComponentsMap.Clear();
 			onRemoveComponentsMap.Clear();
-			monoBehaviourTypes.Clear();
 
-			// Always have the 'no components' list
-			monoBehaviourTypes[new ComponentIdsList()] = new HashSet<System.Type>();
+			requiredBehavioursMap.Clear();
+			onInitBehavioursMap.Clear();
+			onUpdateBehavioursMap.Clear();
+			onRemoveBehavioursMap.Clear();
 		}
 
-		public static void RegisterMonoBehaviourType<T>() where T : MonoBehaviour {
-			RegisterMonoBehaviourType(typeof(T));
+		public static IEnumerable<Type> RegisterMonoBehaviourTypes
+			( IEnumerable<Type> types
+			)
+		{
+			var registeredTypes = new List<Type>();
+			foreach(var type in types) {
+				if(RegisterMonoBehaviourInterfaces(type)) {
+					registeredTypes.Add(type);
+				}
+			}
+
+			foreach(var type in registeredTypes) {
+				EndMonoBehaviourRegistration(type);
+				yield return type;
+			}
 		}
 
-		public static void RegisterMonoBehaviourType
+		public static bool RegisterMonoBehaviourType<T>()
+			where T : MonoBehaviour
+		{
+			return RegisterMonoBehaviourType(typeof(T));
+		}
+
+		public static bool RegisterMonoBehaviourType
+			( Type type
+			)
+		{
+			if(RegisterMonoBehaviourInterfaces(type)) {
+				EndMonoBehaviourRegistration(type);
+				return true;
+			}
+
+			return false;
+		}
+
+		private static bool RegisterMonoBehaviourInterfaces
 			( Type type
 			)
 		{
@@ -331,9 +430,7 @@ namespace EcsIdl.UnitySync {
 				}
 			}
 
-			if(registrationBegan) {
-				EndMonoBehaviourRegistration(type);
-			}
+			return registrationBegan;
 		}
 
 		private static void BeginMonoBehaviourRegistration
@@ -358,23 +455,7 @@ namespace EcsIdl.UnitySync {
 			compIds.UnionWith(onUpdateComponentsMap[monoBehaviourType]);
 			compIds.UnionWith(onRemoveComponentsMap[monoBehaviourType]);
 
-			var knownComponentIdsPermutations =
-				EcsIdl.Util.GetComponentIdPermutations(knownComponentIds);
-
-			foreach(var knownCompIdsPermutation in knownComponentIdsPermutations) {
-				var compIdsPermutation = new ComponentIdsList();
-				compIdsPermutation.UnionWith(knownCompIdsPermutation);
-				compIdsPermutation.UnionWith(reqCompIds);
-
-				if(!monoBehaviourTypes.ContainsKey(compIdsPermutation)) {
-					monoBehaviourTypes[compIdsPermutation] = new HashSet<Type>();
-				}
-				monoBehaviourTypes[compIdsPermutation].Add(monoBehaviourType);
-			}
-
-			if(!reqCompIds.Any()) {
-				monoBehaviourTypes[new ComponentIdsList()].Add(monoBehaviourType);
-			}
+			
 		}
 
 		private static void RegisterRequiredInterface
@@ -384,6 +465,7 @@ namespace EcsIdl.UnitySync {
 		{
 			var componentId = EcsIdl.Util.GetComponentID(componentType);
 			requiredComponentsMap[monoBehaviourType].Add(componentId);
+			GetRequiredBehaviours(componentId).Add(monoBehaviourType);
 			AddKnownComponentId(componentId);
 		}
 
@@ -394,6 +476,7 @@ namespace EcsIdl.UnitySync {
 		{
 			var componentId = EcsIdl.Util.GetComponentID(componentType);
 			onInitComponentsMap[monoBehaviourType].Add(componentId);
+			GetOnInitBehaviours(componentId).Add(monoBehaviourType);
 			AddKnownComponentId(componentId);
 		}
 
@@ -404,6 +487,7 @@ namespace EcsIdl.UnitySync {
 		{
 			var componentId = EcsIdl.Util.GetComponentID(componentType);
 			onUpdateComponentsMap[monoBehaviourType].Add(componentId);
+			GetOnUpdateBehaviours(componentId).Add(monoBehaviourType);
 			AddKnownComponentId(componentId);
 		}
 
@@ -414,6 +498,7 @@ namespace EcsIdl.UnitySync {
 		{
 			var componentId = EcsIdl.Util.GetComponentID(componentType);
 			onRemoveComponentsMap[monoBehaviourType].Add(componentId);
+			GetOnRemoveBehaviours(componentId).Add(monoBehaviourType);
 			AddKnownComponentId(componentId);
 		}
 
@@ -428,24 +513,55 @@ namespace EcsIdl.UnitySync {
 					componentId,
 					EcsIdl.Util.GetComponentType(componentId)!
 				);
-
-				var newMonoBehaviourTypes = new ComponentIdsTypesMap();
-
-				foreach(var (key, value) in monoBehaviourTypes) {
-					if(!key.Any()) continue;
-					var newComponentIds = new ComponentIdsList(key);
-					newComponentIds.Add(componentId);
-
-					newMonoBehaviourTypes.Add(
-						newComponentIds,
-						new HashSet<System.Type>(value)
-					);
-				}
-
-				newMonoBehaviourTypes.ToList().ForEach(
-					item => monoBehaviourTypes.Add(item.Key, item.Value)
-				);
 			}
+		}
+
+		private static HashSet<Type> GetRequiredBehaviours
+			( Int32 componentId
+			)
+		{
+			HashSet<Type> behaviours;
+			if(!requiredBehavioursMap.TryGetValue(componentId, out behaviours)) {
+				behaviours = new HashSet<Type>();
+				requiredBehavioursMap[componentId] = behaviours;
+			}
+			return behaviours;
+		}
+
+		private static HashSet<Type> GetOnInitBehaviours
+			( Int32 componentId
+			)
+		{
+			HashSet<Type> behaviours;
+			if(!onInitBehavioursMap.TryGetValue(componentId, out behaviours)) {
+				behaviours = new HashSet<Type>();
+				onInitBehavioursMap[componentId] = behaviours;
+			}
+			return behaviours;
+		}
+
+		private static HashSet<Type> GetOnUpdateBehaviours
+			( Int32 componentId
+			)
+		{
+			HashSet<Type> behaviours;
+			if(!onUpdateBehavioursMap.TryGetValue(componentId, out behaviours)) {
+				behaviours = new HashSet<Type>();
+				onUpdateBehavioursMap[componentId] = behaviours;
+			}
+			return behaviours;
+		}
+
+		private static HashSet<Type> GetOnRemoveBehaviours
+			( Int32 componentId
+			)
+		{
+			HashSet<Type> behaviours;
+			if(!onRemoveBehavioursMap.TryGetValue(componentId, out behaviours)) {
+				behaviours = new HashSet<Type>();
+				onRemoveBehavioursMap[componentId] = behaviours;
+			}
+			return behaviours;
 		}
 	}
 }
