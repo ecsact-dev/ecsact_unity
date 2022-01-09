@@ -8,10 +8,12 @@ pkg_7z(
     strip_prefix = "packages/com.seaube.ecs-idl/",
     extension = "zip",
     srcs = glob(["com.seaube.ecs-idl/**/*"]) + [
-        "@ecs_idl//generator/unity_sync:cli",
+        "@ecs_idl//generator/csharp:cli",
+        "@ecs_idl//generator/parser_info:cli",
     ],
     remap_paths = {
-        "../ecs_idl/generator/unity_sync/": ".tmp/"
+        "../ecs_idl/generator/csharp/": ".tmp/",
+        "../ecs_idl/generator/parser_info/": ".tmp/",
     },
 )
 
@@ -30,7 +32,6 @@ bzlws_copy(
     out = "packages/com.seaube.ecs-idl/.tmp/{FILENAME}",
     metafile_path = ".tmp/.copy_for_dev.yml",
     srcs = [
-        "@ecs_idl//generator/unity_sync:cli",
         "@ecs_idl//generator/csharp:cli",
         "@ecs_idl//generator/parser_info:cli",
     ],

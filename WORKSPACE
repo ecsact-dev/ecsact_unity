@@ -3,9 +3,11 @@ workspace(name = "ecs_idl_unity")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
-local_repository(
+git_repository(
     name = "ecs_idl",
-    path = "C:/projects/seaube/ecs-idl",
+    remote = "git@github.com:seaube/ecs-idl.git",
+    commit = "cb294d0d0bf4bb236fecfe4ed31dfdc1c924b350",
+    shallow_since = "1641759679 -0800",
 )
 
 http_archive(
