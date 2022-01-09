@@ -25,6 +25,10 @@ namespace EcsIdl.UnitySync {
 	/// behaviour is added.</summary>
 	public interface IRequired<T> where T : EcsIdl.Component {}
 
+	public interface IOnInitEntity {
+		void OnInitEntity(System.Int32 entityId);
+	}
+
 	public interface IOnInitComponent<T> where T : EcsIdl.Component {
 		void OnInitComponent(in T component);
 	}
@@ -208,7 +212,30 @@ namespace EcsIdl.UnitySync {
 			var usedTypes = new HashSet<Type>();
 
 			foreach(var compId in compIds) {
-				if(onInitBehavioursMap.TryGetValue(compId, out var types)) {
+				if(requiredBehavioursMap.TryGetValue(compId, out var types)) {
+					foreach(var type in types) {
+						if(usedTypes.Contains(type)) continue;
+
+						if(requiredComponentsMap.TryGetValue(type, out var reqCompIds)) {
+							bool missingRequired = false;
+							foreach(var reqCompId in reqCompIds) {
+								if(!compIds.Contains(reqCompId)) {
+									missingRequired = true;
+									break;
+								}
+							}
+
+							if(missingRequired) {
+								continue;
+							}
+						}
+
+						yield return type;
+						usedTypes.Add(type);
+					}
+				}
+
+				if(onInitBehavioursMap.TryGetValue(compId, out types)) {
 					foreach(var type in types) {
 						if(usedTypes.Contains(type)) continue;
 

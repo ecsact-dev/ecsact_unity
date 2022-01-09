@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime.InteropServices;
 
 using ComponentIdsList = System.Collections.Generic.SortedSet<System.Int32>;
 
@@ -15,6 +16,11 @@ namespace EcsIdl {
 	public interface Action {}
 
 	public static class Util {
+		private static Dictionary<Int32, Type> cachedComponentTypes;
+
+		static Util() {
+			cachedComponentTypes = new Dictionary<Int32, Type>();
+		}
 
 		public static bool IsComponent
 			( System.Type componentType
@@ -29,10 +35,37 @@ namespace EcsIdl {
 			return false;
 		}
 
+		public static object? PtrToComponent
+			( IntPtr        componentIntPtr
+			, System.Int32  componentId
+			)
+		{
+			var componentType = GetComponentType(componentId);
+
+			if(componentType != null) {
+				return Marshal.PtrToStructure(componentIntPtr, componentType);
+			}
+
+			return null;
+		}
+
+		public static void ComponentToPtr
+			( object        component
+			, System.Int32  componentId
+			, IntPtr        componentIntPtr
+			)
+		{
+			Marshal.StructureToPtr(component, componentIntPtr, false);
+		}
+
 		public static System.Type? GetComponentType
 			( System.Int32 componentId
 			)
 		{
+			if(cachedComponentTypes.TryGetValue(componentId, out var t)) {
+				return t;
+			}
+
 			foreach(var assembly in System.AppDomain.CurrentDomain.GetAssemblies()) {
 				foreach(var type in assembly.GetTypes()) {
 					if(IsComponent(type)) {
@@ -47,6 +80,10 @@ namespace EcsIdl {
 			return null;
 		}
 
+		public static void ClearComponentTypeCache() {
+			cachedComponentTypes.Clear();
+		}
+
 		public static System.Int32 GetComponentID<T>() where T : EcsIdl.Component {
 			return GetComponentID(typeof(T));
 		}
@@ -55,12 +92,18 @@ namespace EcsIdl {
 			( System.Type componentType
 			)
 		{
+			if(!IsComponent(componentType)) {
+				throw new ArgumentException("Invalid component type");
+			}
+
 			var idField = componentType.GetField(
 				"id",
 				BindingFlags.Static | BindingFlags.Public
 			);
 
-			return (System.Int32)idField.GetValue(null);
+			var componentId = (System.Int32)idField.GetValue(null);
+			cachedComponentTypes[componentId] = componentType;
+			return componentId;
 		}
 
 		public static System.Int32 GetActionID<T>() where T : EcsIdl.Action {

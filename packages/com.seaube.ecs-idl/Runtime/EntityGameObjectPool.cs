@@ -26,8 +26,43 @@ namespace EcsIdl.UnitySync {
 		public Scene? targetScene {
 			get => _targetScene;
 			set {
+				if(_rootGameObject != null) {
+					throw new System.ArgumentException(
+						"EntityGameObjectPool.targetScene may not be set if " +
+						"EntityGameObjectPool.rootGameObject is set."
+					);
+				}
+
+				if(_targetScene != null && value != null) {
+					if(_targetScene.Equals(value)) {
+						return;
+					}
+				}
+
 				_targetScene = value;
 				MoveEntityGameObjectsIfNeeded();
+			}
+		}
+
+		private GameObject? _rootGameObject;
+		public GameObject? rootGameObject {
+			get => _rootGameObject;
+			set {
+				if(_targetScene != null) {
+					throw new System.ArgumentException(
+						"EntityGameObjectPool.rootGameObject may not be set if " +
+						"EntityGameObjectPool.targetScene is set."
+					);
+				}
+
+				if(_rootGameObject != null && value != null) {
+					if(GameObject.ReferenceEquals(_rootGameObject, value)) {
+						return;
+					}
+				}
+
+				_rootGameObject = value;
+				ReparentEntityGameObjects();
 			}
 		}
 
@@ -101,8 +136,9 @@ namespace EcsIdl.UnitySync {
 				currentComponentIds: compIds
 			);
 
+			GameObject? gameObject = null;
 			if(removedTypes.Any() && entityGameObjects[entityId] != null) {
-				var gameObject = entityGameObjects[entityId]!;
+				gameObject = entityGameObjects[entityId]!;
 				foreach(var type in removedTypes) {
 					if(gameObject.TryGetComponent(type, out var removedComponent)) {
 						UnityEngine.Object.Destroy(removedComponent);
@@ -111,38 +147,78 @@ namespace EcsIdl.UnitySync {
 			}
 
 			if(addedTypes.Any()) {
-				var gameObject = EnsureEntityGameObject(entityId);
+				gameObject = EnsureEntityGameObject(entityId);
 				gameObject.SetActive(true);
 				foreach(var type in addedTypes) {
-					UnitySyncMonoBehaviours.InvokeOnInit(
-						(MonoBehaviour)gameObject.AddComponent(type),
-						componentId,
-						in component
-					);
+					var newMonoBehaviour = (MonoBehaviour)gameObject.AddComponent(type);
+					IOnInitEntity? onInitEntity = newMonoBehaviour as IOnInitEntity;
+					if(onInitEntity != null) {
+						onInitEntity.OnInitEntity(entityId);
+					}
 				}
 			}
+
+			gameObject = gameObject ?? GetEntityGameObject(entityId);
+			
+			if(gameObject != null) {
+				UnitySyncMonoBehaviours.InvokeOnInit(
+					gameObject,
+					componentId,
+					in component
+				);
+			}
+		}
+
+		public void UpdateComponent<T>
+			( System.Int32  entityId
+			, in T          component
+			) where T : EcsIdl.Component
+		{
+			UpdateComponent(
+				entityId,
+				EcsIdl.Util.GetComponentID(typeof(T)),
+				component
+			);
 		}
 
 		public void UpdateComponent
 			( System.Int32  entityId
 			, System.Int32  componentId
-			, object        component
+			, in object     component
 			)
 		{
-			var gameObject = entityGameObjects[entityId];
-			if(gameObject != null) {
-				UnitySyncMonoBehaviours.InvokeOnUpdate(
-					gameObject,
-					componentId,
-					component
+			var gameObject = GetEntityGameObject(entityId);
+			if(gameObject == null) {
+				throw new System.ArgumentException(
+					$"EntityGameObjectPool.UpdateComponent called before " +
+					$"EntityGameObjectPool.InitComponent. entityId={entityId}"
 				);
 			}
+
+			UnitySyncMonoBehaviours.InvokeOnUpdate(
+				gameObject,
+				componentId,
+				in component
+			);
+		}
+
+		public void RemoveComponent<T>
+			( System.Int32  entityId
+			, in T          component
+			) where T : EcsIdl.Component
+		{
+			var compObj = (object)component;
+			RemoveComponent(
+				entityId,
+				EcsIdl.Util.GetComponentID(typeof(T)),
+				in compObj
+			);
 		}
 
 		public void RemoveComponent
 			( System.Int32  entityId
 			, System.Int32  componentId
-			, object        component
+			, in object      component
 			)
 		{
 			if(entityGameObjects[entityId] != null) {
@@ -164,7 +240,7 @@ namespace EcsIdl.UnitySync {
 				UnitySyncMonoBehaviours.InvokeOnRemove(
 					gameObject,
 					componentId,
-					component
+					in component
 				);
 
 				foreach(var type in removedTypes) {
@@ -178,8 +254,13 @@ namespace EcsIdl.UnitySync {
 				}
 
 				foreach(var type in addedTypes) {
+					var newMonoBehaviour = (MonoBehaviour)gameObject.AddComponent(type);
+					IOnInitEntity? onInitEntity = newMonoBehaviour as IOnInitEntity;
+					if(onInitEntity != null) {
+						onInitEntity.OnInitEntity(entityId);
+					}
 					UnitySyncMonoBehaviours.InvokeOnInit(
-						(MonoBehaviour)gameObject.AddComponent(type),
+						newMonoBehaviour,
 						componentId,
 						in component
 					);
@@ -206,6 +287,8 @@ namespace EcsIdl.UnitySync {
 				gameObject = new GameObject($"entity ({entityId})");
 				if(_targetScene != null && !gameObject.scene.Equals(_targetScene)) {
 					SceneManager.MoveGameObjectToScene(gameObject, _targetScene.Value);
+				} else if(_rootGameObject != null) {
+					gameObject.transform.SetParent(_rootGameObject.transform);
 				}
 				entityGameObjects[entityId] = gameObject;
 			}
@@ -227,6 +310,18 @@ namespace EcsIdl.UnitySync {
 
 			while(entityComponentIds.Count < capacity) {
 				entityComponentIds.Add(new ComponentIdsList());
+			}
+		}
+
+		private void ReparentEntityGameObjects() {
+			foreach(var gameObject in entityGameObjects) {
+				if(gameObject != null) {
+					if(_rootGameObject == null) {
+						gameObject.transform.SetParent(null);
+					} else {
+						gameObject.transform.SetParent(_rootGameObject.transform);
+					}
+				}
 			}
 		}
 
@@ -258,7 +353,7 @@ namespace EcsIdl.UnitySync {
 			, Scene next
 			)
 		{
-			if(_targetScene == null) {
+			if(_targetScene == null && _rootGameObject == null) {
 				MoveEntityGameObjectsIfNeeded();
 			}
 		}
