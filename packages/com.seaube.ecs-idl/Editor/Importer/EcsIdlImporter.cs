@@ -29,9 +29,32 @@ public class EcsIdlImporter : ScriptedImporter {
 		codegen.StartInfo.RedirectStandardOutput = true;
 		codegen.StartInfo.UseShellExecute = false;
 
+		var pkgJsonStr = "";
+		var errMessage = "";
+
+		codegen.ErrorDataReceived += (_, ev) => {
+			if(ev.Data != null) {
+				errMessage += ev.Data;
+			}
+		};
+
+		codegen.OutputDataReceived  += (_, ev) => {
+			if(ev.Data != null) {
+				pkgJsonStr += ev.Data;
+			}
+		};
+		
 		try {
 			codegen.Start();
-			codegen.WaitForExit();
+			codegen.BeginOutputReadLine();
+			codegen.BeginErrorReadLine();
+			if(!codegen.WaitForExit(10000)) {
+				ctx.LogImportError("ECS IDL Importer timed out");
+				return;
+			} else {
+				// See documentation https://docs.microsoft.com/en-us/dotnet/api/system.diagnostics.process.waitforexit?view=net-6.0#system-diagnostics-process-waitforexit(system-int32)
+				codegen.WaitForExit();
+			}
 		} catch(System.Exception err) {
 			ctx.LogImportError(err.Message);
 			return;
@@ -42,7 +65,6 @@ public class EcsIdlImporter : ScriptedImporter {
 			return;
 		}
 
-		var pkgJsonStr = codegen.StandardOutput.ReadToEnd();
 		var pkgJson = JsonUtility.FromJson<PkgInfoJson>(pkgJsonStr);
 		var pkg = (EcsIdlPackage)ScriptableObject.CreateInstance(
 			typeof(EcsIdlPackage)

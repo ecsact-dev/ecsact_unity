@@ -110,7 +110,6 @@ public class EcsIdlUnitySyncDebugWindow : EditorWindow {
 			cancelledRequested = true;
 			return false;
 		});
-		UnityEngine.Debug.Log("Refresh()?");
 
 		try {
 			foreach(var (pc, typeName) in RefreshTypes()) {
@@ -241,6 +240,11 @@ public class EcsIdlUnitySyncDebugWindow : EditorWindow {
 	}
 
 	void OnGUI() {
+		if(refreshing) {
+			EditorGUILayout.HelpBox(new GUIContent("Refreshing..."));
+			return;
+		}
+
 		scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
 		allMonoBehavioursFoldout = EditorGUILayout.BeginFoldoutHeaderGroup(
 			allMonoBehavioursFoldout,
