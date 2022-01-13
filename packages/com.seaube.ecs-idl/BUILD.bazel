@@ -1,8 +1,25 @@
 load("@build_bazel_rules_nodejs//:index.bzl", "pkg_npm")
+load("@aspect_bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
+
+copy_to_directory(
+    name = "generators~",
+    replace_prefixes = {
+        "generator/csharp/": "",
+        "generator/parser_info/": "",
+    },
+    include_external_repositories = [
+        "ecs_idl",
+    ],
+    srcs = [
+        "@ecs_idl//generator/csharp:cli",
+        "@ecs_idl//generator/parser_info:cli",
+    ],
+)
 
 pkg_npm(
     name = "com.seaube.ecs-idl",
     package_name = "com.seaube.ecs-idl",
+    deps = [":generators~"],
     srcs = glob(["**/*"]),
 )
 

@@ -7,8 +7,8 @@ bzlws_copy(
     visibility = ["//visibility:private"],
     testonly = True,
     force = True,
-    out = "packages/com.seaube.ecs-idl/.tmp/{FILENAME}",
-    metafile_path = ".tmp/.copy_for_dev.yml",
+    out = "packages/com.seaube.ecs-idl/generators~/{FILENAME}",
+    metafile_path = "generators~/.copy_for_dev.yml",
     srcs = [
         "@ecs_idl//generator/csharp:cli",
         "@ecs_idl//generator/parser_info:cli",

@@ -70,5 +70,5 @@ crashlytics-build.properties
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
 
-/bazel-*
-/*.tgz
+# Folder that stores codegen executables
+# /generators~

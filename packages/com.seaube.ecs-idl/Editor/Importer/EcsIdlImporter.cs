@@ -16,7 +16,7 @@ class PkgInfoJson {
 public class EcsIdlImporter : ScriptedImporter {
 	public override void OnImportAsset(AssetImportContext ctx) {
 		string codegenExecutable = Path.GetFullPath(
-			"Packages/com.seaube.ecs-idl/.tmp/ecs_idl_parser_info_codegen.exe"
+			"Packages/com.seaube.ecs-idl/generators~/ecs_idl_parser_info_codegen.exe"
 		);
 
 		Process codegen = new Process();

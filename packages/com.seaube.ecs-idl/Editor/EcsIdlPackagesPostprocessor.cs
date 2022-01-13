@@ -66,7 +66,7 @@ public class EcsIdlPackagesPostprocessor : AssetPostprocessor {
 		)
 	{
 		string csharpCodegenExecutable = Path.GetFullPath(
-			"Packages/com.seaube.ecs-idl/.tmp/ecs_idl_csharp_codegen.exe"
+			"Packages/com.seaube.ecs-idl/generators~/ecs_idl_csharp_codegen.exe"
 		);
 
 		var progressId = Progress.Start(

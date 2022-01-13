@@ -68,3 +68,13 @@ http_archive(
 
 load("@build_bazel_rules_nodejs//:index.bzl", "node_repositories")
 node_repositories()
+
+http_archive(
+    name = "aspect_bazel_lib",
+    sha256 = "534c9c61b72c257c95302d544984fd8ee63953c233292c5b6952ca5b33cd225e",
+    strip_prefix = "bazel-lib-0.4.2",
+    url = "https://github.com/aspect-build/bazel-lib/archive/v0.4.2.tar.gz",
+)
+
+load("@aspect_bazel_lib//lib:repositories.bzl", "aspect_bazel_lib_dependencies")
+aspect_bazel_lib_dependencies()

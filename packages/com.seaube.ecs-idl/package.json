@@ -4,6 +4,9 @@
   "description": "ECS IDL Integration",
   "displayName": "ECS IDL Integration",
   "unity": "2021.2",
+  "author": {
+    "name" : "Seaube"
+  },
   "dependencies": {
     "com.unity.editorcoroutines": "1.0.0"
   },
