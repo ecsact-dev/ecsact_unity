@@ -1,36 +1,14 @@
-load("@rules_7zip//:defs.bzl", "pkg_7z")
 load("@bzlws//:index.bzl", "bzlws_copy")
 
 package(default_visibility = ["//visibility:public"])
-
-pkg_7z(
-    name = "com.seaube.ecs-idl",
-    strip_prefix = "packages/com.seaube.ecs-idl/",
-    extension = "zip",
-    srcs = glob(["com.seaube.ecs-idl/**/*"]) + [
-        "@ecs_idl//generator/csharp:cli",
-        "@ecs_idl//generator/parser_info:cli",
-    ],
-    remap_paths = {
-        "../ecs_idl/generator/csharp/": ".tmp/",
-        "../ecs_idl/generator/parser_info/": ".tmp/",
-    },
-)
-
-filegroup(
-    name = "packages",
-    srcs = [
-        ":com.seaube.ecs-idl",
-    ],
-)
 
 bzlws_copy(
     name = "copy_for_dev",
     visibility = ["//visibility:private"],
     testonly = True,
     force = True,
-    out = "packages/com.seaube.ecs-idl/.tmp/{FILENAME}",
-    metafile_path = ".tmp/.copy_for_dev.yml",
+    out = "packages/com.seaube.ecs-idl/generators~/{FILENAME}",
+    metafile_path = "generators~/.copy_for_dev.yml",
     srcs = [
         "@ecs_idl//generator/csharp:cli",
         "@ecs_idl//generator/parser_info:cli",
