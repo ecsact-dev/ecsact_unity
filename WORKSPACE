@@ -6,15 +6,15 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 git_repository(
     name = "ecs_idl",
     remote = "git@github.com:seaube/ecs-idl.git",
-    commit = "cb294d0d0bf4bb236fecfe4ed31dfdc1c924b350",
-    shallow_since = "1641759679 -0800",
+    commit = "e695dbbbadea47ebf3a22c806b7c282cd617206f",
+    shallow_since = "1641923718 -0800",
 )
 
 http_archive(
     name = "boost",
-    strip_prefix = "boost-95b7ebcdf8d837452efedaa342858360c7fb58e4",
-    urls = ["https://github.com/bazelboost/boost/archive/95b7ebcdf8d837452efedaa342858360c7fb58e4.zip"],
-    sha256 = "13d59f4265e3d29d63d17ad6c439d2f8663baea6b8f02961d638348085aa600f",
+    strip_prefix = "boost-563e8e0de4eac4b48a02d296581dc2454127608e",
+    urls = ["https://github.com/bazelboost/boost/archive/563e8e0de4eac4b48a02d296581dc2454127608e.zip"],
+    sha256 = "c41441a6e9f8038ad626e9f937ddc3675ab896b6c3512eefc6840037b3816d03",
 )
 
 load("@boost//:index.bzl", "boost_http_archives")
@@ -58,3 +58,13 @@ http_archive(
     sha256 = "62c585468054e2d8e7c2759c0d990fd339d13be988577699366fe195162d16cb",
     build_file_content = _nlohmann_json_build_file,
 )
+
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+http_archive(
+    name = "build_bazel_rules_nodejs",
+    sha256 = "ddb78717b802f8dd5d4c01c340ecdc007c8ced5c1df7db421d0df3d642ea0580",
+    urls = ["https://github.com/bazelbuild/rules_nodejs/releases/download/4.6.0/rules_nodejs-4.6.0.tar.gz"],
+)
+
+load("@build_bazel_rules_nodejs//:index.bzl", "node_repositories")
+node_repositories()

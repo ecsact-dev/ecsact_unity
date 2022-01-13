@@ -1,0 +1,10 @@
+load("@build_bazel_rules_nodejs//:index.bzl", "pkg_npm")
+
+pkg_npm(
+    name = "com.seaube.ecs-idl",
+    package_name = "com.seaube.ecs-idl",
+    srcs = glob(["**/*"]),
+)
+
+alias(name = "pack", actual = "com.seaube.ecs-idl.pack")
+alias(name = "publish", actual = "com.seaube.ecs-idl.publish")
