@@ -1,3 +1,3 @@
-# ecsact (working title) unity integration
+# ecsact unity integration
 
 More details coming soon
