@@ -1,13 +1,13 @@
-workspace(name = "ecs_idl_unity")
+workspace(name = "ecsact_unity")
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 git_repository(
-    name = "ecs_idl",
-    remote = "git@github.com:seaube/ecs-idl.git",
-    commit = "e695dbbbadea47ebf3a22c806b7c282cd617206f",
-    shallow_since = "1641923718 -0800",
+    name = "ecsact",
+    remote = "git@github.com:seaube/ecsact.git",
+    commit = "6f0df7f4aff97b88db0e51e7b9bb61859a5ecf85",
+    shallow_since = "1644508808 -0500",
 )
 
 http_archive(

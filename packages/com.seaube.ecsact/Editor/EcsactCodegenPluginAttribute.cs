@@ -1,7 +1,7 @@
 using System;
 
 [AttributeUsage(AttributeTargets.Class)]
-public class EcsIdlCodegenPluginAttribute : Attribute {
+public class EcsactCodegenPluginAttribute : Attribute {
 	public string name = "";
 	public string extname = "";
 }

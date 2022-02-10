@@ -6,23 +6,23 @@ using System.IO;
 using System.Collections.Generic;
 
 [System.Serializable]
-class EcsIdlSettings : ScriptableObject {
-	public const string assetPath = "Assets/Editor/EcsIdlSettings.asset";
-	public const string path = "Project/EcsIdlProjectSettings";
+class EcsactSettings : ScriptableObject {
+	public const string assetPath = "Assets/Editor/EcsactSettings.asset";
+	public const string path = "Project/EcsactProjectSettings";
 	public const SettingsScope scope = SettingsScope.Project;
 
-	/// <summary>Path to <c>ecs_idl_parser_info_codegen.exe</c>. If unset
+	/// <summary>Path to <c>ecsact_parser_info_codegen.exe</c>. If unset
 	/// the latest will be downloaded and used instead.</summary>
 	public string parseInfoCodegenPluginPath = "";
 
-	/// <summary>Path to <c>ecs_idl_csharp_codegen.exe</c>. If unset the latest
+	/// <summary>Path to <c>ecsact_csharp_codegen.exe</c>. If unset the latest
 	/// will be downloaded and used instead.</summary>
 	public string csharpCodegenPluginPath = "";
 
-	internal static EcsIdlSettings GetOrCreateSettings() {
-		var settings = AssetDatabase.LoadAssetAtPath<EcsIdlSettings>(assetPath);
+	internal static EcsactSettings GetOrCreateSettings() {
+		var settings = AssetDatabase.LoadAssetAtPath<EcsactSettings>(assetPath);
 		if(settings == null) {
-			settings = ScriptableObject.CreateInstance<EcsIdlSettings>();
+			settings = ScriptableObject.CreateInstance<EcsactSettings>();
 			AssetDatabase.CreateAsset(settings, assetPath);
 			AssetDatabase.SaveAssetIfDirty(settings);
 		}
@@ -35,23 +35,23 @@ class EcsIdlSettings : ScriptableObject {
 	}
 }
 
-static class EcsIdlSettingsUIElementsRegister {
+static class EcsactSettingsUIElementsRegister {
 	[SettingsProvider]
-	public static SettingsProvider CreateEcsIdlSettingsProvider() {
-		return new SettingsProvider(EcsIdlSettings.path, EcsIdlSettings.scope) {
-			label = "ECS IDL",
+	public static SettingsProvider CreateEcsactSettingsProvider() {
+		return new SettingsProvider(EcsactSettings.path, EcsactSettings.scope) {
+			label = "ECSACT",
 			activateHandler = (searchContext, rootElement) => {
-				var settings = EcsIdlSettings.GetSerializedSettings();
+				var settings = EcsactSettings.GetSerializedSettings();
 				var template = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(
-					"Packages/com.seaube.ecs-idl/Editor/EcsIdlSettings.uxml"
+					"Packages/com.seaube.ecsact/Editor/EcsactSettings.uxml"
 				);
 				var ui = template.Instantiate();
 				BindingExtensions.Bind(ui, settings);
 				rootElement.Add(ui);
 			},
 			keywords = new HashSet<string>(new[] {
-				"ECS IDL",
-				"ECS-IDL",
+				"ECSACT",
+				"ECSACT",
 				"ECS",
 				"ECS Plugin",
 				"Plugin",

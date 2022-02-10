@@ -30,6 +30,6 @@ platform(
 #     out = ""
 #     testonly = True,
 #     srcs = [
-#         "@ecs_idl//generator/unity_sync:cli",
+#         "@ecsact//generator/unity_sync:cli",
 #     ],
 # )

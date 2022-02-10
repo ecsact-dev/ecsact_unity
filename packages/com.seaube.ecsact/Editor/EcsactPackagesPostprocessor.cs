@@ -4,18 +4,18 @@ using System.IO;
 using System.Diagnostics;
 using System.Collections.Generic;
 
-public class EcsIdlPackagesPostprocessor : AssetPostprocessor {
+public class EcsactPackagesPostprocessor : AssetPostprocessor {
 
 	private struct MovedPkg {
 		public string to;
 		public string from;
 	}
 
-	static IEnumerable<(EcsIdlPackage, string)> FindEcsIdlPackages() {
-		var guids = AssetDatabase.FindAssets($"t:{typeof(EcsIdlPackage)}");
+	static IEnumerable<(EcsactPackage, string)> FindEcsactPackages() {
+		var guids = AssetDatabase.FindAssets($"t:{typeof(EcsactPackage)}");
 		foreach (var t in guids) {
 			var assetPath = AssetDatabase.GUIDToAssetPath(t);
-			var asset = AssetDatabase.LoadAssetAtPath<EcsIdlPackage>(assetPath);
+			var asset = AssetDatabase.LoadAssetAtPath<EcsactPackage>(assetPath);
 			if (asset != null) {
 				yield return (asset, assetPath);
 			}
@@ -34,19 +34,19 @@ public class EcsIdlPackagesPostprocessor : AssetPostprocessor {
 		var movedPkgs = new List<MovedPkg>();
 
 		foreach(var importedAsset in importedAssets) {
-			if(Path.GetExtension(importedAsset) == ".ecs-idl") {
+			if(Path.GetExtension(importedAsset) == ".ecsact") {
 				importedPkgs.Add(importedAsset);
 			}
 		}
 
 		foreach(var deletedAsset in deletedAssets) {
-			if(Path.GetExtension(deletedAsset) == ".ecs-idl") {
+			if(Path.GetExtension(deletedAsset) == ".ecsact") {
 				deletedPkgs.Add(deletedAsset);
 			}
 		}
 
 		for (int i=0; movedAssets.Length > i; ++i) {
-			if(Path.GetExtension(movedAssets[i]) == ".ecs-idl") {
+			if(Path.GetExtension(movedAssets[i]) == ".ecsact") {
 				movedPkgs.Add(new MovedPkg{
 					to = movedAssets[i],
 					from = movedFromAssetPaths[i],
@@ -55,22 +55,22 @@ public class EcsIdlPackagesPostprocessor : AssetPostprocessor {
 		}
 
 		if(importedPkgs.Count > 0 || deletedPkgs.Count > 0 || movedPkgs.Count > 0) {
-			RefreshEcsIdlCodegen(importedPkgs, deletedPkgs, movedPkgs);
+			RefreshEcsactCodegen(importedPkgs, deletedPkgs, movedPkgs);
 		}
 	}
 
-	static void RefreshEcsIdlCodegen
+	static void RefreshEcsactCodegen
 		( List<string>    importedPkgs
 		, List<string>    deletedPkgs
 		, List<MovedPkg>  movedPkgs
 		)
 	{
 		string csharpCodegenExecutable = Path.GetFullPath(
-			"Packages/com.seaube.ecs-idl/generators~/ecs_idl_csharp_codegen.exe"
+			"Packages/com.seaube.ecsact/generators~/ecsact_csharp_codegen.exe"
 		);
 
 		var progressId = Progress.Start(
-			"ECS IDL Codegen",
+			"ECSACT Codegen",
 			"Generating C# files..."
 		);
 
@@ -109,7 +109,7 @@ public class EcsIdlPackagesPostprocessor : AssetPostprocessor {
 			}
 		};
 
-		foreach(var (pkg, pkgPath) in FindEcsIdlPackages()) {
+		foreach(var (pkg, pkgPath) in FindEcsactPackages()) {
 			codegen.StartInfo.Arguments += pkgPath + " ";
 		}
 
@@ -121,23 +121,23 @@ public class EcsIdlPackagesPostprocessor : AssetPostprocessor {
 		}
 	}
 
-	static IEnumerable<EcsIdlCodegenPlugin> GetCodegenPlugins() {
+	static IEnumerable<EcsactCodegenPlugin> GetCodegenPlugins() {
 		var assemblies = System.AppDomain.CurrentDomain.GetAssemblies();
 
 		foreach(var assembly in assemblies) {
 			foreach(var type in assembly.GetTypes()) {
 				var pluginAttrs = type.GetCustomAttributes(
-					typeof(EcsIdlCodegenPluginAttribute),
+					typeof(EcsactCodegenPluginAttribute),
 					inherit: true
 				);
 
 				if(pluginAttrs.Length > 0) {
-					var pluginAttr = pluginAttrs[0] as EcsIdlCodegenPluginAttribute;
+					var pluginAttr = pluginAttrs[0] as EcsactCodegenPluginAttribute;
 					var plugin =
-						System.Activator.CreateInstance(type) as EcsIdlCodegenPlugin;
+						System.Activator.CreateInstance(type) as EcsactCodegenPlugin;
 					if(plugin == null) {
 						UnityEngine.Debug.LogError(
-							$"Invalid EcsIdlCodegenPlugin: {pluginAttr!.name}"
+							$"Invalid EcsactCodegenPlugin: {pluginAttr!.name}"
 						);
 					} else {
 						yield return plugin;

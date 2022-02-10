@@ -10,7 +10,7 @@ using ComponentIdsList = System.Collections.Generic.SortedSet
 
 #nullable enable
 
-namespace EcsIdl.UnitySync {
+namespace Ecsact.UnitySync {
 	public class EntityGameObjectPool : ScriptableObject {
 
 		public static EntityGameObjectPool CreateInstance() {
@@ -106,11 +106,11 @@ namespace EcsIdl.UnitySync {
 		public void InitComponent<T>
 			( System.Int32  entityId
 			, in T          component
-			) where T : EcsIdl.Component
+			) where T : Ecsact.Component
 		{
 			InitComponent(
 				entityId,
-				EcsIdl.Util.GetComponentID(typeof(T)),
+				Ecsact.Util.GetComponentID(typeof(T)),
 				component
 			);
 		}
@@ -172,11 +172,11 @@ namespace EcsIdl.UnitySync {
 		public void UpdateComponent<T>
 			( System.Int32  entityId
 			, in T          component
-			) where T : EcsIdl.Component
+			) where T : Ecsact.Component
 		{
 			UpdateComponent(
 				entityId,
-				EcsIdl.Util.GetComponentID(typeof(T)),
+				Ecsact.Util.GetComponentID(typeof(T)),
 				component
 			);
 		}
@@ -205,12 +205,12 @@ namespace EcsIdl.UnitySync {
 		public void RemoveComponent<T>
 			( System.Int32  entityId
 			, in T          component
-			) where T : EcsIdl.Component
+			) where T : Ecsact.Component
 		{
 			var compObj = (object)component;
 			RemoveComponent(
 				entityId,
-				EcsIdl.Util.GetComponentID(typeof(T)),
+				Ecsact.Util.GetComponentID(typeof(T)),
 				in compObj
 			);
 		}

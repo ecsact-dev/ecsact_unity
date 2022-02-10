@@ -1,6 +1,6 @@
-public abstract class EcsIdlCodegenPlugin {
+public abstract class EcsactCodegenPlugin {
 	public abstract System.Threading.Tasks.Task Generate
-		( EcsIdlPackage  pkg
+		( EcsactPackage  pkg
 		, string         outputPath
 		);
 }

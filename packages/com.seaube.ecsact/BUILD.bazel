@@ -8,20 +8,20 @@ copy_to_directory(
         "generator/parser_info/": "",
     },
     include_external_repositories = [
-        "ecs_idl",
+        "ecsact",
     ],
     srcs = [
-        "@ecs_idl//generator/csharp:cli",
-        "@ecs_idl//generator/parser_info:cli",
+        "@ecsact//generator/csharp:cli",
+        "@ecsact//generator/parser_info:cli",
     ],
 )
 
 pkg_npm(
-    name = "com.seaube.ecs-idl",
-    package_name = "com.seaube.ecs-idl",
+    name = "com.seaube.ecsact",
+    package_name = "com.seaube.ecsact",
     deps = [":generators~"],
     srcs = glob(["**/*"]),
 )
 
-alias(name = "pack", actual = "com.seaube.ecs-idl.pack")
-alias(name = "publish", actual = "com.seaube.ecs-idl.publish")
+alias(name = "pack", actual = "com.seaube.ecsact.pack")
+alias(name = "publish", actual = "com.seaube.ecsact.publish")

@@ -2,21 +2,21 @@ using UnityEngine;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
-[assembly: InternalsVisibleTo("EcsIdlImporter")]
-[assembly: InternalsVisibleTo("EcsIdlPackagesPostprocessor")]
+[assembly: InternalsVisibleTo("EcsactImporter")]
+[assembly: InternalsVisibleTo("EcsactPackagesPostprocessor")]
 
-public class EcsIdlPackage : ScriptableObject {
+public class EcsactPackage : ScriptableObject {
   [SerializeField]
   internal string _name = "";
   [SerializeField]
   internal bool _main = false;
   [SerializeReference]
-  internal List<EcsIdlPackage> _dependencies = new List<EcsIdlPackage>();
+  internal List<EcsactPackage> _dependencies = new List<EcsactPackage>();
   [SerializeField]
   internal List<string> _imports = new List<string>();
 
   public new string name => _name;
   public bool main => _main;
-  public IList<EcsIdlPackage> dependencies => _dependencies.AsReadOnly();
+  public IList<EcsactPackage> dependencies => _dependencies.AsReadOnly();
   public IList<string> imports => _imports.AsReadOnly();
 }

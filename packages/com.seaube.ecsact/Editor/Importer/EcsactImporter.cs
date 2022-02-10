@@ -12,11 +12,11 @@ class PkgInfoJson {
 	public List<string> imports = new List<string>();
 }
 
-[ScriptedImporter(version: 1, ext: "ecs-idl")]
-public class EcsIdlImporter : ScriptedImporter {
+[ScriptedImporter(version: 1, ext: "ecsact")]
+public class EcsactImporter : ScriptedImporter {
 	public override void OnImportAsset(AssetImportContext ctx) {
 		string codegenExecutable = Path.GetFullPath(
-			"Packages/com.seaube.ecs-idl/generators~/ecs_idl_parser_info_codegen.exe"
+			"Packages/com.seaube.ecsact/generators~/ecsact_parser_info_codegen.exe"
 		);
 
 		Process codegen = new Process();
@@ -49,7 +49,7 @@ public class EcsIdlImporter : ScriptedImporter {
 			codegen.BeginOutputReadLine();
 			codegen.BeginErrorReadLine();
 			if(!codegen.WaitForExit(10000)) {
-				ctx.LogImportError("ECS IDL Importer timed out");
+				ctx.LogImportError("ECSACT Importer timed out");
 				return;
 			} else {
 				// See documentation https://docs.microsoft.com/en-us/dotnet/api/system.diagnostics.process.waitforexit?view=net-6.0#system-diagnostics-process-waitforexit(system-int32)
@@ -66,8 +66,8 @@ public class EcsIdlImporter : ScriptedImporter {
 		}
 
 		var pkgJson = JsonUtility.FromJson<PkgInfoJson>(pkgJsonStr);
-		var pkg = (EcsIdlPackage)ScriptableObject.CreateInstance(
-			typeof(EcsIdlPackage)
+		var pkg = (EcsactPackage)ScriptableObject.CreateInstance(
+			typeof(EcsactPackage)
 		);
 
 		pkg._name = pkgJson.name;
@@ -75,7 +75,7 @@ public class EcsIdlImporter : ScriptedImporter {
 		pkg._imports = pkgJson.imports;
 		pkg._dependencies.Clear();
 
-		ctx.AddObjectToAsset("ecs-idl package", pkg);
+		ctx.AddObjectToAsset("ecsact package", pkg);
 		ctx.SetMainObject(pkg);
 	}
 }

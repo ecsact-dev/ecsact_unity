@@ -4,7 +4,7 @@ using UnityEditor.Compilation;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using EcsIdl.UnitySync;
+using Ecsact.UnitySync;
 using UnityEngine.SceneManagement;
 using UnityEditor.SceneManagement;
 using Unity.EditorCoroutines.Editor;
@@ -15,11 +15,11 @@ using ComponentIdsList = System.Collections.Generic.SortedSet<System.Int32>;
 
 #nullable enable
 
-class EcsIdlUnitySyncGameObjectPreview : PreviewSceneStage {
+class EcsactUnitySyncGameObjectPreview : PreviewSceneStage {
 
-	public static EcsIdlUnitySyncGameObjectPreview CreateInstance() {
-		return (EcsIdlUnitySyncGameObjectPreview)PreviewSceneStage.CreateInstance(
-			typeof(EcsIdlUnitySyncGameObjectPreview)
+	public static EcsactUnitySyncGameObjectPreview CreateInstance() {
+		return (EcsactUnitySyncGameObjectPreview)PreviewSceneStage.CreateInstance(
+			typeof(EcsactUnitySyncGameObjectPreview)
 		);
 	}
 
@@ -55,22 +55,22 @@ class EcsIdlUnitySyncGameObjectPreview : PreviewSceneStage {
 	}
 }
 
-public class EcsIdlUnitySyncDebugWindow : EditorWindow {
+public class EcsactUnitySyncDebugWindow : EditorWindow {
 	static bool allMonoBehavioursFoldout = false;
 	static bool refreshing = false;
 	static Vector2 scrollPosition = new Vector2();
 	static ComponentIdsList testComponentIds = new ComponentIdsList();
 
-	[MenuItem("Window/ECS IDL/Unity Sync Debug")]
+	[MenuItem("Window/ECSACT/Unity Sync Debug")]
 	static void Init() {
-		var window = EditorWindow.GetWindow(typeof(EcsIdlUnitySyncDebugWindow));
+		var window = EditorWindow.GetWindow(typeof(EcsactUnitySyncDebugWindow));
 		window.Show();
 	}
 
 	private List<System.Type> allMonoBehaviourTypes = new List<System.Type>();
 	private List<System.Type> monoBehaviourTypes = new List<System.Type>();
 	private List<System.Type> componentTypes = new List<System.Type>();
-	private EcsIdlUnitySyncGameObjectPreview? previewSceneStage;
+	private EcsactUnitySyncGameObjectPreview? previewSceneStage;
 
 	void OnEnable() {
 		titleContent = new GUIContent("Unity Sync Debug");
@@ -100,7 +100,7 @@ public class EcsIdlUnitySyncDebugWindow : EditorWindow {
 	}
 
 	IEnumerator<string> Refresh() {
-		int progressId = Progress.Start("Finding ECS IDL types");
+		int progressId = Progress.Start("Finding ECSACT types");
 		bool cancelledRequested = false;
 		bool cancelled = false;
 
@@ -143,7 +143,7 @@ public class EcsIdlUnitySyncDebugWindow : EditorWindow {
 
 		foreach(var assembly in System.AppDomain.CurrentDomain.GetAssemblies()) {
 			foreach(var type in assembly.GetTypes()) {
-				if(EcsIdl.Util.IsComponent(type)) {
+				if(Ecsact.Util.IsComponent(type)) {
 					componentTypes.Add(type);
 				} else {
 					var interfaces = UnitySyncMonoBehaviours.GetInterfaces(type);
@@ -193,7 +193,7 @@ public class EcsIdlUnitySyncDebugWindow : EditorWindow {
 
 		pool.Clear();
 		foreach(var componentId in testComponentIds) {
-			var componentType = EcsIdl.Util.GetComponentType(componentId);
+			var componentType = Ecsact.Util.GetComponentType(componentId);
 			if(componentType != null) {
 				var component = System.Activator.CreateInstance(componentType);
 				pool.InitComponent(0, componentId, component);
@@ -210,7 +210,7 @@ public class EcsIdlUnitySyncDebugWindow : EditorWindow {
 		if(previewSceneStage == null || previewSceneStage.pool == null) return;
 		var pool = previewSceneStage.pool;
 
-		var componentType = EcsIdl.Util.GetComponentType(componentId);
+		var componentType = Ecsact.Util.GetComponentType(componentId);
 		var component = System.Activator.CreateInstance(componentType);
 		pool.InitComponent(0, componentId, component);
 	}
@@ -221,7 +221,7 @@ public class EcsIdlUnitySyncDebugWindow : EditorWindow {
 	{
 		if(previewSceneStage == null || previewSceneStage.pool == null) return;
 		var pool = previewSceneStage.pool;
-		var componentType = EcsIdl.Util.GetComponentType(componentId);
+		var componentType = Ecsact.Util.GetComponentType(componentId);
 		// Fake component for the sake of preview purposes only
 		var component = System.Activator.CreateInstance(componentType);
 		pool.UpdateComponent(0, componentId, component);
@@ -233,7 +233,7 @@ public class EcsIdlUnitySyncDebugWindow : EditorWindow {
 	{
 		if(previewSceneStage == null || previewSceneStage.pool == null) return;
 		var pool = previewSceneStage.pool;
-		var componentType = EcsIdl.Util.GetComponentType(componentId);
+		var componentType = Ecsact.Util.GetComponentType(componentId);
 		// Fake component for the sake of preview purposes only
 		var component = System.Activator.CreateInstance(componentType);
 		pool.RemoveComponent(0, componentId, component);
@@ -260,11 +260,11 @@ public class EcsIdlUnitySyncDebugWindow : EditorWindow {
 			} else {
 				EditorGUILayout.LabelField("(none)");
 				EditorGUILayout.HelpBox(
-					"Implement one or more EcsIdl.UnitySync.IRequired<>, " +
-					"EcsIdl.UnitySync.IOnInitComponent<>, " +
-					"EcsIdl.UnitySync.IOnUpdateComponent<>, or " +
-					"EcsIdl.UnitySync.IOnRemoveComponent<> interfaces for your " +
-					"MonoBehaviour scripts to be considered for ECS IDL Unity Sync.",
+					"Implement one or more Ecsact.UnitySync.IRequired<>, " +
+					"Ecsact.UnitySync.IOnInitComponent<>, " +
+					"Ecsact.UnitySync.IOnUpdateComponent<>, or " +
+					"Ecsact.UnitySync.IOnRemoveComponent<> interfaces for your " +
+					"MonoBehaviour scripts to be considered for ECSACT Unity Sync.",
 					MessageType.Info
 				);
 			}
@@ -279,7 +279,7 @@ public class EcsIdlUnitySyncDebugWindow : EditorWindow {
 
 		EditorGUILayout.LabelField("Test Components", EditorStyles.boldLabel);
 		foreach(var componentType in componentTypes) {
-			var componentId = EcsIdl.Util.GetComponentID(componentType);
+			var componentId = Ecsact.Util.GetComponentID(componentType);
 			var enabled = testComponentIds.Contains(componentId);
 			enabled = EditorGUILayout.ToggleLeft(componentType.FullName, enabled);
 
@@ -334,7 +334,7 @@ public class EcsIdlUnitySyncDebugWindow : EditorWindow {
 	}
 
 	private void OpenPreviewScene() {
-		previewSceneStage = EcsIdlUnitySyncGameObjectPreview.CreateInstance();
+		previewSceneStage = EcsactUnitySyncGameObjectPreview.CreateInstance();
 		previewSceneStage.onOpenStage += OnOpenPreviewStage;
 		StageUtility.GoToStage(previewSceneStage, true);
 	}
