@@ -289,6 +289,22 @@ namespace Ecsact.UnitySync {
 					if(onInitEntity != null) {
 						onInitEntity.OnInitEntity(entityId);
 					}
+
+					var initCompIds = UnitySyncMonoBehaviours.GetInitComponentIds(type);
+					foreach(var initCompId in initCompIds) {
+						if(initCompId == componentId) continue;
+						if(!entitySource.HasComponent(entityId, initCompId)) continue;
+
+						var initComponent = entitySource.GetComponent(
+							entityId,
+							initCompId
+						);
+						UnitySyncMonoBehaviours.InvokeOnInit(
+							newMonoBehaviour,
+							initCompId,
+							in initComponent
+						);
+					}
 				}
 
 				UnitySyncMonoBehaviours.InvokeOnRemove(
