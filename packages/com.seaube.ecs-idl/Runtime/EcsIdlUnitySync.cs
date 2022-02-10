@@ -17,27 +17,27 @@ using ComponentIdsList = System.Collections.Generic.SortedSet
 	< System.Int32
 	>;
 
-namespace EcsIdl.UnitySync {
+namespace Ecsact.UnitySync {
 
 	/// <summary> Required marker interface. If a MonoBehaviour implements this 
 	/// marker it will be added to the game object if the entity has component 
 	/// <c>T</c>. All required marker interfaces must resolve before the 
 	/// behaviour is added.</summary>
-	public interface IRequired<T> where T : EcsIdl.Component {}
+	public interface IRequired<T> where T : Ecsact.Component {}
 
 	public interface IOnInitEntity {
 		void OnInitEntity(System.Int32 entityId);
 	}
 
-	public interface IOnInitComponent<T> where T : EcsIdl.Component {
+	public interface IOnInitComponent<T> where T : Ecsact.Component {
 		void OnInitComponent(in T component);
 	}
 
-	public interface IOnUpdateComponent<T> where T : EcsIdl.Component {
+	public interface IOnUpdateComponent<T> where T : Ecsact.Component {
 		void OnUpdateComponent(in T component);
 	}
 
-	public interface IOnRemoveComponent<T> where T : EcsIdl.Component {
+	public interface IOnRemoveComponent<T> where T : Ecsact.Component {
 		void OnRemoveComponent(in T component);
 	}
 
@@ -490,7 +490,7 @@ namespace EcsIdl.UnitySync {
 			, Type componentType
 			)
 		{
-			var componentId = EcsIdl.Util.GetComponentID(componentType);
+			var componentId = Ecsact.Util.GetComponentID(componentType);
 			requiredComponentsMap[monoBehaviourType].Add(componentId);
 			GetRequiredBehaviours(componentId).Add(monoBehaviourType);
 			AddKnownComponentId(componentId);
@@ -501,7 +501,7 @@ namespace EcsIdl.UnitySync {
 			, Type componentType
 			)
 		{
-			var componentId = EcsIdl.Util.GetComponentID(componentType);
+			var componentId = Ecsact.Util.GetComponentID(componentType);
 			onInitComponentsMap[monoBehaviourType].Add(componentId);
 			GetOnInitBehaviours(componentId).Add(monoBehaviourType);
 			AddKnownComponentId(componentId);
@@ -512,7 +512,7 @@ namespace EcsIdl.UnitySync {
 			, Type componentType
 			)
 		{
-			var componentId = EcsIdl.Util.GetComponentID(componentType);
+			var componentId = Ecsact.Util.GetComponentID(componentType);
 			onUpdateComponentsMap[monoBehaviourType].Add(componentId);
 			GetOnUpdateBehaviours(componentId).Add(monoBehaviourType);
 			AddKnownComponentId(componentId);
@@ -523,7 +523,7 @@ namespace EcsIdl.UnitySync {
 			, Type componentType
 			)
 		{
-			var componentId = EcsIdl.Util.GetComponentID(componentType);
+			var componentId = Ecsact.Util.GetComponentID(componentType);
 			onRemoveComponentsMap[monoBehaviourType].Add(componentId);
 			GetOnRemoveBehaviours(componentId).Add(monoBehaviourType);
 			AddKnownComponentId(componentId);
@@ -538,7 +538,7 @@ namespace EcsIdl.UnitySync {
 				// New known component
 				knownComponentTypes.Add(
 					componentId,
-					EcsIdl.Util.GetComponentType(componentId)!
+					Ecsact.Util.GetComponentType(componentId)!
 				);
 			}
 		}

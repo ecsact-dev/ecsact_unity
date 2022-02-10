@@ -2,6 +2,6 @@ using UnityEngine;
 using UnityEditor;
 using UnityEditor.AssetImporters;
 
-[CustomEditor(typeof(EcsIdlImporter))]
-public class EcsIdlImporterEditor : ScriptedImporterEditor {
+[CustomEditor(typeof(EcsactImporter))]
+public class EcsactImporterEditor : ScriptedImporterEditor {
 }

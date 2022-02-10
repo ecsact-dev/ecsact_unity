@@ -1,8 +1,8 @@
 {
-	"name": "EcsIdl.Editor",
+	"name": "Ecsact.Editor",
 	"rootNamespace": "",
 	"references": [
-		"EcsIdl",
+		"Ecsact",
 		"Unity.EditorCoroutines.Editor"
 	],
 	"includePlatforms": [

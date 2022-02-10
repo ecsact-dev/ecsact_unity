@@ -8,11 +8,11 @@ using ComponentIdsList = System.Collections.Generic.SortedSet<System.Int32>;
 
 #nullable enable
 
-namespace EcsIdl {
-	/// <summary>ECS IDL Component Marker Interface</summary>
+namespace Ecsact {
+	/// <summary>ECSACT Component Marker Interface</summary>
 	public interface Component {}
 
-	/// <summary>ECS IDL Action Marker Interface</summary>
+	/// <summary>ECSACT Action Marker Interface</summary>
 	public interface Action {}
 
 	public static class Util {
@@ -27,7 +27,7 @@ namespace EcsIdl {
 			)
 		{
 			foreach(var i in componentType.GetInterfaces()) {
-				if(i == typeof(EcsIdl.Component)) {
+				if(i == typeof(Ecsact.Component)) {
 					return true;
 				}
 			}
@@ -84,7 +84,7 @@ namespace EcsIdl {
 			cachedComponentTypes.Clear();
 		}
 
-		public static System.Int32 GetComponentID<T>() where T : EcsIdl.Component {
+		public static System.Int32 GetComponentID<T>() where T : Ecsact.Component {
 			return GetComponentID(typeof(T));
 		}
 
@@ -106,7 +106,7 @@ namespace EcsIdl {
 			return componentId;
 		}
 
-		public static System.Int32 GetActionID<T>() where T : EcsIdl.Action {
+		public static System.Int32 GetActionID<T>() where T : Ecsact.Action {
 			return GetActionID(typeof(T));
 		}
 

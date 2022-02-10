@@ -4,18 +4,18 @@ using UnityEditor;
  
 #nullable enable
 
-[CustomEditor(typeof(EcsIdlPackage))]
+[CustomEditor(typeof(EcsactPackage))]
 [CanEditMultipleObjects]
-public class EcsIdlPackageEditor : Editor {
+public class EcsactPackageEditor : Editor {
 	private static Dictionary<string, bool> pkgFoldouts =
 		new Dictionary<string, bool>();
 
 	public override void OnInspectorGUI() {
-		EcsIdlPackage? mainPkg = null;
-		List<EcsIdlPackage> pkgList = new List<EcsIdlPackage>();
+		EcsactPackage? mainPkg = null;
+		List<EcsactPackage> pkgList = new List<EcsactPackage>();
 
 		foreach(var target in targets) {
-			var pkg = (EcsIdlPackage)target;
+			var pkg = (EcsactPackage)target;
 			pkgList.Add(pkg);
 
 			if(pkg.main) {
