@@ -12,11 +12,42 @@ using ComponentIdsList = System.Collections.Generic.SortedSet
 
 namespace Ecsact.UnitySync {
 	public class EntityGameObjectPool : ScriptableObject {
+		public abstract class EntitySource {
+			public abstract object GetComponent
+				( System.Int32 entityId
+				, System.Int32 componentId
+				);
+			public abstract bool HasComponent
+				( System.Int32 entityId
+				, System.Int32 componentId
+				);
+		}
 
-		public static EntityGameObjectPool CreateInstance() {
-			return (EntityGameObjectPool)ScriptableObject.CreateInstance(
+		public static EntityGameObjectPool CreateInstance
+			( EntitySource entitySource
+			)
+		{
+			var pool = (EntityGameObjectPool)ScriptableObject.CreateInstance(
 				typeof(EntityGameObjectPool)
 			);
+
+			pool._entitySource = entitySource;
+
+			return pool;
+		}
+
+		private EntitySource? _entitySource;
+		private EntitySource entitySource {
+			get {
+				UnityEngine.Debug.Assert(
+					_entitySource != null,
+					"entitySource is unset. Please use " +
+					"EntityGameObjectPool.CreateInstance when creating an " +
+					"EntityGameObjectPool instance.",
+					this
+				);
+				return _entitySource!;
+			}
 		}
 
 		private List<ComponentIdsList> entityComponentIds;
@@ -155,11 +186,26 @@ namespace Ecsact.UnitySync {
 					if(onInitEntity != null) {
 						onInitEntity.OnInitEntity(entityId);
 					}
+					var initCompIds = UnitySyncMonoBehaviours.GetInitComponentIds(type);
+					foreach(var initCompId in initCompIds) {
+						if(initCompId == componentId) continue;
+						if(!entitySource.HasComponent(entityId, initCompId)) continue;
+
+						var initComponent = entitySource.GetComponent(
+							entityId,
+							initCompId
+						);
+						UnitySyncMonoBehaviours.InvokeOnInit(
+							newMonoBehaviour,
+							initCompId,
+							in initComponent
+						);
+					}
 				}
 			}
 
 			gameObject = gameObject ?? GetEntityGameObject(entityId);
-			
+
 			if(gameObject != null) {
 				UnitySyncMonoBehaviours.InvokeOnInit(
 					gameObject,
@@ -188,18 +234,13 @@ namespace Ecsact.UnitySync {
 			)
 		{
 			var gameObject = GetEntityGameObject(entityId);
-			if(gameObject == null) {
-				throw new System.ArgumentException(
-					$"EntityGameObjectPool.UpdateComponent called before " +
-					$"EntityGameObjectPool.InitComponent. entityId={entityId}"
+			if(gameObject != null) {
+				UnitySyncMonoBehaviours.InvokeOnUpdate(
+					gameObject,
+					componentId,
+					in component
 				);
 			}
-
-			UnitySyncMonoBehaviours.InvokeOnUpdate(
-				gameObject,
-				componentId,
-				in component
-			);
 		}
 
 		public void RemoveComponent<T>
@@ -237,6 +278,35 @@ namespace Ecsact.UnitySync {
 				);
 
 				var gameObject = entityGameObjects[entityId]!;
+
+				var allMonoBehaviourTypes = UnitySyncMonoBehaviours.GetTypes(
+					nextCompIds
+				);
+
+				foreach(var type in addedTypes) {
+					var newMonoBehaviour = (MonoBehaviour)gameObject.AddComponent(type);
+					IOnInitEntity? onInitEntity = newMonoBehaviour as IOnInitEntity;
+					if(onInitEntity != null) {
+						onInitEntity.OnInitEntity(entityId);
+					}
+
+					var initCompIds = UnitySyncMonoBehaviours.GetInitComponentIds(type);
+					foreach(var initCompId in initCompIds) {
+						if(initCompId == componentId) continue;
+						if(!entitySource.HasComponent(entityId, initCompId)) continue;
+
+						var initComponent = entitySource.GetComponent(
+							entityId,
+							initCompId
+						);
+						UnitySyncMonoBehaviours.InvokeOnInit(
+							newMonoBehaviour,
+							initCompId,
+							in initComponent
+						);
+					}
+				}
+
 				UnitySyncMonoBehaviours.InvokeOnRemove(
 					gameObject,
 					componentId,
@@ -253,22 +323,6 @@ namespace Ecsact.UnitySync {
 					}
 				}
 
-				foreach(var type in addedTypes) {
-					var newMonoBehaviour = (MonoBehaviour)gameObject.AddComponent(type);
-					IOnInitEntity? onInitEntity = newMonoBehaviour as IOnInitEntity;
-					if(onInitEntity != null) {
-						onInitEntity.OnInitEntity(entityId);
-					}
-					UnitySyncMonoBehaviours.InvokeOnInit(
-						newMonoBehaviour,
-						componentId,
-						in component
-					);
-				}
-
-				var allMonoBehaviourTypes = UnitySyncMonoBehaviours.GetTypes(
-					nextCompIds
-				);
 				if(!allMonoBehaviourTypes.Any()) {
 					gameObject.SetActive(false);
 					gameObject.name = $"entity ({entityId})";

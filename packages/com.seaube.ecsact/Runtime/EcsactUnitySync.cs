@@ -374,6 +374,39 @@ namespace Ecsact.UnitySync {
 			}
 		}
 
+		public static IEnumerable<System.Int32> GetInitComponentIds
+			( System.Type type
+			)
+		{
+			if(onInitComponentsMap.TryGetValue(type, out var compIds)) {
+				foreach(var compId in compIds) {
+					yield return compId;
+				}
+			}
+		}
+
+		public static IEnumerable<System.Int32> GetRemoveComponentIds
+			( System.Type type
+			)
+		{
+			if(onInitComponentsMap.TryGetValue(type, out var compIds)) {
+				foreach(var compId in compIds) {
+					yield return compId;
+				}
+			}
+		}
+
+		public static IEnumerable<System.Int32> GetRequiredComponentIds
+			( System.Type type
+			)
+		{
+			if(requiredComponentsMap.TryGetValue(type, out var compIds)) {
+				foreach(var compId in compIds) {
+					yield return compId;
+				}
+			}
+		}
+
 		public static void ClearRegisteredMonoBehaviourTypes() {
 			knownComponentIds.Clear();
 			knownComponentTypes.Clear();
@@ -474,15 +507,6 @@ namespace Ecsact.UnitySync {
 			( Type monoBehaviourType
 			)
 		{
-			var compIds = new ComponentIdsList();
-			var reqCompIds = new ComponentIdsList();
-
-			reqCompIds.UnionWith(requiredComponentsMap[monoBehaviourType]);
-			compIds.UnionWith(onInitComponentsMap[monoBehaviourType]);
-			compIds.UnionWith(onUpdateComponentsMap[monoBehaviourType]);
-			compIds.UnionWith(onRemoveComponentsMap[monoBehaviourType]);
-
-			
 		}
 
 		private static void RegisterRequiredInterface

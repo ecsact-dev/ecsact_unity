@@ -29,7 +29,7 @@ class EcsactUnitySyncGameObjectPreview : PreviewSceneStage {
 	protected override void OnEnable() {
 		base.OnEnable();
 		scene = EditorSceneManager.NewPreviewScene();
-		pool = EntityGameObjectPool.CreateInstance();
+		pool = EntityGameObjectPool.CreateInstance(null!);
 		pool.targetScene = scene;
 
 		if(Camera.main != null) {
