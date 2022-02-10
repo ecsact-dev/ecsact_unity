@@ -6,8 +6,8 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 git_repository(
     name = "ecsact",
     remote = "git@github.com:seaube/ecsact.git",
-    commit = "c6995e205c60561a3f6bbd046b03678858d17bbc",
-    shallow_since = "1641923718 -0800",
+    commit = "6f0df7f4aff97b88db0e51e7b9bb61859a5ecf85",
+    shallow_since = "1644508808 -0500",
 )
 
 http_archive(
