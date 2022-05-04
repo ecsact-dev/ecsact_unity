@@ -43,6 +43,9 @@ namespace Ecsact {
 			var componentType = GetComponentType(componentId);
 
 			if(componentType != null) {
+				if(componentIntPtr == IntPtr.Zero) {
+					return System.Activator.CreateInstance(componentType);
+				}
 				return Marshal.PtrToStructure(componentIntPtr, componentType);
 			}
 
