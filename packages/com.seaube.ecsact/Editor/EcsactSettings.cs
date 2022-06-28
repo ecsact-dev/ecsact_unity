@@ -5,6 +5,8 @@ using UnityEditor.UIElements;
 using System.IO;
 using System.Collections.Generic;
 
+#nullable enable
+
 [System.Serializable]
 class EcsactSettings : ScriptableObject {
 	public const string assetPath = "Assets/Editor/EcsactSettings.asset";
@@ -38,8 +40,10 @@ class EcsactSettings : ScriptableObject {
 static class EcsactSettingsUIElementsRegister {
 	[SettingsProvider]
 	public static SettingsProvider CreateEcsactSettingsProvider() {
+		EcsactRuntime? testDefaultRuntime = null;
+
 		return new SettingsProvider(EcsactSettings.path, EcsactSettings.scope) {
-			label = "ECSACT",
+			label = "Ecsact",
 			activateHandler = (searchContext, rootElement) => {
 				var settings = EcsactSettings.GetSerializedSettings();
 				var template = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(
@@ -48,10 +52,25 @@ static class EcsactSettingsUIElementsRegister {
 				var ui = template.Instantiate();
 				BindingExtensions.Bind(ui, settings);
 				rootElement.Add(ui);
+
+				if(testDefaultRuntime != null) {
+					EcsactRuntime.Free(testDefaultRuntime);
+					testDefaultRuntime = null;
+				}
+
+				var runtimeSettings = EcsactRuntimeSettings.Get();
+				testDefaultRuntime = EcsactRuntime.Load(
+					runtimeSettings.runtimeLibraryPaths
+				);
+			},
+			deactivateHandler = () => {
+				if(testDefaultRuntime != null) {
+					EcsactRuntime.Free(testDefaultRuntime);
+					testDefaultRuntime = null;
+				}
 			},
 			keywords = new HashSet<string>(new[] {
-				"ECSACT",
-				"ECSACT",
+				"Ecsact",
 				"ECS",
 				"ECS Plugin",
 				"Plugin",

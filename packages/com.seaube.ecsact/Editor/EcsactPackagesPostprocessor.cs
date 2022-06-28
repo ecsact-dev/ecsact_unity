@@ -3,6 +3,7 @@ using UnityEditor;
 using System.IO;
 using System.Diagnostics;
 using System.Collections.Generic;
+using System.Linq;
 
 public class EcsactPackagesPostprocessor : AssetPostprocessor {
 
@@ -59,6 +60,26 @@ public class EcsactPackagesPostprocessor : AssetPostprocessor {
 		}
 	}
 
+	static void TryImportAssets
+		( List<string> assets
+		)
+	{
+		EditorApplication.delayCall += () => {
+			if(!Progress.running) {
+				try {
+					AssetDatabase.StartAssetEditing();
+					foreach(var asset in assets) {
+						AssetDatabase.ImportAsset(asset);
+					}
+				} finally {
+					AssetDatabase.StopAssetEditing();
+				}
+			} else {
+				TryImportAssets(assets);
+			}
+		};
+	}
+
 	static void RefreshEcsactCodegen
 		( List<string>    importedPkgs
 		, List<string>    deletedPkgs
@@ -97,15 +118,9 @@ public class EcsactPackagesPostprocessor : AssetPostprocessor {
 				UnityEngine.Debug.LogError(codegen.StandardError.ReadToEnd());
 				Progress.Remove(progressId);
 			} else {
-				Progress.Report(progressId, 0.9f);
-
-				EditorApplication.delayCall += () => {
-					foreach(var importedPkg in importedPkgs) {
-						// Import newly created scripts
-						AssetDatabase.ImportAsset(importedPkg + ".cs");
-					}
-					Progress.Remove(progressId);
-				};
+				Progress.Finish(progressId, Progress.Status.Succeeded);
+				// Import newly created scripts
+				TryImportAssets(importedPkgs.Select(pkg => pkg + ".cs").ToList());
 			}
 		};
 
