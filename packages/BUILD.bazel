@@ -4,13 +4,14 @@ package(default_visibility = ["//visibility:public"])
 
 bzlws_copy(
     name = "copy_for_dev",
-    visibility = ["//visibility:private"],
     testonly = True,
-    force = True,
-    out = "packages/com.seaube.ecsact/generators~/{FILENAME}",
-    metafile_path = "generators~/.copy_for_dev.yml",
     srcs = [
         "@ecsact//generator/csharp:cli",
         "@ecsact//generator/parser_info:cli",
+        "@ecsact_rtb//cli",
     ],
+    out = "packages/com.seaube.ecsact/generators~/{FILENAME}",
+    force = True,
+    metafile_path = "generators~/.copy_for_dev.yml",
+    visibility = ["//visibility:private"],
 )

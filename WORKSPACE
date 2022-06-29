@@ -4,40 +4,40 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 git_repository(
-    name = "ecsact",
-    remote = "git@github.com:seaube/ecsact.git",
-    commit = "6bce75438e812fd887dbe24e757d2a523993fa26",
-    shallow_since = "1651763515 -0400",
+    name = "ecsact_rtb",
+    commit = "6d730c4ebcbd395d3ad8810ba842f9c0d8ed15d1",
+    remote = "git@github.com:seaube/ecsact-rtb.git",
+    shallow_since = "1656519400 -0700",
 )
 
-http_archive(
-    name = "boost",
-    strip_prefix = "boost-563e8e0de4eac4b48a02d296581dc2454127608e",
-    urls = ["https://github.com/bazelboost/boost/archive/563e8e0de4eac4b48a02d296581dc2454127608e.zip"],
-    sha256 = "c41441a6e9f8038ad626e9f937ddc3675ab896b6c3512eefc6840037b3816d03",
-)
+load("@ecsact_rtb//:repositories.bzl", "ecsact_rtb_repositories")
 
-load("@boost//:index.bzl", "boost_http_archives")
-boost_http_archives()
+ecsact_rtb_repositories()
+
+load("@ecsact_rtb//:workspace.bzl", "ecsact_rtb_workspace")
+
+ecsact_rtb_workspace()
 
 http_archive(
     name = "bzlws",
+    sha256 = "5bebb821b158b11d81dd25cf031b5b26bae97dbb02025df7d0e41a262b3a030b",
     strip_prefix = "bzlws-f929e5380f441f50a77776d34a7df8cacdbdf986",
     url = "https://github.com/zaucy/bzlws/archive/f929e5380f441f50a77776d34a7df8cacdbdf986.zip",
-    sha256 = "5bebb821b158b11d81dd25cf031b5b26bae97dbb02025df7d0e41a262b3a030b",
 )
 
 load("@bzlws//:repo.bzl", "bzlws_deps")
+
 bzlws_deps()
 
 http_archive(
     name = "rules_7zip",
+    sha256 = "29ba984e2a7d48540faa839efaf09be4b880d211a93575e7ac87abffc12dbdea",
     strip_prefix = "rules_7zip-25d3b858a37580dbc1f1ced002e210be15012e2f",
     urls = ["https://github.com/zaucy/rules_7zip/archive/25d3b858a37580dbc1f1ced002e210be15012e2f.zip"],
-    sha256 = "29ba984e2a7d48540faa839efaf09be4b880d211a93575e7ac87abffc12dbdea",
 )
 
 load("@rules_7zip//:setup.bzl", "setup_7zip")
+
 setup_7zip()
 
 _nlohmann_json_build_file = """
@@ -54,9 +54,9 @@ cc_library(
 
 http_archive(
     name = "nlohmann_json",
-    url = "https://github.com/nlohmann/json/releases/download/v3.10.4/include.zip",
-    sha256 = "62c585468054e2d8e7c2759c0d990fd339d13be988577699366fe195162d16cb",
     build_file_content = _nlohmann_json_build_file,
+    sha256 = "62c585468054e2d8e7c2759c0d990fd339d13be988577699366fe195162d16cb",
+    url = "https://github.com/nlohmann/json/releases/download/v3.10.4/include.zip",
 )
 
 http_archive(
@@ -66,6 +66,7 @@ http_archive(
 )
 
 load("@build_bazel_rules_nodejs//:index.bzl", "node_repositories")
+
 node_repositories()
 
 http_archive(
@@ -76,4 +77,5 @@ http_archive(
 )
 
 load("@aspect_bazel_lib//lib:repositories.bzl", "aspect_bazel_lib_dependencies")
+
 aspect_bazel_lib_dependencies()
