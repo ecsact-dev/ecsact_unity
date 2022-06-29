@@ -274,11 +274,11 @@ public class EcsactRuntime {
 	public class Async {
 		internal List<string> _availableMethods = new();
 		public static string[] methods => new string[]{
-			"ecsact_async_execute_action",
-			"ecsact_async_execute_action_at",
-			"ecsact_async_flush_events",
 			"ecsact_async_connect",
 			"ecsact_async_disconnect",
+			"ecsact_async_execute_action_at",
+			"ecsact_async_execute_action",
+			"ecsact_async_flush_events",
 		};
 
 		public IEnumerable<string> availableMethods => _availableMethods;
@@ -316,24 +316,24 @@ public class EcsactRuntime {
 	public class Core {
 		internal List<string> _availableMethods = new();
 		public static string[] methods => new string[]{
-			"ecsact_create_registry",
-			"ecsact_destroy_registry",
+			"ecsact_add_component",
 			"ecsact_clear_registry",
+			"ecsact_count_components",
+			"ecsact_count_entities",
 			"ecsact_create_entity",
+			"ecsact_create_registry",
+			"ecsact_destroy_entity",
+			"ecsact_destroy_registry",
+			"ecsact_each_component",
 			"ecsact_ensure_entity",
 			"ecsact_entity_exists",
-			"ecsact_destroy_entity",
-			"ecsact_count_entities",
-			"ecsact_get_entities",
-			"ecsact_add_component",
-			"ecsact_has_component",
-			"ecsact_get_component",
-			"ecsact_each_component",
-			"ecsact_count_components",
-			"ecsact_get_components",
-			"ecsact_update_component",
-			"ecsact_remove_component",
 			"ecsact_execute_systems",
+			"ecsact_get_component",
+			"ecsact_get_components",
+			"ecsact_get_entities",
+			"ecsact_has_component",
+			"ecsact_remove_component",
+			"ecsact_update_component",
 		};
 
 		public IEnumerable<string> availableMethods => _availableMethods;
@@ -746,31 +746,31 @@ public class EcsactRuntime {
 	public class Dynamic {
 		internal List<string> _availableMethods = new();
 		public static string[] methods => new string[]{
-			"ecsact_system_execution_context_action",
-			"ecsact_system_execution_context_add",
-			"ecsact_system_execution_context_remove",
-			"ecsact_system_execution_context_get",
-			"ecsact_system_execution_context_has",
-			"ecsact_system_execution_context_generate",
-			"ecsact_system_execution_context_parent",
-			"ecsact_system_execution_context_same",
-			"ecsact_create_system",
-			"ecsact_set_system_execution_impl",
-			"ecsact_create_action",
-			"ecsact_resize_action",
-			"ecsact_create_component",
-			"ecsact_resize_component",
-			"ecsact_destroy_component",
-			"ecsact_create_variant",
-			"ecsact_destroy_variant",
 			"ecsact_add_system_capability",
-			"ecsact_update_system_capability",
-			"ecsact_remove_system_capability",
 			"ecsact_add_system_generate_component_set",
+			"ecsact_create_action",
+			"ecsact_create_component",
+			"ecsact_create_system",
+			"ecsact_create_variant",
+			"ecsact_destroy_component",
+			"ecsact_destroy_variant",
+			"ecsact_register_action",
 			"ecsact_register_component",
 			"ecsact_register_system",
-			"ecsact_register_action",
+			"ecsact_remove_system_capability",
+			"ecsact_resize_action",
+			"ecsact_resize_component",
+			"ecsact_set_system_execution_impl",
+			"ecsact_system_execution_context_action",
+			"ecsact_system_execution_context_add",
+			"ecsact_system_execution_context_generate",
+			"ecsact_system_execution_context_get",
+			"ecsact_system_execution_context_has",
 			"ecsact_system_execution_context_id",
+			"ecsact_system_execution_context_parent",
+			"ecsact_system_execution_context_remove",
+			"ecsact_system_execution_context_same",
+			"ecsact_update_system_capability",
 		};
 
 		public IEnumerable<string> availableMethods => _availableMethods;
@@ -941,14 +941,14 @@ public class EcsactRuntime {
 	public class Meta {
 		internal List<string> _availableMethods = new();
 		public static string[] methods => new string[]{
-			"ecsact_meta_registry_name",
-			"ecsact_meta_component_size",
-			"ecsact_meta_component_name",
-			"ecsact_meta_action_size",
 			"ecsact_meta_action_name",
-			"ecsact_meta_system_name",
+			"ecsact_meta_action_size",
+			"ecsact_meta_component_name",
+			"ecsact_meta_component_size",
+			"ecsact_meta_registry_name",
 			"ecsact_meta_system_capabilities_count",
 			"ecsact_meta_system_capabilities",
+			"ecsact_meta_system_name",
 		};
 
 		public IEnumerable<string> availableMethods => _availableMethods;
@@ -1003,12 +1003,12 @@ public class EcsactRuntime {
 	public class Serialize {
 		internal List<string> _availableMethods = new();
 		public static string[] methods => new string[]{
-			"ecsact_serialize_action_size",
-			"ecsact_serialize_component_size",
-			"ecsact_serialize_action",
-			"ecsact_serialize_component",
 			"ecsact_deserialize_action",
 			"ecsact_deserialize_component",
+			"ecsact_serialize_action_size",
+			"ecsact_serialize_action",
+			"ecsact_serialize_component_size",
+			"ecsact_serialize_component",
 		};
 
 		public IEnumerable<string> availableMethods => _availableMethods;
@@ -1055,11 +1055,11 @@ public class EcsactRuntime {
 	public class Static {
 		internal List<string> _availableMethods = new();
 		public static string[] methods => new string[]{
-			"ecsact_static_components",
-			"ecsact_static_systems",
 			"ecsact_static_actions",
-			"ecsact_static_on_reload",
+			"ecsact_static_components",
 			"ecsact_static_off_reload",
+			"ecsact_static_on_reload",
+			"ecsact_static_systems",
 		};
 
 		public IEnumerable<string> availableMethods => _availableMethods;
