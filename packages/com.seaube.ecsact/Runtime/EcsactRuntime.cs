@@ -141,7 +141,46 @@ public class EcsactRuntime {
 		public IntPtr removeCallbackUserData;
 	}
 
-	public enum AsyncError {
+	public struct StaticComponentInfo {
+		public Int32 componentId;
+		[MarshalAs(UnmanagedType.LPStr)] public string componentName;
+		public Int32 componentSize;
+		public ComponentCompareFn componentCompareFn;
+		[MarshalAs(UnmanagedType.I1)] public bool transient;
+	}
+
+	public struct StaticSystemInfo {
+		public Int32 systemId;
+		public Int32 order;
+		[MarshalAs(UnmanagedType.LPStr)] public string systemName;
+		public Int32 parentSystemId;
+		public Int32 childSystemsCount;
+		public Int32[] childSystemIds;
+		public Int32 capabilitiesCount;
+		public Int32[] capabilityComponents;
+		public SystemCapability[] capabilities;
+		public SystemExecutionImpl executionImpl;
+	}
+
+	public struct StaticActionInfo {
+		public Int32 actionId;
+		public Int32 order;
+		[MarshalAs(UnmanagedType.LPStr)] public string actionName;
+		public Int32 actionSize;
+		public ActionCompareFn actionCompareFn;
+		public Int32 childSystemsCount;
+		public Int32[] childSystemIds;
+		public Int32 capabilitiesCount;
+		public Int32[] capabilityComponents;
+		public SystemCapability[] capabilities;
+		public SystemExecutionImpl executionImpl;
+	}
+
+	public delegate void StaticReloadCallback
+		( IntPtr userData
+		);
+
+	public enum AsyncError : Int32 {
 		ConnectionClosed,
 		ConnectFail,
 		SocketFail,
@@ -149,6 +188,38 @@ public class EcsactRuntime {
 		StartFail,
 		InvalidConnectionString,
 	}
+
+	public enum SystemCapability : Int32 {
+		Readonly = 1,
+		Writeonly = 2,
+		ReadWrite = 3,
+		OptionalReadonly = 4 | Readonly,
+		OptionalWriteonly = 4 | Writeonly,
+		OptionalReadWrite = 4 | ReadWrite,
+		Include = 8,
+		Exclude = 16,
+		Adds = 32 | Exclude,
+		Removes = 64 | Include,
+	}
+
+	public enum SystemGenerate : Int32 {
+		Required = 1,
+		Optional = 2,
+	}
+
+	public delegate void SystemExecutionImpl
+		( IntPtr context
+		);
+
+	public delegate Int32 ActionCompareFn
+		( IntPtr  firstAction
+		, IntPtr  secondAction
+		);
+
+	public delegate Int32 ComponentCompareFn
+		( IntPtr  firstComponent
+		, IntPtr  secondComponent
+		);
 
 	public delegate void AsyncErrorCallback
 		( AsyncError  err
@@ -170,63 +241,6 @@ public class EcsactRuntime {
 		AsyncActionCommittedCallback actionCommittedCallback;
 		public IntPtr actionCommittedCallbackUserData;
 	}
-
-	public static string[] dynamicMethods => new string[]{
-		"ecsact_system_execution_context_action",
-		"ecsact_system_execution_context_add",
-		"ecsact_system_execution_context_remove",
-		"ecsact_system_execution_context_get",
-		"ecsact_system_execution_context_has",
-		"ecsact_system_execution_context_generate",
-		"ecsact_system_execution_context_parent",
-		"ecsact_system_execution_context_same",
-		"ecsact_create_system",
-		"ecsact_set_system_execution_impl",
-		"ecsact_create_action",
-		"ecsact_resize_action",
-		"ecsact_create_component",
-		"ecsact_resize_component",
-		"ecsact_destroy_component",
-		"ecsact_create_variant",
-		"ecsact_destroy_variant",
-		"ecsact_add_system_capability",
-		"ecsact_update_system_capability",
-		"ecsact_remove_system_capability",
-		"ecsact_add_system_generate_component_set",
-		"ecsact_register_component",
-		"ecsact_register_system",
-		"ecsact_register_action",
-		"ecsact_system_execution_context_id",
-	};
-
-	public static string[] metaMethods => new string[]{
-		"ecsact_meta_registry_name",
-		"ecsact_meta_component_size",
-		"ecsact_meta_component_name",
-		"ecsact_meta_action_size",
-		"ecsact_meta_action_name",
-		"ecsact_meta_system_name",
-		"ecsact_meta_system_capabilities_count",
-		"ecsact_meta_system_capabilities",
-	};
-
-	public static string[] serializeMethods => new string[]{
-		"ecsact_serialize_action_size",
-		"ecsact_serialize_component_size",
-		"ecsact_serialize_action",
-		"ecsact_serialize_component",
-		"ecsact_deserialize_action",
-		"ecsact_deserialize_component",
-	};
-
-	public static string[] staticMethods => new string[]{
-		"ecsact_static_components",
-		"ecsact_static_variants",
-		"ecsact_static_systems",
-		"ecsact_static_actions",
-		"ecsact_static_on_reload",
-		"ecsact_static_off_reload",
-	};
 
 	private static EcsactRuntime? defaultInstance;
 
@@ -762,127 +776,164 @@ public class EcsactRuntime {
 		public IEnumerable<string> availableMethods => _availableMethods;
 
 		internal delegate void ecsact_system_execution_context_action_delegate
-			(
+			( IntPtr  context
+			, IntPtr  outActionData
 			);
 		internal ecsact_system_execution_context_action_delegate? ecsact_system_execution_context_action;
 
 		internal delegate void ecsact_system_execution_context_add_delegate
-			(
+			( IntPtr  context
+			, Int32   componentId
+			, IntPtr  componentData
 			);
 		internal ecsact_system_execution_context_add_delegate? ecsact_system_execution_context_add;
 
 		internal delegate void ecsact_system_execution_context_remove_delegate
-			(
+			( IntPtr  context
+			, Int32   componentId
 			);
 		internal ecsact_system_execution_context_remove_delegate? ecsact_system_execution_context_remove;
 
 		internal delegate void ecsact_system_execution_context_get_delegate
-			(
+			( IntPtr  context
+			, Int32   componentId
+			, IntPtr  outComponentData
 			);
 		internal ecsact_system_execution_context_get_delegate? ecsact_system_execution_context_get;
 
-		internal delegate void ecsact_system_execution_context_has_delegate
-			(
+		internal delegate void ecsact_system_execution_context_update_delegate
+			( IntPtr  context
+			, Int32   componentId
+			, IntPtr  componentData
+			);
+		internal ecsact_system_execution_context_update_delegate? ecsact_system_execution_context_update;
+
+		internal delegate bool ecsact_system_execution_context_has_delegate
+			( IntPtr  context
+			, Int32   componentId
 			);
 		internal ecsact_system_execution_context_has_delegate? ecsact_system_execution_context_has;
 
 		internal delegate void ecsact_system_execution_context_generate_delegate
-			(
+			( IntPtr    context
+			, Int32     componentCount
+			, Int32[]   componentIds
+			, IntPtr[]  componentsData
 			);
 		internal ecsact_system_execution_context_generate_delegate? ecsact_system_execution_context_generate;
 
-		internal delegate void ecsact_system_execution_context_parent_delegate
-			(
+		internal delegate IntPtr ecsact_system_execution_context_parent_delegate
+			( IntPtr context
 			);
 		internal ecsact_system_execution_context_parent_delegate? ecsact_system_execution_context_parent;
 
-		internal delegate void ecsact_system_execution_context_same_delegate
-			(
+		internal delegate bool ecsact_system_execution_context_same_delegate
+			( IntPtr  firstContext
+			, IntPtr  secondContext
 			);
 		internal ecsact_system_execution_context_same_delegate? ecsact_system_execution_context_same;
 
 		internal delegate void ecsact_create_system_delegate
-			(
+			( [MarshalAs(UnmanagedType.LPStr)] string  systemName
+			, Int32                                    parentSystemId
+			, Int32[]                                  capabilityComponentIds
+			, SystemCapability[]                       capabilities
+			, Int32                                    capabilitiesCount
+			, SystemExecutionImpl                      executionImpl
 			);
 		internal ecsact_create_system_delegate? ecsact_create_system;
 
 		internal delegate void ecsact_set_system_execution_impl_delegate
-			(
+			( Int32                systemId
+			, SystemExecutionImpl  executionImpl
 			);
 		internal ecsact_set_system_execution_impl_delegate? ecsact_set_system_execution_impl;
 
 		internal delegate void ecsact_create_action_delegate
-			(
+			( [MarshalAs(UnmanagedType.LPStr)] string  actionName
+			, Int32                                    actionSize
+			, ActionCompareFn                          actionCompareFn
+			, Int32[]                                  capabilityComponentIds
+			, SystemCapability[]                       capabilities
+			, Int32                                    capabilitiesCount
+			, SystemExecutionImpl                      executionImpl
 			);
 		internal ecsact_create_action_delegate? ecsact_create_action;
 
 		internal delegate void ecsact_resize_action_delegate
-			(
+			( Int32            actionId
+			, Int32            newActionSize
+			, ActionCompareFn  newActionCompareFn
 			);
 		internal ecsact_resize_action_delegate? ecsact_resize_action;
 
 		internal delegate void ecsact_create_component_delegate
-			(
+			( [MarshalAs(UnmanagedType.LPStr)] string  componentName
+			, Int32                                    componentSize
+			, ComponentCompareFn                       componentCompareFn
 			);
 		internal ecsact_create_component_delegate? ecsact_create_component;
 
 		internal delegate void ecsact_resize_component_delegate
-			(
+			( Int32               componentId
+			, Int32               newComponentSize
+			, ComponentCompareFn  newComponentCompareFn
 			);
 		internal ecsact_resize_component_delegate? ecsact_resize_component;
 
 		internal delegate void ecsact_destroy_component_delegate
-			(
+			( Int32 componentId
 			);
 		internal ecsact_destroy_component_delegate? ecsact_destroy_component;
 
-		internal delegate void ecsact_create_variant_delegate
-			(
-			);
-		internal ecsact_create_variant_delegate? ecsact_create_variant;
-
-		internal delegate void ecsact_destroy_variant_delegate
-			(
-			);
-		internal ecsact_destroy_variant_delegate? ecsact_destroy_variant;
-
 		internal delegate void ecsact_add_system_capability_delegate
-			(
+			( Int32             systemId
+			, Int32             componentId
+			, SystemCapability  systemCapability
 			);
 		internal ecsact_add_system_capability_delegate? ecsact_add_system_capability;
 
 		internal delegate void ecsact_update_system_capability_delegate
-			(
+			( Int32             systemId
+			, Int32             componentId
+			, SystemCapability  systemCapability
 			);
 		internal ecsact_update_system_capability_delegate? ecsact_update_system_capability;
 
 		internal delegate void ecsact_remove_system_capability_delegate
-			(
+			( Int32  systemId
+			, Int32  componentId
 			);
 		internal ecsact_remove_system_capability_delegate? ecsact_remove_system_capability;
 
 		internal delegate void ecsact_add_system_generate_component_set_delegate
-			(
+			( Int32             systemId
+			, Int32             componentsCount
+			, Int32[]           componentIds
+			, SystemGenerate[]  componentGenerateFlags
 			);
 		internal ecsact_add_system_generate_component_set_delegate? ecsact_add_system_generate_component_set;
 
 		internal delegate void ecsact_register_component_delegate
-			(
+			( Int32  registryId
+			, Int32  componentId
 			);
 		internal ecsact_register_component_delegate? ecsact_register_component;
 
 		internal delegate void ecsact_register_system_delegate
-			(
+			( Int32  registryId
+			, Int32  systemId
 			);
 		internal ecsact_register_system_delegate? ecsact_register_system;
 
 		internal delegate void ecsact_register_action_delegate
-			(
+			( Int32  registryId
+			, Int32  actionId
 			);
 		internal ecsact_register_action_delegate? ecsact_register_action;
 
-		internal delegate void ecsact_system_execution_context_id_delegate
-			(
+		internal delegate Int32 ecsact_system_execution_context_id_delegate
+			( IntPtr context
 			);
 		internal ecsact_system_execution_context_id_delegate? ecsact_system_execution_context_id;
 	}
@@ -902,43 +953,49 @@ public class EcsactRuntime {
 
 		public IEnumerable<string> availableMethods => _availableMethods;
 
-		internal delegate void ecsact_meta_registry_name_delegate
-			(
+		[return: MarshalAs(UnmanagedType.LPStr)]
+		internal delegate string ecsact_meta_registry_name_delegate
+			( Int32 registryId
 			);
 		internal ecsact_meta_registry_name_delegate? ecsact_meta_registry_name;
 
-		internal delegate void ecsact_meta_component_size_delegate
-			(
+		internal delegate Int32 ecsact_meta_component_size_delegate
+			( Int32 componentId
 			);
 		internal ecsact_meta_component_size_delegate? ecsact_meta_component_size;
 
-		internal delegate void ecsact_meta_component_name_delegate
-			(
+		[return: MarshalAs(UnmanagedType.LPStr)]
+		internal delegate string ecsact_meta_component_name_delegate
+			( Int32 componentId
 			);
 		internal ecsact_meta_component_name_delegate? ecsact_meta_component_name;
 
-		internal delegate void ecsact_meta_action_size_delegate
-			(
+		internal delegate Int32 ecsact_meta_action_size_delegate
+			( Int32 actionId
 			);
 		internal ecsact_meta_action_size_delegate? ecsact_meta_action_size;
 
-		internal delegate void ecsact_meta_action_name_delegate
-			(
+		[return: MarshalAs(UnmanagedType.LPStr)]
+		internal delegate string ecsact_meta_action_name_delegate
+			( Int32 actionId
 			);
 		internal ecsact_meta_action_name_delegate? ecsact_meta_action_name;
 
-		internal delegate void ecsact_meta_system_name_delegate
-			(
+		[return: MarshalAs(UnmanagedType.LPStr)]
+		internal delegate string ecsact_meta_system_name_delegate
+			( Int32 systemId
 			);
 		internal ecsact_meta_system_name_delegate? ecsact_meta_system_name;
 
-		internal delegate void ecsact_meta_system_capabilities_count_delegate
-			(
+		internal delegate Int32 ecsact_meta_system_capabilities_count_delegate
+			( Int32 systemId
 			);
 		internal ecsact_meta_system_capabilities_count_delegate? ecsact_meta_system_capabilities_count;
 
 		internal delegate void ecsact_meta_system_capabilities_delegate
-			(
+			( Int32                   systemId
+			, out Int32[]             outCapabilityComponentIds
+			, out SystemCapability[]  outCapabilities
 			);
 		internal ecsact_meta_system_capabilities_delegate? ecsact_meta_system_capabilities;
 	}
@@ -956,33 +1013,41 @@ public class EcsactRuntime {
 
 		public IEnumerable<string> availableMethods => _availableMethods;
 
-		internal delegate void ecsact_serialize_action_size_delegate
-			(
+		internal delegate Int32 ecsact_serialize_action_size_delegate
+			( Int32 actionId
 			);
 		internal ecsact_serialize_action_size_delegate? ecsact_serialize_action_size;
 
-		internal delegate void ecsact_serialize_component_size_delegate
-			(
+		internal delegate Int32 ecsact_serialize_component_size_delegate
+			( Int32 componentId
 			);
 		internal ecsact_serialize_component_size_delegate? ecsact_serialize_component_size;
 
 		internal delegate void ecsact_serialize_action_delegate
-			(
+			( Int32   actionId
+			, IntPtr  actionData
+			, IntPtr  outBytes
 			);
 		internal ecsact_serialize_action_delegate? ecsact_serialize_action;
 
 		internal delegate void ecsact_serialize_component_delegate
-			(
+			( Int32   componentId
+			, IntPtr  inComponentData
+			, IntPtr  outBytes
 			);
 		internal ecsact_serialize_component_delegate? ecsact_serialize_component;
 
 		internal delegate void ecsact_deserialize_action_delegate
-			(
+			( Int32   actionId
+			, IntPtr  inBytes
+			, IntPtr  outActionData
 			);
 		internal ecsact_deserialize_action_delegate? ecsact_deserialize_action;
 
 		internal delegate void ecsact_deserialize_component_delegate
-			(
+			( Int32   componentId
+			, IntPtr  inBytes
+			, IntPtr  outComponentData
 			);
 		internal ecsact_deserialize_component_delegate? ecsact_deserialize_component;
 	}
@@ -991,7 +1056,6 @@ public class EcsactRuntime {
 		internal List<string> _availableMethods = new();
 		public static string[] methods => new string[]{
 			"ecsact_static_components",
-			"ecsact_static_variants",
 			"ecsact_static_systems",
 			"ecsact_static_actions",
 			"ecsact_static_on_reload",
@@ -1001,32 +1065,31 @@ public class EcsactRuntime {
 		public IEnumerable<string> availableMethods => _availableMethods;
 
 		internal delegate void ecsact_static_components_delegate
-			(
+			( out StaticComponentInfo[]  outComponents
+			, out Int32                  outComponentsCount
 			);
 		internal ecsact_static_components_delegate? ecsact_static_components;
 
-		internal delegate void ecsact_static_variants_delegate
-			(
-			);
-		internal ecsact_static_variants_delegate? ecsact_static_variants;
-
 		internal delegate void ecsact_static_systems_delegate
-			(
+			( out StaticSystemInfo[]  outSystems
+			, out Int32               outSystemsCount
 			);
 		internal ecsact_static_systems_delegate? ecsact_static_systems;
 
 		internal delegate void ecsact_static_actions_delegate
-			(
+			( out StaticActionInfo[]  outActions
+			, out Int32               outActionsCount
 			);
 		internal ecsact_static_actions_delegate? ecsact_static_actions;
 
 		internal delegate void ecsact_static_on_reload_delegate
-			(
+			( StaticReloadCallback  callback
+			, IntPtr                callbackUserData
 			);
 		internal ecsact_static_on_reload_delegate? ecsact_static_on_reload;
 
 		internal delegate void ecsact_static_off_reload_delegate
-			(
+			( StaticReloadCallback callback
 			);
 		internal ecsact_static_off_reload_delegate? ecsact_static_off_reload;
 	}
@@ -1100,6 +1163,7 @@ public class EcsactRuntime {
 			LoadDelegate(lib, "ecsact_system_execution_context_action", out runtime._dynamic.ecsact_system_execution_context_action, runtime._dynamic._availableMethods);
 			LoadDelegate(lib, "ecsact_system_execution_context_add", out runtime._dynamic.ecsact_system_execution_context_add, runtime._dynamic._availableMethods);
 			LoadDelegate(lib, "ecsact_system_execution_context_remove", out runtime._dynamic.ecsact_system_execution_context_remove, runtime._dynamic._availableMethods);
+			LoadDelegate(lib, "ecsact_system_execution_context_update", out runtime._dynamic.ecsact_system_execution_context_update, runtime._dynamic._availableMethods);
 			LoadDelegate(lib, "ecsact_system_execution_context_get", out runtime._dynamic.ecsact_system_execution_context_get, runtime._dynamic._availableMethods);
 			LoadDelegate(lib, "ecsact_system_execution_context_has", out runtime._dynamic.ecsact_system_execution_context_has, runtime._dynamic._availableMethods);
 			LoadDelegate(lib, "ecsact_system_execution_context_generate", out runtime._dynamic.ecsact_system_execution_context_generate, runtime._dynamic._availableMethods);
@@ -1112,8 +1176,6 @@ public class EcsactRuntime {
 			LoadDelegate(lib, "ecsact_create_component", out runtime._dynamic.ecsact_create_component, runtime._dynamic._availableMethods);
 			LoadDelegate(lib, "ecsact_resize_component", out runtime._dynamic.ecsact_resize_component, runtime._dynamic._availableMethods);
 			LoadDelegate(lib, "ecsact_destroy_component", out runtime._dynamic.ecsact_destroy_component, runtime._dynamic._availableMethods);
-			LoadDelegate(lib, "ecsact_create_variant", out runtime._dynamic.ecsact_create_variant, runtime._dynamic._availableMethods);
-			LoadDelegate(lib, "ecsact_destroy_variant", out runtime._dynamic.ecsact_destroy_variant, runtime._dynamic._availableMethods);
 			LoadDelegate(lib, "ecsact_add_system_capability", out runtime._dynamic.ecsact_add_system_capability, runtime._dynamic._availableMethods);
 			LoadDelegate(lib, "ecsact_update_system_capability", out runtime._dynamic.ecsact_update_system_capability, runtime._dynamic._availableMethods);
 			LoadDelegate(lib, "ecsact_remove_system_capability", out runtime._dynamic.ecsact_remove_system_capability, runtime._dynamic._availableMethods);
@@ -1143,7 +1205,6 @@ public class EcsactRuntime {
 
 			// Load static methods
 			LoadDelegate(lib, "ecsact_static_components", out runtime._static.ecsact_static_components, runtime._static._availableMethods);
-			LoadDelegate(lib, "ecsact_static_variants", out runtime._static.ecsact_static_variants, runtime._static._availableMethods);
 			LoadDelegate(lib, "ecsact_static_systems", out runtime._static.ecsact_static_systems, runtime._static._availableMethods);
 			LoadDelegate(lib, "ecsact_static_actions", out runtime._static.ecsact_static_actions, runtime._static._availableMethods);
 			LoadDelegate(lib, "ecsact_static_on_reload", out runtime._static.ecsact_static_on_reload, runtime._static._availableMethods);
