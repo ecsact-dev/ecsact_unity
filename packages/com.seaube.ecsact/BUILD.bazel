@@ -3,25 +3,32 @@ load("@aspect_bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
 
 copy_to_directory(
     name = "generators~",
-    replace_prefixes = {
-        "generator/csharp/": "",
-        "generator/parser_info/": "",
-    },
-    include_external_repositories = [
-        "ecsact",
-    ],
     srcs = [
         "@ecsact//generator/csharp:cli",
         "@ecsact//generator/parser_info:cli",
     ],
+    include_external_repositories = [
+        "ecsact",
+    ],
+    replace_prefixes = {
+        "generator/csharp/": "",
+        "generator/parser_info/": "",
+    },
 )
 
 pkg_npm(
     name = "com.seaube.ecsact",
     package_name = "com.seaube.ecsact",
-    deps = [":generators~"],
     srcs = glob(["**/*"]),
+    deps = [":generators~"],
 )
 
-alias(name = "pack", actual = "com.seaube.ecsact.pack")
-alias(name = "publish", actual = "com.seaube.ecsact.publish")
+alias(
+    name = "pack",
+    actual = "com.seaube.ecsact.pack",
+)
+
+alias(
+    name = "publish",
+    actual = "com.seaube.ecsact.publish",
+)
