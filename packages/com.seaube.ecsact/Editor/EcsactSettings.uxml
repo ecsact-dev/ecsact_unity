@@ -1,11 +1,50 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
-    <ui:Foldout text="Plugins">
-        <ui:Toggle label="C# Base" value="true" name="csharp_plugin_toggle" />
-        <ui:Toggle label="Unity Sync" name="unity_sync_plugin_toggle" />
-        <ui:Button text="Force Generate" display-tooltip-when-elided="true" enable-rich-text="false" tooltip="Re-execute all plugins to generate files. This is equivalent to re-importing all .ecsact files" style="max-width: 200px;" />
-    </ui:Foldout>
-    <ui:GroupBox>
-        <ui:Label text="Runtime Settings" display-tooltip-when-elided="true" style="font-size: 16px; -unity-font-style: bold;" />
-        <ui:IMGUIContainer name="runtime-settings-container" />
-    </ui:GroupBox>
+    <ui:Template name="EcsactRuntimeMethodLoadedUI" src="project://database/Packages/com.seaube.ecsact/Editor/EcsactRuntimeMethodLoadedUI.uxml?fileID=9197481963319205126&amp;guid=a2a638a8b49ec24468a126f89d509035&amp;type=3#EcsactRuntimeMethodLoadedUI" />
+    <ui:ScrollView>
+        <ui:Foldout text="Plugins">
+            <ui:Toggle label="C# Base" value="true" name="csharp_plugin_toggle" />
+            <ui:Toggle label="Unity Sync" name="unity_sync_plugin_toggle" />
+            <ui:Button text="Force Generate" display-tooltip-when-elided="true" enable-rich-text="false" tooltip="Re-execute all plugins to generate files. This is equivalent to re-importing all .ecsact files" style="max-width: 200px;" />
+        </ui:Foldout>
+        <ui:GroupBox>
+            <ui:Label text="Runtime Settings" display-tooltip-when-elided="true" style="font-size: 16px; -unity-font-style: bold;" />
+            <ui:IMGUIContainer name="runtime-settings-container" />
+        </ui:GroupBox>
+        <ui:GroupBox>
+            <ui:Label text="Async Module" display-tooltip-when-elided="true" style="font-size: 14px; -unity-font-style: bold;" />
+            <ui:VisualElement>
+                <ui:Instance template="EcsactRuntimeMethodLoadedUI" name="async-method-template" />
+            </ui:VisualElement>
+        </ui:GroupBox>
+        <ui:GroupBox>
+            <ui:Label text="Core Module" display-tooltip-when-elided="true" style="font-size: 14px; -unity-font-style: bold;" />
+            <ui:VisualElement>
+                <ui:Instance template="EcsactRuntimeMethodLoadedUI" name="core-method-template" />
+            </ui:VisualElement>
+        </ui:GroupBox>
+        <ui:GroupBox>
+            <ui:Label text="Dynamic Module" display-tooltip-when-elided="true" style="font-size: 14px; -unity-font-style: bold;" />
+            <ui:VisualElement>
+                <ui:Instance template="EcsactRuntimeMethodLoadedUI" name="dynamic-method-template" />
+            </ui:VisualElement>
+        </ui:GroupBox>
+        <ui:GroupBox>
+            <ui:Label text="Meta Module" display-tooltip-when-elided="true" style="font-size: 14px; -unity-font-style: bold;" />
+            <ui:VisualElement>
+                <ui:Instance template="EcsactRuntimeMethodLoadedUI" name="meta-method-template" />
+            </ui:VisualElement>
+        </ui:GroupBox>
+        <ui:GroupBox>
+            <ui:Label text="Serialize Module" display-tooltip-when-elided="true" style="font-size: 14px; -unity-font-style: bold;" />
+            <ui:VisualElement>
+                <ui:Instance template="EcsactRuntimeMethodLoadedUI" name="serialize-method-template" />
+            </ui:VisualElement>
+        </ui:GroupBox>
+        <ui:GroupBox>
+            <ui:Label text="Static Module" display-tooltip-when-elided="true" style="font-size: 14px; -unity-font-style: bold;" />
+            <ui:VisualElement>
+                <ui:Instance template="EcsactRuntimeMethodLoadedUI" name="static-method-template" />
+            </ui:VisualElement>
+        </ui:GroupBox>
+    </ui:ScrollView>
 </ui:UXML>

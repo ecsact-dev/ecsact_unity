@@ -141,6 +141,36 @@ public class EcsactRuntime {
 		public IntPtr removeCallbackUserData;
 	}
 
+	public enum AsyncError {
+		ConnectionClosed,
+		ConnectFail,
+		SocketFail,
+		StateFail,
+		StartFail,
+		InvalidConnectionString,
+	}
+
+	public delegate void AsyncErrorCallback
+		( AsyncError  err
+		, Int32       requestId
+		, IntPtr      callbackUserData
+		);
+
+	public delegate void  AsyncActionCommittedCallback
+		( Int32   actionId
+		, IntPtr  actionData
+		, Int32   committedTick
+		, Int32   requestId
+		, IntPtr  callbackUserData
+		);
+
+	public struct AsyncEventsCollector {
+		public AsyncErrorCallback errorCallback;
+		public IntPtr errorCallbackUserData;
+		AsyncActionCommittedCallback actionCommittedCallback;
+		public IntPtr actionCommittedCallbackUserData;
+	}
+
 	public static string[] dynamicMethods => new string[]{
 		"ecsact_system_execution_context_action",
 		"ecsact_system_execution_context_add",
@@ -221,6 +251,53 @@ public class EcsactRuntime {
 
 	private IntPtr[]? _libs;
 	private Core? _core;
+	private Async? _async;
+	private Dynamic? _dynamic;
+	private Meta? _meta;
+	private Serialize? _serialize;
+	private Static? _static;
+
+	public class Async {
+		internal List<string> _availableMethods = new();
+		public static string[] methods => new string[]{
+			"ecsact_async_execute_action",
+			"ecsact_async_execute_action_at",
+			"ecsact_async_flush_events",
+			"ecsact_async_connect",
+			"ecsact_async_disconnect",
+		};
+
+		public IEnumerable<string> availableMethods => _availableMethods;
+
+		internal delegate void ecsact_async_execute_action_delegate
+			( Int32   actionId
+			, IntPtr  actionData
+			);
+		internal ecsact_async_execute_action_delegate? ecsact_async_execute_action;
+
+		internal delegate void ecsact_async_execute_action_at_delegate
+			( Int32   actionId
+			, IntPtr  actionData
+			, Int32   tick
+			);
+		internal ecsact_async_execute_action_at_delegate? ecsact_async_execute_action_at;
+
+		internal delegate void ecsact_async_flush_events_delegate
+			( ExecutionEventsCollector  executionEventsCollector
+			, AsyncEventsCollector      asyncEventsCollector
+			);
+		internal ecsact_async_flush_events_delegate? ecsact_async_flush_events;
+
+		internal delegate void ecsact_async_connect_delegate
+			( [MarshalAs(UnmanagedType.LPStr)] string connectionString
+			);
+		internal ecsact_async_connect_delegate? ecsact_async_connect;
+
+		internal delegate void ecsact_async_disconnect_delegate
+			(
+			);
+		internal ecsact_async_disconnect_delegate? ecsact_async_disconnect;
+	}
 
 	public class Core {
 		internal List<string> _availableMethods = new();
@@ -247,7 +324,6 @@ public class EcsactRuntime {
 
 		public IEnumerable<string> availableMethods => _availableMethods;
 
-		// Core module methods
 		internal delegate Int32 ecsact_create_registry_delegate
 			( string registryName
 			);
@@ -653,7 +729,314 @@ public class EcsactRuntime {
 		}
 	}
 
+	public class Dynamic {
+		internal List<string> _availableMethods = new();
+		public static string[] methods => new string[]{
+			"ecsact_system_execution_context_action",
+			"ecsact_system_execution_context_add",
+			"ecsact_system_execution_context_remove",
+			"ecsact_system_execution_context_get",
+			"ecsact_system_execution_context_has",
+			"ecsact_system_execution_context_generate",
+			"ecsact_system_execution_context_parent",
+			"ecsact_system_execution_context_same",
+			"ecsact_create_system",
+			"ecsact_set_system_execution_impl",
+			"ecsact_create_action",
+			"ecsact_resize_action",
+			"ecsact_create_component",
+			"ecsact_resize_component",
+			"ecsact_destroy_component",
+			"ecsact_create_variant",
+			"ecsact_destroy_variant",
+			"ecsact_add_system_capability",
+			"ecsact_update_system_capability",
+			"ecsact_remove_system_capability",
+			"ecsact_add_system_generate_component_set",
+			"ecsact_register_component",
+			"ecsact_register_system",
+			"ecsact_register_action",
+			"ecsact_system_execution_context_id",
+		};
+
+		public IEnumerable<string> availableMethods => _availableMethods;
+
+		internal delegate void ecsact_system_execution_context_action_delegate
+			(
+			);
+		internal ecsact_system_execution_context_action_delegate? ecsact_system_execution_context_action;
+
+		internal delegate void ecsact_system_execution_context_add_delegate
+			(
+			);
+		internal ecsact_system_execution_context_add_delegate? ecsact_system_execution_context_add;
+
+		internal delegate void ecsact_system_execution_context_remove_delegate
+			(
+			);
+		internal ecsact_system_execution_context_remove_delegate? ecsact_system_execution_context_remove;
+
+		internal delegate void ecsact_system_execution_context_get_delegate
+			(
+			);
+		internal ecsact_system_execution_context_get_delegate? ecsact_system_execution_context_get;
+
+		internal delegate void ecsact_system_execution_context_has_delegate
+			(
+			);
+		internal ecsact_system_execution_context_has_delegate? ecsact_system_execution_context_has;
+
+		internal delegate void ecsact_system_execution_context_generate_delegate
+			(
+			);
+		internal ecsact_system_execution_context_generate_delegate? ecsact_system_execution_context_generate;
+
+		internal delegate void ecsact_system_execution_context_parent_delegate
+			(
+			);
+		internal ecsact_system_execution_context_parent_delegate? ecsact_system_execution_context_parent;
+
+		internal delegate void ecsact_system_execution_context_same_delegate
+			(
+			);
+		internal ecsact_system_execution_context_same_delegate? ecsact_system_execution_context_same;
+
+		internal delegate void ecsact_create_system_delegate
+			(
+			);
+		internal ecsact_create_system_delegate? ecsact_create_system;
+
+		internal delegate void ecsact_set_system_execution_impl_delegate
+			(
+			);
+		internal ecsact_set_system_execution_impl_delegate? ecsact_set_system_execution_impl;
+
+		internal delegate void ecsact_create_action_delegate
+			(
+			);
+		internal ecsact_create_action_delegate? ecsact_create_action;
+
+		internal delegate void ecsact_resize_action_delegate
+			(
+			);
+		internal ecsact_resize_action_delegate? ecsact_resize_action;
+
+		internal delegate void ecsact_create_component_delegate
+			(
+			);
+		internal ecsact_create_component_delegate? ecsact_create_component;
+
+		internal delegate void ecsact_resize_component_delegate
+			(
+			);
+		internal ecsact_resize_component_delegate? ecsact_resize_component;
+
+		internal delegate void ecsact_destroy_component_delegate
+			(
+			);
+		internal ecsact_destroy_component_delegate? ecsact_destroy_component;
+
+		internal delegate void ecsact_create_variant_delegate
+			(
+			);
+		internal ecsact_create_variant_delegate? ecsact_create_variant;
+
+		internal delegate void ecsact_destroy_variant_delegate
+			(
+			);
+		internal ecsact_destroy_variant_delegate? ecsact_destroy_variant;
+
+		internal delegate void ecsact_add_system_capability_delegate
+			(
+			);
+		internal ecsact_add_system_capability_delegate? ecsact_add_system_capability;
+
+		internal delegate void ecsact_update_system_capability_delegate
+			(
+			);
+		internal ecsact_update_system_capability_delegate? ecsact_update_system_capability;
+
+		internal delegate void ecsact_remove_system_capability_delegate
+			(
+			);
+		internal ecsact_remove_system_capability_delegate? ecsact_remove_system_capability;
+
+		internal delegate void ecsact_add_system_generate_component_set_delegate
+			(
+			);
+		internal ecsact_add_system_generate_component_set_delegate? ecsact_add_system_generate_component_set;
+
+		internal delegate void ecsact_register_component_delegate
+			(
+			);
+		internal ecsact_register_component_delegate? ecsact_register_component;
+
+		internal delegate void ecsact_register_system_delegate
+			(
+			);
+		internal ecsact_register_system_delegate? ecsact_register_system;
+
+		internal delegate void ecsact_register_action_delegate
+			(
+			);
+		internal ecsact_register_action_delegate? ecsact_register_action;
+
+		internal delegate void ecsact_system_execution_context_id_delegate
+			(
+			);
+		internal ecsact_system_execution_context_id_delegate? ecsact_system_execution_context_id;
+	}
+
+	public class Meta {
+		internal List<string> _availableMethods = new();
+		public static string[] methods => new string[]{
+			"ecsact_meta_registry_name",
+			"ecsact_meta_component_size",
+			"ecsact_meta_component_name",
+			"ecsact_meta_action_size",
+			"ecsact_meta_action_name",
+			"ecsact_meta_system_name",
+			"ecsact_meta_system_capabilities_count",
+			"ecsact_meta_system_capabilities",
+		};
+
+		public IEnumerable<string> availableMethods => _availableMethods;
+
+		internal delegate void ecsact_meta_registry_name_delegate
+			(
+			);
+		internal ecsact_meta_registry_name_delegate? ecsact_meta_registry_name;
+
+		internal delegate void ecsact_meta_component_size_delegate
+			(
+			);
+		internal ecsact_meta_component_size_delegate? ecsact_meta_component_size;
+
+		internal delegate void ecsact_meta_component_name_delegate
+			(
+			);
+		internal ecsact_meta_component_name_delegate? ecsact_meta_component_name;
+
+		internal delegate void ecsact_meta_action_size_delegate
+			(
+			);
+		internal ecsact_meta_action_size_delegate? ecsact_meta_action_size;
+
+		internal delegate void ecsact_meta_action_name_delegate
+			(
+			);
+		internal ecsact_meta_action_name_delegate? ecsact_meta_action_name;
+
+		internal delegate void ecsact_meta_system_name_delegate
+			(
+			);
+		internal ecsact_meta_system_name_delegate? ecsact_meta_system_name;
+
+		internal delegate void ecsact_meta_system_capabilities_count_delegate
+			(
+			);
+		internal ecsact_meta_system_capabilities_count_delegate? ecsact_meta_system_capabilities_count;
+
+		internal delegate void ecsact_meta_system_capabilities_delegate
+			(
+			);
+		internal ecsact_meta_system_capabilities_delegate? ecsact_meta_system_capabilities;
+	}
+
+	public class Serialize {
+		internal List<string> _availableMethods = new();
+		public static string[] methods => new string[]{
+			"ecsact_serialize_action_size",
+			"ecsact_serialize_component_size",
+			"ecsact_serialize_action",
+			"ecsact_serialize_component",
+			"ecsact_deserialize_action",
+			"ecsact_deserialize_component",
+		};
+
+		public IEnumerable<string> availableMethods => _availableMethods;
+
+		internal delegate void ecsact_serialize_action_size_delegate
+			(
+			);
+		internal ecsact_serialize_action_size_delegate? ecsact_serialize_action_size;
+
+		internal delegate void ecsact_serialize_component_size_delegate
+			(
+			);
+		internal ecsact_serialize_component_size_delegate? ecsact_serialize_component_size;
+
+		internal delegate void ecsact_serialize_action_delegate
+			(
+			);
+		internal ecsact_serialize_action_delegate? ecsact_serialize_action;
+
+		internal delegate void ecsact_serialize_component_delegate
+			(
+			);
+		internal ecsact_serialize_component_delegate? ecsact_serialize_component;
+
+		internal delegate void ecsact_deserialize_action_delegate
+			(
+			);
+		internal ecsact_deserialize_action_delegate? ecsact_deserialize_action;
+
+		internal delegate void ecsact_deserialize_component_delegate
+			(
+			);
+		internal ecsact_deserialize_component_delegate? ecsact_deserialize_component;
+	}
+
+	public class Static {
+		internal List<string> _availableMethods = new();
+		public static string[] methods => new string[]{
+			"ecsact_static_components",
+			"ecsact_static_variants",
+			"ecsact_static_systems",
+			"ecsact_static_actions",
+			"ecsact_static_on_reload",
+			"ecsact_static_off_reload",
+		};
+
+		public IEnumerable<string> availableMethods => _availableMethods;
+
+		internal delegate void ecsact_static_components_delegate
+			(
+			);
+		internal ecsact_static_components_delegate? ecsact_static_components;
+
+		internal delegate void ecsact_static_variants_delegate
+			(
+			);
+		internal ecsact_static_variants_delegate? ecsact_static_variants;
+
+		internal delegate void ecsact_static_systems_delegate
+			(
+			);
+		internal ecsact_static_systems_delegate? ecsact_static_systems;
+
+		internal delegate void ecsact_static_actions_delegate
+			(
+			);
+		internal ecsact_static_actions_delegate? ecsact_static_actions;
+
+		internal delegate void ecsact_static_on_reload_delegate
+			(
+			);
+		internal ecsact_static_on_reload_delegate? ecsact_static_on_reload;
+
+		internal delegate void ecsact_static_off_reload_delegate
+			(
+			);
+		internal ecsact_static_off_reload_delegate? ecsact_static_off_reload;
+	}
+
 	public Core core => _core!;
+	public Async async => _async!;
+	public Dynamic dynamic => _dynamic!;
+	public Meta meta => _meta!;
+	public Serialize serialize => _serialize!;
+	public Static @static => _static!;
 
 	private static void LoadDelegate<D>
 		( IntPtr        lib
@@ -666,10 +1049,8 @@ public class EcsactRuntime {
 		if(NativeLibrary.TryGetExport(lib, name, out addr)) {
 			outDelegate = Marshal.GetDelegateForFunctionPointer<D>(addr);
 			availableMethods.Add(name);
-			UnityEngine.Debug.Log($"Load {name} SUCCESS");
 		} else {
 			outDelegate = null;
-			UnityEngine.Debug.Log($"Load {name} FAIL");
 		}
 	}
 
@@ -679,10 +1060,22 @@ public class EcsactRuntime {
 	{
 		var runtime = new EcsactRuntime();
 		runtime._core = new Core();
+		runtime._async = new Async();
+		runtime._dynamic = new Dynamic();
+		runtime._meta = new Meta();
+		runtime._serialize = new Serialize();
+		runtime._static = new Static();
 		runtime._libs =
 			libraryPaths.Select(path => NativeLibrary.Load(path)).ToArray();
 
 		foreach(var lib in runtime._libs) {
+			// Load async methods
+			LoadDelegate(lib, "ecsact_async_execute_action", out runtime._async.ecsact_async_execute_action, runtime._async._availableMethods);
+			LoadDelegate(lib, "ecsact_async_execute_action_at", out runtime._async.ecsact_async_execute_action_at, runtime._async._availableMethods);
+			LoadDelegate(lib, "ecsact_async_flush_events", out runtime._async.ecsact_async_flush_events, runtime._async._availableMethods);
+			LoadDelegate(lib, "ecsact_async_connect", out runtime._async.ecsact_async_connect, runtime._async._availableMethods);
+			LoadDelegate(lib, "ecsact_async_disconnect", out runtime._async.ecsact_async_disconnect, runtime._async._availableMethods);
+
 			// Load core methods
 			LoadDelegate(lib, "ecsact_create_registry", out runtime._core.ecsact_create_registry, runtime._core._availableMethods);
 			LoadDelegate(lib, "ecsact_destroy_registry", out runtime._core.ecsact_destroy_registry, runtime._core._availableMethods);
@@ -704,57 +1097,57 @@ public class EcsactRuntime {
 			LoadDelegate(lib, "ecsact_execute_systems", out runtime._core.ecsact_execute_systems, runtime._core._availableMethods);
 
 			// Load dynamic methods
-			// LoadDelegate(lib, "ecsact_system_execution_context_action", out runtime.ecsact_system_execution_context_action);
-			// LoadDelegate(lib, "ecsact_system_execution_context_add", out runtime.ecsact_system_execution_context_add);
-			// LoadDelegate(lib, "ecsact_system_execution_context_remove", out runtime.ecsact_system_execution_context_remove);
-			// LoadDelegate(lib, "ecsact_system_execution_context_get", out runtime.ecsact_system_execution_context_get);
-			// LoadDelegate(lib, "ecsact_system_execution_context_has", out runtime.ecsact_system_execution_context_has);
-			// LoadDelegate(lib, "ecsact_system_execution_context_generate", out runtime.ecsact_system_execution_context_generate);
-			// LoadDelegate(lib, "ecsact_system_execution_context_parent", out runtime.ecsact_system_execution_context_parent);
-			// LoadDelegate(lib, "ecsact_system_execution_context_same", out runtime.ecsact_system_execution_context_same);
-			// LoadDelegate(lib, "ecsact_create_system", out runtime.ecsact_create_system);
-			// LoadDelegate(lib, "ecsact_set_system_execution_impl", out runtime.ecsact_set_system_execution_impl);
-			// LoadDelegate(lib, "ecsact_create_action", out runtime.ecsact_create_action);
-			// LoadDelegate(lib, "ecsact_resize_action", out runtime.ecsact_resize_action);
-			// LoadDelegate(lib, "ecsact_create_component", out runtime.ecsact_create_component);
-			// LoadDelegate(lib, "ecsact_resize_component", out runtime.ecsact_resize_component);
-			// LoadDelegate(lib, "ecsact_destroy_component", out runtime.ecsact_destroy_component);
-			// LoadDelegate(lib, "ecsact_create_variant", out runtime.ecsact_create_variant);
-			// LoadDelegate(lib, "ecsact_destroy_variant", out runtime.ecsact_destroy_variant);
-			// LoadDelegate(lib, "ecsact_add_system_capability", out runtime.ecsact_add_system_capability);
-			// LoadDelegate(lib, "ecsact_update_system_capability", out runtime.ecsact_update_system_capability);
-			// LoadDelegate(lib, "ecsact_remove_system_capability", out runtime.ecsact_remove_system_capability);
-			// LoadDelegate(lib, "ecsact_add_system_generate_component_set", out runtime.ecsact_add_system_generate_component_set);
-			// LoadDelegate(lib, "ecsact_register_component", out runtime.ecsact_register_component);
-			// LoadDelegate(lib, "ecsact_register_system", out runtime.ecsact_register_system);
-			// LoadDelegate(lib, "ecsact_register_action", out runtime.ecsact_register_action);
-			// LoadDelegate(lib, "ecsact_system_execution_context_id", out runtime.ecsact_system_execution_context_id);
+			LoadDelegate(lib, "ecsact_system_execution_context_action", out runtime._dynamic.ecsact_system_execution_context_action, runtime._dynamic._availableMethods);
+			LoadDelegate(lib, "ecsact_system_execution_context_add", out runtime._dynamic.ecsact_system_execution_context_add, runtime._dynamic._availableMethods);
+			LoadDelegate(lib, "ecsact_system_execution_context_remove", out runtime._dynamic.ecsact_system_execution_context_remove, runtime._dynamic._availableMethods);
+			LoadDelegate(lib, "ecsact_system_execution_context_get", out runtime._dynamic.ecsact_system_execution_context_get, runtime._dynamic._availableMethods);
+			LoadDelegate(lib, "ecsact_system_execution_context_has", out runtime._dynamic.ecsact_system_execution_context_has, runtime._dynamic._availableMethods);
+			LoadDelegate(lib, "ecsact_system_execution_context_generate", out runtime._dynamic.ecsact_system_execution_context_generate, runtime._dynamic._availableMethods);
+			LoadDelegate(lib, "ecsact_system_execution_context_parent", out runtime._dynamic.ecsact_system_execution_context_parent, runtime._dynamic._availableMethods);
+			LoadDelegate(lib, "ecsact_system_execution_context_same", out runtime._dynamic.ecsact_system_execution_context_same, runtime._dynamic._availableMethods);
+			LoadDelegate(lib, "ecsact_create_system", out runtime._dynamic.ecsact_create_system, runtime._dynamic._availableMethods);
+			LoadDelegate(lib, "ecsact_set_system_execution_impl", out runtime._dynamic.ecsact_set_system_execution_impl, runtime._dynamic._availableMethods);
+			LoadDelegate(lib, "ecsact_create_action", out runtime._dynamic.ecsact_create_action, runtime._dynamic._availableMethods);
+			LoadDelegate(lib, "ecsact_resize_action", out runtime._dynamic.ecsact_resize_action, runtime._dynamic._availableMethods);
+			LoadDelegate(lib, "ecsact_create_component", out runtime._dynamic.ecsact_create_component, runtime._dynamic._availableMethods);
+			LoadDelegate(lib, "ecsact_resize_component", out runtime._dynamic.ecsact_resize_component, runtime._dynamic._availableMethods);
+			LoadDelegate(lib, "ecsact_destroy_component", out runtime._dynamic.ecsact_destroy_component, runtime._dynamic._availableMethods);
+			LoadDelegate(lib, "ecsact_create_variant", out runtime._dynamic.ecsact_create_variant, runtime._dynamic._availableMethods);
+			LoadDelegate(lib, "ecsact_destroy_variant", out runtime._dynamic.ecsact_destroy_variant, runtime._dynamic._availableMethods);
+			LoadDelegate(lib, "ecsact_add_system_capability", out runtime._dynamic.ecsact_add_system_capability, runtime._dynamic._availableMethods);
+			LoadDelegate(lib, "ecsact_update_system_capability", out runtime._dynamic.ecsact_update_system_capability, runtime._dynamic._availableMethods);
+			LoadDelegate(lib, "ecsact_remove_system_capability", out runtime._dynamic.ecsact_remove_system_capability, runtime._dynamic._availableMethods);
+			LoadDelegate(lib, "ecsact_add_system_generate_component_set", out runtime._dynamic.ecsact_add_system_generate_component_set, runtime._dynamic._availableMethods);
+			LoadDelegate(lib, "ecsact_register_component", out runtime._dynamic.ecsact_register_component, runtime._dynamic._availableMethods);
+			LoadDelegate(lib, "ecsact_register_system", out runtime._dynamic.ecsact_register_system, runtime._dynamic._availableMethods);
+			LoadDelegate(lib, "ecsact_register_action", out runtime._dynamic.ecsact_register_action, runtime._dynamic._availableMethods);
+			LoadDelegate(lib, "ecsact_system_execution_context_id", out runtime._dynamic.ecsact_system_execution_context_id, runtime._dynamic._availableMethods);
 
 			// Load meta methods
-			// LoadDelegate(lib, "ecsact_meta_registry_name", out runtime.ecsact_meta_registry_name);
-			// LoadDelegate(lib, "ecsact_meta_component_size", out runtime.ecsact_meta_component_size);
-			// LoadDelegate(lib, "ecsact_meta_component_name", out runtime.ecsact_meta_component_name);
-			// LoadDelegate(lib, "ecsact_meta_action_size", out runtime.ecsact_meta_action_size);
-			// LoadDelegate(lib, "ecsact_meta_action_name", out runtime.ecsact_meta_action_name);
-			// LoadDelegate(lib, "ecsact_meta_system_name", out runtime.ecsact_meta_system_name);
-			// LoadDelegate(lib, "ecsact_meta_system_capabilities_count", out runtime.ecsact_meta_system_capabilities_count);
-			// LoadDelegate(lib, "ecsact_meta_system_capabilities", out runtime.ecsact_meta_system_capabilities);
+			LoadDelegate(lib, "ecsact_meta_registry_name", out runtime._meta.ecsact_meta_registry_name, runtime._meta._availableMethods);
+			LoadDelegate(lib, "ecsact_meta_component_size", out runtime._meta.ecsact_meta_component_size, runtime._meta._availableMethods);
+			LoadDelegate(lib, "ecsact_meta_component_name", out runtime._meta.ecsact_meta_component_name, runtime._meta._availableMethods);
+			LoadDelegate(lib, "ecsact_meta_action_size", out runtime._meta.ecsact_meta_action_size, runtime._meta._availableMethods);
+			LoadDelegate(lib, "ecsact_meta_action_name", out runtime._meta.ecsact_meta_action_name, runtime._meta._availableMethods);
+			LoadDelegate(lib, "ecsact_meta_system_name", out runtime._meta.ecsact_meta_system_name, runtime._meta._availableMethods);
+			LoadDelegate(lib, "ecsact_meta_system_capabilities_count", out runtime._meta.ecsact_meta_system_capabilities_count, runtime._meta._availableMethods);
+			LoadDelegate(lib, "ecsact_meta_system_capabilities", out runtime._meta.ecsact_meta_system_capabilities, runtime._meta._availableMethods);
 
 			// Load serialize methods
-			// LoadDelegate(lib, "ecsact_serialize_action_size", out runtime.ecsact_serialize_action_size);
-			// LoadDelegate(lib, "ecsact_serialize_component_size", out runtime.ecsact_serialize_component_size);
-			// LoadDelegate(lib, "ecsact_serialize_action", out runtime.ecsact_serialize_action);
-			// LoadDelegate(lib, "ecsact_serialize_component", out runtime.ecsact_serialize_component);
-			// LoadDelegate(lib, "ecsact_deserialize_action", out runtime.ecsact_deserialize_action);
-			// LoadDelegate(lib, "ecsact_deserialize_component", out runtime.ecsact_deserialize_component);
+			LoadDelegate(lib, "ecsact_serialize_action_size", out runtime._serialize.ecsact_serialize_action_size, runtime._serialize._availableMethods);
+			LoadDelegate(lib, "ecsact_serialize_component_size", out runtime._serialize.ecsact_serialize_component_size, runtime._serialize._availableMethods);
+			LoadDelegate(lib, "ecsact_serialize_action", out runtime._serialize.ecsact_serialize_action, runtime._serialize._availableMethods);
+			LoadDelegate(lib, "ecsact_serialize_component", out runtime._serialize.ecsact_serialize_component, runtime._serialize._availableMethods);
+			LoadDelegate(lib, "ecsact_deserialize_action", out runtime._serialize.ecsact_deserialize_action, runtime._serialize._availableMethods);
+			LoadDelegate(lib, "ecsact_deserialize_component", out runtime._serialize.ecsact_deserialize_component, runtime._serialize._availableMethods);
 
 			// Load static methods
-			// LoadDelegate(lib, "ecsact_static_components", out runtime.ecsact_static_components);
-			// LoadDelegate(lib, "ecsact_static_variants", out runtime.ecsact_static_variants);
-			// LoadDelegate(lib, "ecsact_static_systems", out runtime.ecsact_static_systems);
-			// LoadDelegate(lib, "ecsact_static_actions", out runtime.ecsact_static_actions);
-			// LoadDelegate(lib, "ecsact_static_on_reload", out runtime.ecsact_static_on_reload);
-			// LoadDelegate(lib, "ecsact_static_off_reload", out runtime.ecsact_static_off_reload);
+			LoadDelegate(lib, "ecsact_static_components", out runtime._static.ecsact_static_components, runtime._static._availableMethods);
+			LoadDelegate(lib, "ecsact_static_variants", out runtime._static.ecsact_static_variants, runtime._static._availableMethods);
+			LoadDelegate(lib, "ecsact_static_systems", out runtime._static.ecsact_static_systems, runtime._static._availableMethods);
+			LoadDelegate(lib, "ecsact_static_actions", out runtime._static.ecsact_static_actions, runtime._static._availableMethods);
+			LoadDelegate(lib, "ecsact_static_on_reload", out runtime._static.ecsact_static_on_reload, runtime._static._availableMethods);
+			LoadDelegate(lib, "ecsact_static_off_reload", out runtime._static.ecsact_static_off_reload, runtime._static._availableMethods);
 		}
 
 		return runtime;

@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEditor;
 using UnityEngine.UIElements;
 using UnityEditor.UIElements;
-using System.IO;
+using System.Linq;
 using System.Collections.Generic;
 
 #nullable enable
@@ -37,10 +37,51 @@ class EcsactSettings : ScriptableObject {
 	}
 }
 
+[System.Serializable]
+class EcsactMethodUIBindings : ScriptableObject {
+	public string methodName = "";
+	public bool methodLoaded = false;
+}
+
 static class EcsactSettingsUIElementsRegister {
+
+	internal static void SetupMethodsUI
+		( TemplateContainer    ui
+		, string               moduleName
+		, IEnumerable<string>  methods
+		, IEnumerable<string>  availableMethods
+		)
+	{
+		var coreMethodTemplate = ui.Q<TemplateContainer>(
+			$"{moduleName}-method-template"
+		);
+
+		foreach(var method in methods) {
+			var clone = coreMethodTemplate.templateSource.CloneTree();
+			var bindings =
+				ScriptableObject.CreateInstance<EcsactMethodUIBindings>();
+			bindings.methodName = method;
+			bindings.methodLoaded = availableMethods.Contains(method);
+			BindingExtensions.Bind(clone, new SerializedObject(bindings));
+
+			if(bindings.methodLoaded) {
+				var missingIcon = clone.Q<VisualElement>("method-missing-icon");
+				missingIcon.style.display = DisplayStyle.None;
+			} else {
+				var availableIcon = clone.Q<VisualElement>("method-available-icon");
+				availableIcon.style.display = DisplayStyle.None;
+			}
+
+			coreMethodTemplate.contentContainer.parent.Add(clone);
+		}
+
+		coreMethodTemplate.contentContainer.style.display = DisplayStyle.None;
+	}
+
 	[SettingsProvider]
 	public static SettingsProvider CreateEcsactSettingsProvider() {
 		EcsactRuntime? testDefaultRuntime = null;
+		Editor? runtimeSettingsEditor = null;
 
 		return new SettingsProvider(EcsactSettings.path, EcsactSettings.scope) {
 			label = "Ecsact",
@@ -62,11 +103,67 @@ static class EcsactSettingsUIElementsRegister {
 				testDefaultRuntime = EcsactRuntime.Load(
 					runtimeSettings.runtimeLibraryPaths
 				);
+
+				SetupMethodsUI(
+					ui,
+					"async",
+					EcsactRuntime.Async.methods,
+					testDefaultRuntime.async.availableMethods
+				);
+
+				SetupMethodsUI(
+					ui,
+					"core",
+					EcsactRuntime.Core.methods,
+					testDefaultRuntime.core.availableMethods
+				);
+
+				SetupMethodsUI(
+					ui,
+					"dynamic",
+					EcsactRuntime.Dynamic.methods,
+					testDefaultRuntime.dynamic.availableMethods
+				);
+
+				SetupMethodsUI(
+					ui,
+					"meta",
+					EcsactRuntime.Meta.methods,
+					testDefaultRuntime.meta.availableMethods
+				);
+
+				SetupMethodsUI(
+					ui,
+					"serialize",
+					EcsactRuntime.Serialize.methods,
+					testDefaultRuntime.serialize.availableMethods
+				);
+
+				SetupMethodsUI(
+					ui,
+					"static",
+					EcsactRuntime.Static.methods,
+					testDefaultRuntime.@static.availableMethods
+				);
+
+				var runtimeSettingsContainer =
+					ui.Q<IMGUIContainer>("runtime-settings-container");
+
+				runtimeSettingsEditor = Editor.CreateEditor(runtimeSettings);
+
+				runtimeSettingsContainer.onGUIHandler = () => {
+					runtimeSettingsEditor.OnInspectorGUI();
+				};
 			},
 			deactivateHandler = () => {
 				if(testDefaultRuntime != null) {
 					EcsactRuntime.Free(testDefaultRuntime);
 					testDefaultRuntime = null;
+				}
+
+				if(runtimeSettingsEditor != null) {
+					Editor.DestroyImmediate(runtimeSettingsEditor);
+					runtimeSettingsEditor = null;
 				}
 			},
 			keywords = new HashSet<string>(new[] {
