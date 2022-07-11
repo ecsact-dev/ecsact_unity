@@ -2,8 +2,12 @@
 	"name": "Ecsact.Editor",
 	"rootNamespace": "",
 	"references": [
-		"Ecsact",
-		"Unity.EditorCoroutines.Editor"
+		"GUID:6e7029456009ab94da19a8f93d5e3523",
+		"GUID:478a2357cc57436488a56e564b08d223",
+		"GUID:21b0c8d1703a94250bfac916590cea4f",
+		"GUID:54cb1906aeb4e4264bc1d2aa3818a43f",
+		"GUID:ea715009a4efd4c6cbc85be3ae097dd3",
+		"GUID:23f3c6063e13e4fd9addce3606ff4e42"
 	],
 	"includePlatforms": [
 		"Editor"

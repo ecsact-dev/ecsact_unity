@@ -5,9 +5,9 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 git_repository(
     name = "ecsact_rtb",
-    commit = "6d730c4ebcbd395d3ad8810ba842f9c0d8ed15d1",
+    commit = "53d0a81636cc24b0fea4ac4dd626c94962fee0d5",
     remote = "git@github.com:seaube/ecsact-rtb.git",
-    shallow_since = "1656519400 -0700",
+    # shallow_since = "1656611470 -0700",
 )
 
 load("@ecsact_rtb//:repositories.bzl", "ecsact_rtb_repositories")
@@ -79,3 +79,16 @@ http_archive(
 load("@aspect_bazel_lib//lib:repositories.bzl", "aspect_bazel_lib_dependencies")
 
 aspect_bazel_lib_dependencies()
+
+http_archive(
+    name = "rules_pkg",
+    sha256 = "8a298e832762eda1830597d64fe7db58178aa84cd5926d76d5b744d6558941c2",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_pkg/releases/download/0.7.0/rules_pkg-0.7.0.tar.gz",
+        "https://github.com/bazelbuild/rules_pkg/releases/download/0.7.0/rules_pkg-0.7.0.tar.gz",
+    ],
+)
+
+load("@rules_pkg//:deps.bzl", "rules_pkg_dependencies")
+
+rules_pkg_dependencies()

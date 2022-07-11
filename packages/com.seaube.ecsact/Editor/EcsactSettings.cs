@@ -21,7 +21,11 @@ class EcsactSettings : ScriptableObject {
 	/// will be downloaded and used instead.</summary>
 	public string csharpCodegenPluginPath = "";
 
-	internal static EcsactSettings GetOrCreateSettings() {
+	public string runtimeBuilderOutputPath = "Assets/Plugins/EcsactRuntime.dll";
+
+	public string runtimeBuilderCompilerPath = "";
+
+	public static EcsactSettings GetOrCreateSettings() {
 		var settings = AssetDatabase.LoadAssetAtPath<EcsactSettings>(assetPath);
 		if(settings == null) {
 			settings = ScriptableObject.CreateInstance<EcsactSettings>();

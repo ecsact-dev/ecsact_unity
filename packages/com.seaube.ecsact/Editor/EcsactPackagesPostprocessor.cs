@@ -91,7 +91,7 @@ public class EcsactPackagesPostprocessor : AssetPostprocessor {
 		);
 
 		var progressId = Progress.Start(
-			"ECSACT Codegen",
+			"Ecsact Codegen",
 			"Generating C# files..."
 		);
 
@@ -120,11 +120,13 @@ public class EcsactPackagesPostprocessor : AssetPostprocessor {
 			} else {
 				Progress.Finish(progressId, Progress.Status.Succeeded);
 				// Import newly created scripts
-				TryImportAssets(importedPkgs.Select(pkg => pkg + ".cs").ToList());
+				// TryImportAssets(importedPkgs.Select(pkg => pkg + ".cs").ToList());
 			}
 		};
 
-		foreach(var (pkg, pkgPath) in FindEcsactPackages()) {
+		var packages = FindEcsactPackages().ToList();
+
+		foreach(var (pkg, pkgPath) in packages) {
 			codegen.StartInfo.Arguments += pkgPath + " ";
 		}
 
@@ -134,6 +136,10 @@ public class EcsactPackagesPostprocessor : AssetPostprocessor {
 		foreach(var plugin in GetCodegenPlugins()) {
 			// TODO: Custom codegen plugins
 		}
+
+		EcsactRuntimeBuilder.Build(new EcsactRuntimeBuilder.Options{
+			ecsactFiles = packages.Select(item => item.Item2).ToList(),
+		});
 	}
 
 	static IEnumerable<EcsactCodegenPlugin> GetCodegenPlugins() {

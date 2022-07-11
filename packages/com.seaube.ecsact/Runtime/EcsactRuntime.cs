@@ -5,6 +5,17 @@ using System.Runtime.InteropServices;
 
 #nullable enable
 
+namespace Ecsact {
+	public enum AsyncError : Int32 {
+		ConnectionClosed,
+		ConnectFail,
+		SocketFail,
+		StateFail,
+		StartFail,
+		InvalidConnectionString,
+	}
+}
+
 #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
 internal static class NativeLibrary {
 	[DllImport("Kernel32.dll",
@@ -78,6 +89,11 @@ public class EcsactRuntimeMissingMethod : Exception {
 }
 
 public class EcsactRuntime {
+	public static class VisualScriptingEventNames {
+		public const string AsyncError = "EcsactAsyncErrorEvent";
+		public const string AsyncConnectStateChange = "EcsactAsyncConnectStateChange";
+	}
+
 	public enum EcsactEvent : Int32 {
 		InitComponent = 0,
 		UpdateComponent = 1,
@@ -86,7 +102,7 @@ public class EcsactRuntime {
 
 	public delegate void EachComponentCallback
 		( Int32   componentId
-		, IntPtr  componentData
+		, object  componentData
 		, IntPtr  callbackUserData
 		);
 
@@ -99,7 +115,20 @@ public class EcsactRuntime {
 		);
 
 	public struct ExecutionOptions {
+		public Int32 addComponentsLength;
+		public Int32[] addComponentsEntities;
+		public object[] addComponents;
 
+		public Int32 updateComponentsLength;
+		public Int32[] updateComponentsEntities;
+		public object[] updateComponents;
+
+		public Int32 removeComponentsLength;
+		public Int32[] removeComponentsEntities;
+		public Int32[] removeComponents;
+
+		public Int32 actionsLength;
+		public object[] actions;
 	};
 
 	public struct ExecutionEventsCollector {
@@ -180,15 +209,6 @@ public class EcsactRuntime {
 		( IntPtr userData
 		);
 
-	public enum AsyncError : Int32 {
-		ConnectionClosed,
-		ConnectFail,
-		SocketFail,
-		StateFail,
-		StartFail,
-		InvalidConnectionString,
-	}
-
 	public enum SystemCapability : Int32 {
 		Readonly = 1,
 		Writeonly = 2,
@@ -222,14 +242,20 @@ public class EcsactRuntime {
 		);
 
 	public delegate void AsyncErrorCallback
-		( AsyncError  err
-		, Int32       requestId
-		, IntPtr      callbackUserData
+		( Ecsact.AsyncError  err
+		, Int32              requestId
+		, IntPtr             callbackUserData
+		);
+
+	public delegate void AsyncConnectCallback
+		( [MarshalAs(UnmanagedType.LPStr)] string  connectAddress
+		, Int32                                    connectPort
+		, IntPtr                                   callbackUserData
 		);
 
 	public delegate void  AsyncActionCommittedCallback
 		( Int32   actionId
-		, IntPtr  actionData
+		, object  actionData
 		, Int32   committedTick
 		, Int32   requestId
 		, IntPtr  callbackUserData
@@ -238,7 +264,9 @@ public class EcsactRuntime {
 	public struct AsyncEventsCollector {
 		public AsyncErrorCallback errorCallback;
 		public IntPtr errorCallbackUserData;
-		AsyncActionCommittedCallback actionCommittedCallback;
+		public AsyncConnectCallback connectCallback;
+		public IntPtr connectCallbackUserData;
+		public AsyncActionCommittedCallback actionCommittedCallback;
 		public IntPtr actionCommittedCallbackUserData;
 	}
 
@@ -248,6 +276,12 @@ public class EcsactRuntime {
 		if(defaultInstance == null) {
 			var settings = EcsactRuntimeSettings.Get();
 			defaultInstance = Load(settings.runtimeLibraryPaths);
+
+			foreach(var defReg in settings.defaultRegistries) {
+				defReg.registryId = defaultInstance.core.CreateRegistry(
+					defReg.registryName
+				);
+			}
 		}
 
 		return defaultInstance;
@@ -297,8 +331,8 @@ public class EcsactRuntime {
 		internal ecsact_async_execute_action_at_delegate? ecsact_async_execute_action_at;
 
 		internal delegate void ecsact_async_flush_events_delegate
-			( ExecutionEventsCollector  executionEventsCollector
-			, AsyncEventsCollector      asyncEventsCollector
+			( in ExecutionEventsCollector  executionEventsCollector
+			, in AsyncEventsCollector      asyncEventsCollector
 			);
 		internal ecsact_async_flush_events_delegate? ecsact_async_flush_events;
 
@@ -311,6 +345,129 @@ public class EcsactRuntime {
 			(
 			);
 		internal ecsact_async_disconnect_delegate? ecsact_async_disconnect;
+
+		public delegate void ErrorCallback
+			( Ecsact.AsyncError  err
+			, Int32              requestId
+			);
+
+		public delegate void ConnectCallback
+			( string  connectAddress
+			, Int32   connectPort
+			);
+
+		private AsyncEventsCollector _asyncEvs;
+		private List<ErrorCallback> _errCallbacks = new();
+		private List<ConnectCallback> _connectCallbacks = new();
+		private EcsactRuntime _owner;
+
+		internal Async
+			( EcsactRuntime owner
+			)
+		{
+			_owner = owner;
+			_asyncEvs = new AsyncEventsCollector{
+				actionCommittedCallback = OnActionCommittedHandler,
+				actionCommittedCallbackUserData = IntPtr.Zero,
+				errorCallback = OnErrorHandler,
+				errorCallbackUserData = IntPtr.Zero,
+				connectCallback = OnConnectHandler,
+				connectCallbackUserData = IntPtr.Zero,
+			};
+		}
+
+		[AOT.MonoPInvokeCallback(typeof(AsyncActionCommittedCallback))]
+		private static void OnActionCommittedHandler
+			( Int32   actionId
+			, object  actionData
+			, Int32   committedTick
+			, Int32   requestId
+			, IntPtr  callbackUserData
+			)
+		{
+			var self = (GCHandle.FromIntPtr(callbackUserData).Target as Async)!;
+		}
+
+		[AOT.MonoPInvokeCallback(typeof(AsyncErrorCallback))]
+		private static void OnErrorHandler
+			( Ecsact.AsyncError  err
+			, Int32              requestId
+			, IntPtr             callbackUserData
+			)
+		{
+			var self = (GCHandle.FromIntPtr(callbackUserData).Target as Async)!;
+			foreach(var cb in self._errCallbacks) {
+				cb(err, requestId);
+			}
+		}
+
+		[AOT.MonoPInvokeCallback(typeof(AsyncConnectCallback))]
+		private static void OnConnectHandler
+			( [MarshalAs(UnmanagedType.LPStr)] string  connectAddress
+			, Int32                                    connectPort
+			, IntPtr                                   callbackUserData
+			)
+		{
+			var self = (GCHandle.FromIntPtr(callbackUserData).Target as Async)!;
+			foreach(var cb in self._connectCallbacks) {
+				cb(connectAddress, connectPort);
+			}
+		}
+
+		public Action OnError
+			( ErrorCallback callback
+			)
+		{
+			_errCallbacks.Add(callback);
+
+			return () => {
+				_errCallbacks.Remove(callback);
+			};
+		}
+
+		public Action OnConnect
+			( ConnectCallback callback
+			)
+		{
+			_connectCallbacks.Add(callback);
+
+			return () => {
+				_connectCallbacks.Remove(callback);
+			};
+		}
+
+		public void Connect
+			( string connectionString
+			)
+		{
+			if(ecsact_async_connect == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_async_connect");
+			}
+			ecsact_async_connect(connectionString);
+		}
+
+		public void FlushEvents() {
+			if(ecsact_async_flush_events == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_async_flush_events");
+			}
+
+			var selfPinned = GCHandle.Alloc(this, GCHandleType.Pinned);
+			var ownerPinned = GCHandle.Alloc(_owner, GCHandleType.Pinned);
+			try {
+				var selfIntPtr = GCHandle.ToIntPtr(selfPinned);
+				var ownerIntPtr = GCHandle.ToIntPtr(ownerPinned);
+				_owner._execEvs.initCallbackUserData = ownerIntPtr;
+				_owner._execEvs.updateCallbackUserData = ownerIntPtr;
+				_owner._execEvs.removeCallbackUserData = ownerIntPtr;
+				_asyncEvs.errorCallbackUserData = selfIntPtr;
+				_asyncEvs.connectCallbackUserData = selfIntPtr;
+				_asyncEvs.actionCommittedCallbackUserData = selfIntPtr;
+				ecsact_async_flush_events(in _owner._execEvs, in _asyncEvs);
+			} finally {
+				selfPinned.Free();
+				ownerPinned.Free();
+			}
+		}
 	}
 
 	public class Core {
@@ -393,7 +550,7 @@ public class EcsactRuntime {
 			( Int32   registryId
 			, Int32   entityId
 			, Int32   componentId
-			, IntPtr  componentData
+			, object  componentData
 			);
 		internal ecsact_add_component_delegate? ecsact_add_component;
 
@@ -439,7 +596,7 @@ public class EcsactRuntime {
 			( Int32   registryId
 			, Int32   entityId
 			, Int32   componentId
-			, IntPtr  componentData
+			, object  componentData
 			);
 		internal ecsact_update_component_delegate? ecsact_update_component;
 
@@ -454,16 +611,25 @@ public class EcsactRuntime {
 			( EcsactEvent  ev
 			, Int32        entityId
 			, Int32        componentId
-			, IntPtr       componentData
+			, object       componentData
 			, IntPtr       callbackUserData
 			);
 		internal delegate void ecsact_execute_systems_delegate
-			( Int32                     registryId
-			, Int32                     executionCount
-			, ExecutionOptions[]        executionOptionsList
-			, ExecutionEventsCollector  eventsCollector
+			( Int32                        registryId
+			, Int32                        executionCount
+			, ExecutionOptions[]           executionOptionsList
+			, in ExecutionEventsCollector  eventsCollector
 			);
 		internal ecsact_execute_systems_delegate? ecsact_execute_systems;
+
+		private EcsactRuntime _owner;
+
+		internal Core
+			( EcsactRuntime owner
+			)
+		{
+			_owner = owner;
+		}
 
 		public Int32 CreateRegistry
 			( string registryName
@@ -596,7 +762,7 @@ public class EcsactRuntime {
 			( Int32   registryId
 			, Int32   entityId
 			, Int32   componentId
-			, IntPtr  componentData
+			, object  componentData
 			)
 		{
 			if(ecsact_add_component == null) {
@@ -695,7 +861,7 @@ public class EcsactRuntime {
 			( Int32   registryId
 			, Int32   entityId
 			, Int32   componentId
-			, IntPtr  componentData
+			, object  componentData
 			)
 		{
 			if(ecsact_update_component == null) {
@@ -724,22 +890,31 @@ public class EcsactRuntime {
 		}
 
 		public void ExecuteSystems
-			( Int32                     registryId
-			, Int32                     executionCount
-			, ExecutionOptions[]        executionOptionsList
-			, ExecutionEventsCollector  eventsCollector
+			( Int32               registryId
+			, Int32               executionCount
+			, ExecutionOptions[]  executionOptionsList
 			)
 		{
 			if(ecsact_execute_systems == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_execute_systems");
 			}
 
-			ecsact_execute_systems(
-				registryId,
-				executionCount,
-				executionOptionsList,
-				eventsCollector
-			);
+			var ownerPinned = GCHandle.Alloc(_owner, GCHandleType.Pinned);
+
+			try {
+				var ownerIntPtr = GCHandle.ToIntPtr(ownerPinned);
+				_owner._execEvs.initCallbackUserData = ownerIntPtr;
+				_owner._execEvs.updateCallbackUserData = ownerIntPtr;
+				_owner._execEvs.removeCallbackUserData = ownerIntPtr;
+				ecsact_execute_systems(
+					registryId,
+					executionCount,
+					executionOptionsList,
+					in _owner._execEvs
+				);
+			} finally {
+				ownerPinned.Free();
+			}
 		}
 	}
 
@@ -784,7 +959,7 @@ public class EcsactRuntime {
 		internal delegate void ecsact_system_execution_context_add_delegate
 			( IntPtr  context
 			, Int32   componentId
-			, IntPtr  componentData
+			, object  componentData
 			);
 		internal ecsact_system_execution_context_add_delegate? ecsact_system_execution_context_add;
 
@@ -795,16 +970,16 @@ public class EcsactRuntime {
 		internal ecsact_system_execution_context_remove_delegate? ecsact_system_execution_context_remove;
 
 		internal delegate void ecsact_system_execution_context_get_delegate
-			( IntPtr  context
-			, Int32   componentId
-			, IntPtr  outComponentData
+			( IntPtr      context
+			, Int32       componentId
+			, out object  outComponentData
 			);
 		internal ecsact_system_execution_context_get_delegate? ecsact_system_execution_context_get;
 
 		internal delegate void ecsact_system_execution_context_update_delegate
 			( IntPtr  context
 			, Int32   componentId
-			, IntPtr  componentData
+			, object  componentData
 			);
 		internal ecsact_system_execution_context_update_delegate? ecsact_system_execution_context_update;
 
@@ -818,7 +993,7 @@ public class EcsactRuntime {
 			( IntPtr    context
 			, Int32     componentCount
 			, Int32[]   componentIds
-			, IntPtr[]  componentsData
+			, object[]  componentsData
 			);
 		internal ecsact_system_execution_context_generate_delegate? ecsact_system_execution_context_generate;
 
@@ -1032,7 +1207,7 @@ public class EcsactRuntime {
 
 		internal delegate void ecsact_serialize_component_delegate
 			( Int32   componentId
-			, IntPtr  inComponentData
+			, object  inComponentData
 			, IntPtr  outBytes
 			);
 		internal ecsact_serialize_component_delegate? ecsact_serialize_component;
@@ -1045,9 +1220,9 @@ public class EcsactRuntime {
 		internal ecsact_deserialize_action_delegate? ecsact_deserialize_action;
 
 		internal delegate void ecsact_deserialize_component_delegate
-			( Int32   componentId
-			, IntPtr  inBytes
-			, IntPtr  outComponentData
+			( Int32       componentId
+			, IntPtr      inBytes
+			, out object  outComponentData
 			);
 		internal ecsact_deserialize_component_delegate? ecsact_deserialize_component;
 	}
@@ -1111,7 +1286,13 @@ public class EcsactRuntime {
 		IntPtr addr;
 		if(NativeLibrary.TryGetExport(lib, name, out addr)) {
 			outDelegate = Marshal.GetDelegateForFunctionPointer<D>(addr);
-			availableMethods.Add(name);
+			if(outDelegate != null) {
+				availableMethods.Add(name);
+			} else {
+				UnityEngine.Debug.LogError(
+					$"{name} is not a function in runtime library"
+				);
+			}
 		} else {
 			outDelegate = null;
 		}
@@ -1122,8 +1303,8 @@ public class EcsactRuntime {
 		)
 	{
 		var runtime = new EcsactRuntime();
-		runtime._core = new Core();
-		runtime._async = new Async();
+		runtime._core = new Core(runtime);
+		runtime._async = new Async(runtime);
 		runtime._dynamic = new Dynamic();
 		runtime._meta = new Meta();
 		runtime._serialize = new Serialize();
@@ -1227,7 +1408,255 @@ public class EcsactRuntime {
 		}
 	}
 
+	/// <summary>Init Component Untyped Callback</summary>
+	private delegate void InitCompUtCb
+		( Int32   entityId
+		, object  component
+		);
+
+	/// <summary>Update Component Untyped Callback</summary>
+	private delegate void UpCompUtCb
+		( Int32   entityId
+		, object  component
+		);
+
+	/// <summary>Remove Component Untyped Callback</summary>
+	private delegate void RmvCompUtCb
+		( Int32   entityId
+		, object  component
+		);
+
+	private List<InitComponentCallback> _initAnyCompCbs = new();
+	private List<UpdateComponentCallback> _updateAnyCompCbs = new();
+	private List<RemoveComponentCallback> _removeAnyCompCbs = new();
+	private Dictionary<Int32, List<InitCompUtCb>> _initCompCbs = new();
+	private Dictionary<Int32, List<UpCompUtCb>> _updateCompCbs = new();
+	private Dictionary<Int32, List<RmvCompUtCb>> _removeCompCbs = new();
+	internal ExecutionEventsCollector _execEvs;
+
+	private EcsactRuntime() {
+		_execEvs = new ExecutionEventsCollector{
+			initCallback = OnInitComponentHandler,
+			initCallbackUserData = IntPtr.Zero,
+			updateCallback = OnUpdateComponentHandler,
+			updateCallbackUserData = IntPtr.Zero,
+			removeCallback = OnRemoveComponentHandler,
+			removeCallbackUserData = IntPtr.Zero,
+		};
+	}
+
 	~EcsactRuntime() {
 		Free(this);
 	}
+
+	public delegate void InitComponentCallback
+		( Int32   entityId
+		, Int32   componentId
+		, object  component
+		);
+
+	public Action OnInitComponent
+		( InitComponentCallback callback
+		)
+	{
+		_initAnyCompCbs.Add(callback);
+		return () => {
+			_initAnyCompCbs.Remove(callback);
+		};
+	}
+
+	public delegate void InitComponentCallback<ComponentT>
+		( Int32       entityId
+		, ComponentT  component
+		) where ComponentT : Ecsact.Component;
+
+	/// <summary>Adds a callback for when component init event is fired.</summary>
+	/// <returns>Action that clears callback upon invocation.</returns>
+	public Action OnInitComponent<ComponentT>
+		( InitComponentCallback<ComponentT> callback
+		) where ComponentT : Ecsact.Component
+	{
+		var compId = Ecsact.Util.GetComponentID<ComponentT>()!;
+
+		if(!_initCompCbs.TryGetValue(compId, out var callbacks)) {
+			callbacks = new();
+			_initCompCbs.Add(compId, callbacks);
+		}
+
+		InitCompUtCb cb = (entityId, comp) => {
+			callback(entityId, (ComponentT)comp);
+		};
+
+		callbacks.Add(cb);
+
+		return () => {
+			if(_initCompCbs.TryGetValue(compId, out var callbacks)) {
+				callbacks.Remove(cb);
+			}
+		};
+	}
+
+	public delegate void UpdateComponentCallback
+		( Int32   entityId
+		, Int32   componentId
+		, object  component
+		);
+
+	public Action OnUpdateComponent
+		( UpdateComponentCallback callback
+		)
+	{
+		_updateAnyCompCbs.Add(callback);
+		return () => {
+			_updateAnyCompCbs.Remove(callback);
+		};
+	}
+
+	public delegate void UpdateComponentCallback<ComponentT>
+		( Int32       entityId
+		, ComponentT  component
+		) where ComponentT : Ecsact.Component;
+
+	public Action OnUpdateComponent<ComponentT>
+		( UpdateComponentCallback<ComponentT> callback
+		) where ComponentT : Ecsact.Component
+	{
+		var compId = Ecsact.Util.GetComponentID<ComponentT>()!;
+
+		if(!_updateCompCbs.TryGetValue(compId, out var callbacks)) {
+			callbacks = new();
+			_updateCompCbs.Add(compId, callbacks);
+		}
+
+		UpCompUtCb cb = (entityId, comp) => {
+			callback(entityId, (ComponentT)comp);
+		};
+
+		callbacks.Add(cb);
+
+		return () => {
+			if(_updateCompCbs.TryGetValue(compId, out var callbacks)) {
+				callbacks.Remove(cb);
+			}
+		};
+	}
+
+	public delegate void RemoveComponentCallback
+		( Int32   entityId
+		, Int32   componentId
+		, object  component
+		);
+
+	public Action OnRemoveComponent
+		( RemoveComponentCallback callback
+		)
+	{
+		_removeAnyCompCbs.Add(callback);
+		return () => {
+			_removeAnyCompCbs.Remove(callback);
+		};
+	}
+
+	public delegate void RemoveComponentCallback<ComponentT>
+		( Int32       entityId
+		, ComponentT  component
+		) where ComponentT : Ecsact.Component;
+
+	public Action OnRemoveComponent<ComponentT>
+		( RemoveComponentCallback<ComponentT> callback
+		) where ComponentT : Ecsact.Component
+	{
+		var compId = Ecsact.Util.GetComponentID<ComponentT>()!;
+
+		if(!_removeCompCbs.TryGetValue(compId, out var callbacks)) {
+			callbacks = new();
+			_removeCompCbs.Add(compId, callbacks);
+		}
+
+		RmvCompUtCb cb = (entityId, comp) => {
+			callback(entityId, (ComponentT)comp);
+		};
+
+		callbacks.Add(cb);
+
+		return () => {
+			if(_removeCompCbs.TryGetValue(compId, out var callbacks)) {
+				callbacks.Remove(cb);
+			}
+		};
+	}
+
+
+	[AOT.MonoPInvokeCallback(typeof(ComponentEventCallback))]
+	private static void OnInitComponentHandler
+		( EcsactEvent  ev
+		, Int32        entityId
+		, Int32        componentId
+		, object       componentData
+		, IntPtr       callbackUserData
+		)
+	{
+		UnityEngine.Debug.Assert(ev == EcsactEvent.InitComponent);
+
+		var self = (GCHandle.FromIntPtr(callbackUserData).Target as EcsactRuntime)!;
+
+		if(self._initCompCbs.TryGetValue(componentId, out var cbs)) {
+			foreach(var cb in cbs) {
+				cb(entityId, componentData);
+			}
+		}
+
+		foreach(var cb in self._initAnyCompCbs) {
+			cb(entityId, componentId, componentData);
+		}
+	}
+
+	[AOT.MonoPInvokeCallback(typeof(ComponentEventCallback))]
+	private static void OnUpdateComponentHandler
+		( EcsactEvent  ev
+		, Int32        entityId
+		, Int32        componentId
+		, object       componentData
+		, IntPtr       callbackUserData
+		)
+	{
+		UnityEngine.Debug.Assert(ev == EcsactEvent.UpdateComponent);
+
+		var self = (GCHandle.FromIntPtr(callbackUserData).Target as EcsactRuntime)!;
+
+		if(self._updateCompCbs.TryGetValue(componentId, out var cbs)) {
+			foreach(var cb in cbs) {
+				cb(entityId, componentData);
+			}
+		}
+
+		foreach(var cb in self._updateAnyCompCbs) {
+			cb(entityId, componentId, componentData);
+		}
+	}
+
+	[AOT.MonoPInvokeCallback(typeof(ComponentEventCallback))]
+	private static void OnRemoveComponentHandler
+		( EcsactEvent  ev
+		, Int32        entityId
+		, Int32        componentId
+		, object       componentData
+		, IntPtr       callbackUserData
+		)
+	{
+		UnityEngine.Debug.Assert(ev == EcsactEvent.RemoveComponent);
+
+		var self = (GCHandle.FromIntPtr(callbackUserData).Target as EcsactRuntime)!;
+
+		if(self._removeCompCbs.TryGetValue(componentId, out var cbs)) {
+			foreach(var cb in cbs) {
+				cb(entityId, componentData);
+			}
+		}
+
+		foreach(var cb in self._removeAnyCompCbs) {
+			cb(entityId, componentId, componentData);
+		}
+	}
+
 }

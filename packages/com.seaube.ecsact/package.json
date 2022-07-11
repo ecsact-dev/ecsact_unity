@@ -8,7 +8,8 @@
     "name" : "Seaube"
   },
   "dependencies": {
-    "com.unity.editorcoroutines": "1.0.0"
+    "com.unity.editorcoroutines": "1.0.0",
+    "com.unity.visualscripting": "1.7.8"
   },
   "repository": "https://github.com/seaube/ecsact-unity"
 }
