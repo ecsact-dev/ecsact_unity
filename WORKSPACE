@@ -5,9 +5,9 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 git_repository(
     name = "ecsact_rtb",
-    commit = "53d0a81636cc24b0fea4ac4dd626c94962fee0d5",
+    commit = "28da3744a513210620f63b84e04901387d81b0e5",
     remote = "git@github.com:seaube/ecsact-rtb.git",
-    # shallow_since = "1656611470 -0700",
+    shallow_since = "1657554031 -0700",
 )
 
 load("@ecsact_rtb//:repositories.bzl", "ecsact_rtb_repositories")
