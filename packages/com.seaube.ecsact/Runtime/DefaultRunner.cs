@@ -12,6 +12,8 @@ namespace Ecsact {
 
 		private EcsactRuntimeDefaultRegistry? defReg;
 
+		public Int32 registryId => defReg?.registryId ?? -1;
+
 #if UNITY_EDITOR
 		[NonSerialized]
 		public int debugExecutionCountTotal = 0;
@@ -26,11 +28,10 @@ namespace Ecsact {
 			foreach(var defReg in settings.defaultRegistries) {
 				if(!defReg.useDefaultRunner) continue;
 
-				var gameObjectName = $"Ecsact Default Runner ";
+				var gameObjectName = $"Ecsact Default Runner";
 				if(!string.IsNullOrWhiteSpace(defReg.registryName)) {
 					gameObjectName += " - " + defReg.registryName;
 				}
-				gameObjectName += $"({defReg.registryId})";
 
 				var gameObject = new GameObject(gameObjectName);
 				var runner = gameObject.AddComponent<DefaultRunner>();
@@ -41,6 +42,10 @@ namespace Ecsact {
 
 		void Awake() {
 			runtimeInstance = EcsactRuntime.GetOrLoadDefault();
+		}
+
+		void Start() {
+			gameObject.name += $" ({defReg!.registryId})";
 		}
 
 		void Update() {

@@ -110,7 +110,7 @@ public class EcsactRuntime {
 		( EcsactEvent  ev
 		, Int32        entityId
 		, Int32        componentId
-		, object       componentData
+		, IntPtr       componentData
 		, IntPtr       callbackUserData
 		);
 
@@ -574,7 +574,7 @@ public class EcsactRuntime {
 			( Int32   registryId
 			, Int32   entityId
 			, Int32   componentId
-			, object  componentData
+			, IntPtr  componentData
 			);
 		internal ecsact_add_component_delegate? ecsact_add_component;
 
@@ -782,23 +782,30 @@ public class EcsactRuntime {
 			return entities;
 		}
 
-		public void AddComponent
-			( Int32   registryId
-			, Int32   entityId
-			, Int32   componentId
-			, object  componentData
-			)
+		public void AddComponent<C>
+			( Int32  registryId
+			, Int32  entityId
+			, C      component
+			) where C : Ecsact.Component
 		{
 			if(ecsact_add_component == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_add_component");
 			}
 
-			ecsact_add_component(
-				registryId,
-				entityId,
-				componentId,
-				componentData
-			);
+			var componentId = Ecsact.Util.GetComponentID<C>();
+			var componentPtr = Marshal.AllocHGlobal(Marshal.SizeOf(component));
+
+			try {
+				Marshal.StructureToPtr(component, componentPtr, false);
+				ecsact_add_component(
+					registryId,
+					entityId,
+					componentId,
+					componentPtr
+				);
+			} finally {
+				Marshal.FreeHGlobal(componentPtr);
+			}
 		}
 
 		public bool HasComponent
@@ -1378,6 +1385,17 @@ public class EcsactRuntime {
 	public Static @static => _static!;
 	public Wasm wasm => _wasm!;
 
+	[AOT.MonoPInvokeCallback(typeof(Wasm.ecsactsi_wasm_trap_handler))]
+	private static void DefaultWasmTrapHandler
+		( Int32                                    systemId
+		, [MarshalAs(UnmanagedType.LPStr)] string  trapMessage
+		)
+	{
+		UnityEngine.Debug.LogError(
+			$"[Wasm Trap (systemId={systemId})] {trapMessage}"
+		);
+	}
+
 	private static void LoadDelegate<D>
 		( IntPtr        lib
 		, string        name
@@ -1498,6 +1516,10 @@ public class EcsactRuntime {
 			LoadDelegate(lib, "ecsactsi_wasm_load", out runtime._wasm.ecsactsi_wasm_load, runtime._wasm._availableMethods);
 			LoadDelegate(lib, "ecsactsi_wasm_load_file", out runtime._wasm.ecsactsi_wasm_load_file, runtime._wasm._availableMethods);
 			LoadDelegate(lib, "ecsactsi_wasm_set_trap_handler", out runtime._wasm.ecsactsi_wasm_set_trap_handler, runtime._wasm._availableMethods);
+		}
+
+		if(runtime._wasm.ecsactsi_wasm_set_trap_handler != null) {
+			runtime._wasm.ecsactsi_wasm_set_trap_handler(DefaultWasmTrapHandler);
 		}
 
 		return runtime;
@@ -1700,22 +1722,23 @@ public class EcsactRuntime {
 		( EcsactEvent  ev
 		, Int32        entityId
 		, Int32        componentId
-		, object       componentData
+		, IntPtr       componentData
 		, IntPtr       callbackUserData
 		)
 	{
 		UnityEngine.Debug.Assert(ev == EcsactEvent.InitComponent);
 
 		var self = (GCHandle.FromIntPtr(callbackUserData).Target as EcsactRuntime)!;
+		var component = Ecsact.Util.PtrToComponent(componentData, componentId);
 
 		if(self._initCompCbs.TryGetValue(componentId, out var cbs)) {
 			foreach(var cb in cbs) {
-				cb(entityId, componentData);
+				cb(entityId, component);
 			}
 		}
 
 		foreach(var cb in self._initAnyCompCbs) {
-			cb(entityId, componentId, componentData);
+			cb(entityId, componentId, component);
 		}
 	}
 
@@ -1724,22 +1747,23 @@ public class EcsactRuntime {
 		( EcsactEvent  ev
 		, Int32        entityId
 		, Int32        componentId
-		, object       componentData
+		, IntPtr       componentData
 		, IntPtr       callbackUserData
 		)
 	{
 		UnityEngine.Debug.Assert(ev == EcsactEvent.UpdateComponent);
 
 		var self = (GCHandle.FromIntPtr(callbackUserData).Target as EcsactRuntime)!;
+		var component = Ecsact.Util.PtrToComponent(componentData, componentId);
 
 		if(self._updateCompCbs.TryGetValue(componentId, out var cbs)) {
 			foreach(var cb in cbs) {
-				cb(entityId, componentData);
+				cb(entityId, component);
 			}
 		}
 
 		foreach(var cb in self._updateAnyCompCbs) {
-			cb(entityId, componentId, componentData);
+			cb(entityId, componentId, component);
 		}
 	}
 
@@ -1748,22 +1772,23 @@ public class EcsactRuntime {
 		( EcsactEvent  ev
 		, Int32        entityId
 		, Int32        componentId
-		, object       componentData
+		, IntPtr       componentData
 		, IntPtr       callbackUserData
 		)
 	{
 		UnityEngine.Debug.Assert(ev == EcsactEvent.RemoveComponent);
 
 		var self = (GCHandle.FromIntPtr(callbackUserData).Target as EcsactRuntime)!;
+		var component = Ecsact.Util.PtrToComponent(componentData, componentId);
 
 		if(self._removeCompCbs.TryGetValue(componentId, out var cbs)) {
 			foreach(var cb in cbs) {
-				cb(entityId, componentData);
+				cb(entityId, component);
 			}
 		}
 
 		foreach(var cb in self._removeAnyCompCbs) {
-			cb(entityId, componentId, componentData);
+			cb(entityId, componentId, component);
 		}
 	}
 
