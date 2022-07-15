@@ -27,7 +27,7 @@ namespace Ecsact {
 			DontDestroyOnLoad(gameObject);
 		}
 
-		List<System.Action> diposeCallbacks = new();
+		List<global::System.Action> diposeCallbacks = new();
 
 		void OnEnable() {
 			runtimeInstance = EcsactRuntime.GetOrLoadDefault();

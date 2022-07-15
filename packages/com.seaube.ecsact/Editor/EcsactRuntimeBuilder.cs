@@ -57,11 +57,15 @@ public static class EcsactRuntimeBuilder {
 			var line = ev.Data;
 			if(!string.IsNullOrWhiteSpace(line)) {
 				Progress.SetDescription(progressId, line);
+				UnityEngine.Debug.Log(line);
 			}
 		};
 
 		proc.Exited += (_, _) => {
 			if(proc.ExitCode != 0) {
+				UnityEngine.Debug.LogError(
+					$"ecsact-rtb exited with code {proc.ExitCode}"
+				);
 				Progress.Finish(progressId, Progress.Status.Failed);
 			} else {
 				Progress.Finish(progressId, Progress.Status.Succeeded);
@@ -73,7 +77,9 @@ public static class EcsactRuntimeBuilder {
 		}
 
 		proc.StartInfo.Arguments += "--output=\"";
-		proc.StartInfo.Arguments += settings.runtimeBuilderOutputPath;
+		proc.StartInfo.Arguments += Path.GetFullPath(
+			settings.runtimeBuilderOutputPath
+		);
 #if UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
 		proc.StartInfo.Arguments += ".dll";
 #elif UNITY_EDITOR_LINUX || UNITY_STANDALONE_LINUX
@@ -87,15 +93,20 @@ public static class EcsactRuntimeBuilder {
 
 		if(!string.IsNullOrWhiteSpace(settings.runtimeBuilderCompilerPath)) {
 			proc.StartInfo.Arguments += "--compiler_path=\"";
-			proc.StartInfo.Arguments += settings.runtimeBuilderCompilerPath;
+			proc.StartInfo.Arguments += Path.GetFullPath(
+				settings.runtimeBuilderCompilerPath
+			);
 			proc.StartInfo.Arguments += "\" ";
 		}
 
 		proc.StartInfo.Arguments += "--temp_dir=";
-		proc.StartInfo.Arguments += FileUtil.GetUniqueTempPathInProject();
+		proc.StartInfo.Arguments += Path.GetFullPath(
+			FileUtil.GetUniqueTempPathInProject()
+		);
 
 		UnityEngine.Debug.Log(proc.StartInfo.FileName);
 		UnityEngine.Debug.Log(proc.StartInfo.Arguments);
+		UnityEngine.Debug.Log($"CWD: {System.IO.Directory.GetCurrentDirectory()}");
 
 		Progress.Report(progressId, 0.1f);
 		proc.Start();

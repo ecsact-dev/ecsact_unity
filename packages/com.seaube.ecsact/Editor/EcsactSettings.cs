@@ -86,6 +86,7 @@ static class EcsactSettingsUIElementsRegister {
 	public static SettingsProvider CreateEcsactSettingsProvider() {
 		EcsactRuntime? testDefaultRuntime = null;
 		Editor? runtimeSettingsEditor = null;
+		Editor? wasmRuntimeSettingsEditor = null;
 
 		return new SettingsProvider(EcsactSettings.path, EcsactSettings.scope) {
 			label = "Ecsact",
@@ -150,6 +151,13 @@ static class EcsactSettingsUIElementsRegister {
 					testDefaultRuntime.@static.availableMethods
 				);
 
+				SetupMethodsUI(
+					ui,
+					"wasm",
+					EcsactRuntime.Wasm.methods,
+					testDefaultRuntime.wasm.availableMethods
+				);
+
 				var runtimeSettingsContainer =
 					ui.Q<IMGUIContainer>("runtime-settings-container");
 
@@ -157,6 +165,16 @@ static class EcsactSettingsUIElementsRegister {
 
 				runtimeSettingsContainer.onGUIHandler = () => {
 					runtimeSettingsEditor.OnInspectorGUI();
+				};
+
+				var wasmRuntimeSettings = EcsactWasmRuntimeSettings.Get();
+				var wasmRuntimeSettingsContainer =
+					ui.Q<IMGUIContainer>("wasm-runtime-settings-container");
+
+				wasmRuntimeSettingsEditor = Editor.CreateEditor(wasmRuntimeSettings);
+
+				wasmRuntimeSettingsContainer.onGUIHandler = () => {
+					wasmRuntimeSettingsEditor.OnInspectorGUI();
 				};
 			},
 			deactivateHandler = () => {

@@ -277,11 +277,34 @@ public class EcsactRuntime {
 			var settings = EcsactRuntimeSettings.Get();
 			defaultInstance = Load(settings.runtimeLibraryPaths);
 
-			foreach(var defReg in settings.defaultRegistries) {
-				defReg.registryId = defaultInstance.core.CreateRegistry(
-					defReg.registryName
-				);
+			if(defaultInstance != null) {
+				foreach(var defReg in settings.defaultRegistries) {
+					defReg.registryId = defaultInstance.core.CreateRegistry(
+						defReg.registryName
+					);
+				}
 			}
+		}
+
+		if(defaultInstance == null) {
+#if UNITY_EDITOR
+			UnityEditor.EditorApplication.isPlaying = false;
+			var okQuit = UnityEditor.EditorUtility.DisplayDialog(
+				title: "Failed to load default ecsact runtime",
+				message: "Please check your ecsact runtime settings",
+				ok: "Ok Quit",
+				cancel: "Continue Anyways"
+			);
+
+			if(okQuit) {
+				UnityEditor.EditorApplication.isPlaying = false;
+			}
+			UnityEngine.Application.Quit(1);
+#else
+			UnityEngine.Debug.LogError("Failed to load default ecsact runtime");
+			UnityEngine.Application.Quit(1);
+#endif
+			throw new Exception("Failed to load default ecsact runtime");
 		}
 
 		return defaultInstance;
@@ -304,6 +327,7 @@ public class EcsactRuntime {
 	private Meta? _meta;
 	private Serialize? _serialize;
 	private Static? _static;
+	private Wasm? _wasm;
 
 	public class Async {
 		internal List<string> _availableMethods = new();
@@ -1269,12 +1293,90 @@ public class EcsactRuntime {
 		internal ecsact_static_off_reload_delegate? ecsact_static_off_reload;
 	}
 
+	// TODO(zaucy): This is misplaced here. It should be organized somewhere else
+	//              maybe in another package
+	// ecsactsi_* fns
+	public class Wasm {
+		public enum Error {
+			Ok,
+			OpenFail,
+			ReadFail,
+			CompileFail,
+			InstantiateFail,
+			ExportNotFound,
+			ExportInvalid,
+			GuestImportUnknown,
+		}
+
+		internal List<string> _availableMethods = new();
+		public static string[] methods => new string[]{
+			"ecsactsi_wasm_load",
+			"ecsactsi_wasm_load_file",
+			"ecsactsi_wasm_set_trap_handler",
+		};
+
+		public IEnumerable<string> availableMethods => _availableMethods;
+
+		internal delegate void ecsactsi_wasm_load_delegate
+			( sbyte[]   wasmData
+			, Int32     wasmDataSize
+			, Int32     systemsCount
+			, Int32[]   systmIds
+			, string[]  wasmExports
+			);
+
+		internal ecsactsi_wasm_load_delegate? ecsactsi_wasm_load;
+
+		internal delegate void ecsactsi_wasm_load_file_delegate
+			( [MarshalAs(UnmanagedType.LPStr)] string    wasmFilePath
+			, Int32                                      systemsCount
+			, Int32[]                                    systmIds
+			, string[]                                   wasmExports
+			);
+
+		internal ecsactsi_wasm_load_file_delegate? ecsactsi_wasm_load_file;
+
+		internal delegate void ecsactsi_wasm_trap_handler
+			( Int32                                    systemId
+			, [MarshalAs(UnmanagedType.LPStr)] string  trapMessage
+			);
+
+		internal delegate void ecsactsi_wasm_set_trap_handler_delegate
+			( ecsactsi_wasm_trap_handler handler
+			);
+
+		internal ecsactsi_wasm_set_trap_handler_delegate? ecsactsi_wasm_set_trap_handler;
+
+		public void Load
+			( byte[]  wasmData
+			, Int32   systemId
+			, string  exportName
+			)
+		{
+			if(ecsactsi_wasm_load == null) {
+				throw new EcsactRuntimeMissingMethod("ecsactsi_wasm_load");
+			}
+
+			var systemIds = new Int32[]{systemId};
+			var exportNames = new string[]{exportName};
+
+			ecsactsi_wasm_load(
+				(sbyte[]) (Array) wasmData,
+				wasmData.Length,
+				1,
+				systemIds,
+				exportNames
+			);
+		}
+	}
+
 	public Core core => _core!;
 	public Async async => _async!;
 	public Dynamic dynamic => _dynamic!;
 	public Meta meta => _meta!;
 	public Serialize serialize => _serialize!;
 	public Static @static => _static!;
+	public Wasm wasm => _wasm!;
 
 	private static void LoadDelegate<D>
 		( IntPtr        lib
@@ -1309,6 +1411,7 @@ public class EcsactRuntime {
 		runtime._meta = new Meta();
 		runtime._serialize = new Serialize();
 		runtime._static = new Static();
+		runtime._wasm = new Wasm();
 		runtime._libs =
 			libraryPaths.Select(path => NativeLibrary.Load(path)).ToArray();
 
@@ -1390,6 +1493,11 @@ public class EcsactRuntime {
 			LoadDelegate(lib, "ecsact_static_actions", out runtime._static.ecsact_static_actions, runtime._static._availableMethods);
 			LoadDelegate(lib, "ecsact_static_on_reload", out runtime._static.ecsact_static_on_reload, runtime._static._availableMethods);
 			LoadDelegate(lib, "ecsact_static_off_reload", out runtime._static.ecsact_static_off_reload, runtime._static._availableMethods);
+
+			// Load system implementation wasm methods
+			LoadDelegate(lib, "ecsactsi_wasm_load", out runtime._wasm.ecsactsi_wasm_load, runtime._wasm._availableMethods);
+			LoadDelegate(lib, "ecsactsi_wasm_load_file", out runtime._wasm.ecsactsi_wasm_load_file, runtime._wasm._availableMethods);
+			LoadDelegate(lib, "ecsactsi_wasm_set_trap_handler", out runtime._wasm.ecsactsi_wasm_set_trap_handler, runtime._wasm._availableMethods);
 		}
 
 		return runtime;

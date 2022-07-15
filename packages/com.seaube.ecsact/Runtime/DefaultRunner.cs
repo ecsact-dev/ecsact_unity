@@ -1,5 +1,6 @@
 using UnityEngine;
 using System;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 #nullable enable
@@ -44,10 +45,10 @@ namespace Ecsact {
 
 		void Update() {
 			if(defReg == null) return;
-			Debug.Assert(defReg.registryId != -1);
+			UnityEngine.Debug.Assert(defReg.registryId != -1);
 
 #if UNITY_EDITOR
-			var executionTimeWatch = System.Diagnostics.Stopwatch.StartNew();
+			var executionTimeWatch = Stopwatch.StartNew();
 #endif
 
 			runtimeInstance!.core.ExecuteSystems(

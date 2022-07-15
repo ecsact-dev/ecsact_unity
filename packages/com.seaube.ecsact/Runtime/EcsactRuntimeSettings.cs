@@ -25,8 +25,8 @@ public class EcsactRuntimeDefaultRegistry {
 public class EcsactRuntimeSettings : ScriptableObject {
 	private static EcsactRuntimeSettings? _instance;
 
-	public const string resourcePath = "Settings/EcsactRuntimeSettings.asset";
-	public const string assetPath = "Assets/Resources/" + resourcePath;
+	public const string resourcePath = "Settings/EcsactRuntimeSettings";
+	public const string assetPath = "Assets/Resources/" + resourcePath + ".asset";
 
 	public bool useAsyncRunner = true;
 	public bool useVisualScriptingEvents = true;
@@ -53,6 +53,10 @@ public class EcsactRuntimeSettings : ScriptableObject {
 #else
 		_instance = Resources.Load(resourcePath) as EcsactRuntimeSettings;
 #endif
+
+		if(_instance == null) {
+			throw new Exception("Failed to load ecsact runtime settings");
+		}
 
 		return _instance;
 	}

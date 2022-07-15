@@ -5,9 +5,9 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 git_repository(
     name = "ecsact_rtb",
-    commit = "28da3744a513210620f63b84e04901387d81b0e5",
+    commit = "4d4856d697300a1e3c8b2e49b25acb72e9328b9d",
     remote = "git@github.com:seaube/ecsact-rtb.git",
-    shallow_since = "1657554031 -0700",
+    # shallow_since = "1657554031 -0700",
 )
 
 load("@ecsact_rtb//:repositories.bzl", "ecsact_rtb_repositories")
@@ -20,9 +20,9 @@ ecsact_rtb_workspace()
 
 http_archive(
     name = "bzlws",
-    sha256 = "5bebb821b158b11d81dd25cf031b5b26bae97dbb02025df7d0e41a262b3a030b",
-    strip_prefix = "bzlws-f929e5380f441f50a77776d34a7df8cacdbdf986",
-    url = "https://github.com/zaucy/bzlws/archive/f929e5380f441f50a77776d34a7df8cacdbdf986.zip",
+    sha256 = "9bc9d6bf1d885992d58a4ad9dc7476a8cd48d672b497707b0ae2c0899c6d369b",
+    strip_prefix = "bzlws-344801b9b3105bd13e4b51ec9776f04bd5e01972",
+    url = "https://github.com/zaucy/bzlws/archive/344801b9b3105bd13e4b51ec9776f04bd5e01972.zip",
 )
 
 load("@bzlws//:repo.bzl", "bzlws_deps")
