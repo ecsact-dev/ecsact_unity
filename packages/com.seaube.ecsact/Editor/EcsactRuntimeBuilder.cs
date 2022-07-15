@@ -30,7 +30,7 @@ public static class EcsactRuntimeBuilder {
 		}
 
 		string runtimeBuilderExecutablePath = Path.GetFullPath(
-			"Packages/com.seaube.ecsact/generators~/ecsact-rtb.exe"
+			"Packages/com.seaube.ecsact/generators/ecsact-rtb.exe"
 		);
 
 		var progressId = Progress.Start("Ecsact Runtime Builder");

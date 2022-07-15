@@ -16,7 +16,7 @@ class PkgInfoJson {
 public class EcsactImporter : ScriptedImporter {
 	public override void OnImportAsset(AssetImportContext ctx) {
 		string codegenExecutable = Path.GetFullPath(
-			"Packages/com.seaube.ecsact/generators~/ecsact_parser_info_codegen.exe"
+			"Packages/com.seaube.ecsact/generators/ecsact_parser_info_codegen.exe"
 		);
 
 		Process codegen = new Process();
