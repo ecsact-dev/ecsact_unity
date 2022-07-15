@@ -1,27 +1,30 @@
-load("@build_bazel_rules_nodejs//:index.bzl", "pkg_npm")
-load("@aspect_bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
+load(":pkg.bzl", "pkg_executable")
+load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 
-copy_to_directory(
-    name = "generators~",
-    replace_prefixes = {
-        "generator/csharp/": "",
-        "generator/parser_info/": "",
-    },
-    include_external_repositories = [
-        "ecsact",
-    ],
+pkg_executable(
+    name = "ecsact_csharp_codegen_with_runfiles",
+    bin = "@ecsact//generator/csharp:cli",
+    path = "ecsact_csharp_codegen",
+)
+
+pkg_executable(
+    name = "ecsact_parser_info_codegen_with_runfiles",
+    bin = "@ecsact//generator/parser_info:cli",
+    path = "ecsact_parser_info_codegen",
+)
+
+pkg_executable(
+    name = "ecsact_rtb_with_runfiles",
+    bin = "@ecsact_rtb//cli:ecsact-rtb",
+    path = "ecsact-rtb",
+)
+
+pkg_tar(
+    name = "generators",
     srcs = [
-        "@ecsact//generator/csharp:cli",
-        "@ecsact//generator/parser_info:cli",
+        ":ecsact_csharp_codegen_with_runfiles",
+        ":ecsact_parser_info_codegen_with_runfiles",
+        ":ecsact_rtb_with_runfiles",
     ],
+    visibility = ["//visibility:public"],
 )
-
-pkg_npm(
-    name = "com.seaube.ecsact",
-    package_name = "com.seaube.ecsact",
-    deps = [":generators~"],
-    srcs = glob(["**/*"]),
-)
-
-alias(name = "pack", actual = "com.seaube.ecsact.pack")
-alias(name = "publish", actual = "com.seaube.ecsact.publish")

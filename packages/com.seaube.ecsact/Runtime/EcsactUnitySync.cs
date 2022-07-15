@@ -26,7 +26,7 @@ namespace Ecsact.UnitySync {
 	public interface IRequired<T> where T : Ecsact.Component {}
 
 	public interface IOnInitEntity {
-		void OnInitEntity(System.Int32 entityId);
+		void OnInitEntity(Int32 entityId);
 	}
 
 	public interface IOnInitComponent<T> where T : Ecsact.Component {
@@ -374,8 +374,8 @@ namespace Ecsact.UnitySync {
 			}
 		}
 
-		public static IEnumerable<System.Int32> GetInitComponentIds
-			( System.Type type
+		public static IEnumerable<Int32> GetInitComponentIds
+			( Type type
 			)
 		{
 			if(onInitComponentsMap.TryGetValue(type, out var compIds)) {
@@ -385,8 +385,8 @@ namespace Ecsact.UnitySync {
 			}
 		}
 
-		public static IEnumerable<System.Int32> GetRemoveComponentIds
-			( System.Type type
+		public static IEnumerable<Int32> GetRemoveComponentIds
+			( Type type
 			)
 		{
 			if(onInitComponentsMap.TryGetValue(type, out var compIds)) {
@@ -396,8 +396,8 @@ namespace Ecsact.UnitySync {
 			}
 		}
 
-		public static IEnumerable<System.Int32> GetRequiredComponentIds
-			( System.Type type
+		public static IEnumerable<Int32> GetRequiredComponentIds
+			( Type type
 			)
 		{
 			if(requiredComponentsMap.TryGetValue(type, out var compIds)) {
@@ -555,7 +555,7 @@ namespace Ecsact.UnitySync {
 
 
 		private static void AddKnownComponentId
-			( System.Int32 componentId
+			( Int32 componentId
 			)
 		{
 			if(knownComponentIds.Add(componentId)) {

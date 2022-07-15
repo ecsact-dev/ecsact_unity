@@ -2,8 +2,10 @@ using UnityEngine;
 using UnityEditor;
 using UnityEngine.UIElements;
 using UnityEditor.UIElements;
-using System.IO;
+using System.Linq;
 using System.Collections.Generic;
+
+#nullable enable
 
 [System.Serializable]
 class EcsactSettings : ScriptableObject {
@@ -19,7 +21,11 @@ class EcsactSettings : ScriptableObject {
 	/// will be downloaded and used instead.</summary>
 	public string csharpCodegenPluginPath = "";
 
-	internal static EcsactSettings GetOrCreateSettings() {
+	public string runtimeBuilderOutputPath = "Assets/Plugins/EcsactRuntime.dll";
+
+	public string runtimeBuilderCompilerPath = "";
+
+	public static EcsactSettings GetOrCreateSettings() {
 		var settings = AssetDatabase.LoadAssetAtPath<EcsactSettings>(assetPath);
 		if(settings == null) {
 			settings = ScriptableObject.CreateInstance<EcsactSettings>();
@@ -35,11 +41,55 @@ class EcsactSettings : ScriptableObject {
 	}
 }
 
+[System.Serializable]
+class EcsactMethodUIBindings : ScriptableObject {
+	public string methodName = "";
+	public bool methodLoaded = false;
+}
+
 static class EcsactSettingsUIElementsRegister {
+
+	internal static void SetupMethodsUI
+		( TemplateContainer    ui
+		, string               moduleName
+		, IEnumerable<string>  methods
+		, IEnumerable<string>  availableMethods
+		)
+	{
+		var coreMethodTemplate = ui.Q<TemplateContainer>(
+			$"{moduleName}-method-template"
+		);
+
+		foreach(var method in methods) {
+			var clone = coreMethodTemplate.templateSource.CloneTree();
+			var bindings =
+				ScriptableObject.CreateInstance<EcsactMethodUIBindings>();
+			bindings.methodName = method;
+			bindings.methodLoaded = availableMethods.Contains(method);
+			BindingExtensions.Bind(clone, new SerializedObject(bindings));
+
+			if(bindings.methodLoaded) {
+				var missingIcon = clone.Q<VisualElement>("method-missing-icon");
+				missingIcon.style.display = DisplayStyle.None;
+			} else {
+				var availableIcon = clone.Q<VisualElement>("method-available-icon");
+				availableIcon.style.display = DisplayStyle.None;
+			}
+
+			coreMethodTemplate.contentContainer.parent.Add(clone);
+		}
+
+		coreMethodTemplate.contentContainer.style.display = DisplayStyle.None;
+	}
+
 	[SettingsProvider]
 	public static SettingsProvider CreateEcsactSettingsProvider() {
+		EcsactRuntime? testDefaultRuntime = null;
+		Editor? runtimeSettingsEditor = null;
+		Editor? wasmRuntimeSettingsEditor = null;
+
 		return new SettingsProvider(EcsactSettings.path, EcsactSettings.scope) {
-			label = "ECSACT",
+			label = "Ecsact",
 			activateHandler = (searchContext, rootElement) => {
 				var settings = EcsactSettings.GetSerializedSettings();
 				var template = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(
@@ -48,10 +98,98 @@ static class EcsactSettingsUIElementsRegister {
 				var ui = template.Instantiate();
 				BindingExtensions.Bind(ui, settings);
 				rootElement.Add(ui);
+
+				if(testDefaultRuntime != null) {
+					EcsactRuntime.Free(testDefaultRuntime);
+					testDefaultRuntime = null;
+				}
+
+				var runtimeSettings = EcsactRuntimeSettings.Get();
+				testDefaultRuntime = EcsactRuntime.Load(
+					runtimeSettings.runtimeLibraryPaths
+				);
+
+				SetupMethodsUI(
+					ui,
+					"async",
+					EcsactRuntime.Async.methods,
+					testDefaultRuntime.async.availableMethods
+				);
+
+				SetupMethodsUI(
+					ui,
+					"core",
+					EcsactRuntime.Core.methods,
+					testDefaultRuntime.core.availableMethods
+				);
+
+				SetupMethodsUI(
+					ui,
+					"dynamic",
+					EcsactRuntime.Dynamic.methods,
+					testDefaultRuntime.dynamic.availableMethods
+				);
+
+				SetupMethodsUI(
+					ui,
+					"meta",
+					EcsactRuntime.Meta.methods,
+					testDefaultRuntime.meta.availableMethods
+				);
+
+				SetupMethodsUI(
+					ui,
+					"serialize",
+					EcsactRuntime.Serialize.methods,
+					testDefaultRuntime.serialize.availableMethods
+				);
+
+				SetupMethodsUI(
+					ui,
+					"static",
+					EcsactRuntime.Static.methods,
+					testDefaultRuntime.@static.availableMethods
+				);
+
+				SetupMethodsUI(
+					ui,
+					"wasm",
+					EcsactRuntime.Wasm.methods,
+					testDefaultRuntime.wasm.availableMethods
+				);
+
+				var runtimeSettingsContainer =
+					ui.Q<IMGUIContainer>("runtime-settings-container");
+
+				runtimeSettingsEditor = Editor.CreateEditor(runtimeSettings);
+
+				runtimeSettingsContainer.onGUIHandler = () => {
+					runtimeSettingsEditor.OnInspectorGUI();
+				};
+
+				var wasmRuntimeSettings = EcsactWasmRuntimeSettings.Get();
+				var wasmRuntimeSettingsContainer =
+					ui.Q<IMGUIContainer>("wasm-runtime-settings-container");
+
+				wasmRuntimeSettingsEditor = Editor.CreateEditor(wasmRuntimeSettings);
+
+				wasmRuntimeSettingsContainer.onGUIHandler = () => {
+					wasmRuntimeSettingsEditor.OnInspectorGUI();
+				};
+			},
+			deactivateHandler = () => {
+				if(testDefaultRuntime != null) {
+					EcsactRuntime.Free(testDefaultRuntime);
+					testDefaultRuntime = null;
+				}
+
+				if(runtimeSettingsEditor != null) {
+					Editor.DestroyImmediate(runtimeSettingsEditor);
+					runtimeSettingsEditor = null;
+				}
 			},
 			keywords = new HashSet<string>(new[] {
-				"ECSACT",
-				"ECSACT",
+				"Ecsact",
 				"ECS",
 				"ECS Plugin",
 				"Plugin",

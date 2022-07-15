@@ -14,12 +14,12 @@ namespace Ecsact.UnitySync {
 	public class EntityGameObjectPool : ScriptableObject {
 		public abstract class EntitySource {
 			public abstract object GetComponent
-				( System.Int32 entityId
-				, System.Int32 componentId
+				( Int32 entityId
+				, Int32 componentId
 				);
 			public abstract bool HasComponent
-				( System.Int32 entityId
-				, System.Int32 componentId
+				( Int32 entityId
+				, Int32 componentId
 				);
 		}
 
@@ -58,7 +58,7 @@ namespace Ecsact.UnitySync {
 			get => _targetScene;
 			set {
 				if(_rootGameObject != null) {
-					throw new System.ArgumentException(
+					throw new ArgumentException(
 						"EntityGameObjectPool.targetScene may not be set if " +
 						"EntityGameObjectPool.rootGameObject is set."
 					);
@@ -80,7 +80,7 @@ namespace Ecsact.UnitySync {
 			get => _rootGameObject;
 			set {
 				if(_targetScene != null) {
-					throw new System.ArgumentException(
+					throw new ArgumentException(
 						"EntityGameObjectPool.rootGameObject may not be set if " +
 						"EntityGameObjectPool.targetScene is set."
 					);
@@ -112,7 +112,7 @@ namespace Ecsact.UnitySync {
 		}
 
 		public GameObject? GetEntityGameObject
-			( System.Int32 entityId
+			( Int32 entityId
 			)
 		{
 			if(entityGameObjects.Count > entityId) {
@@ -135,8 +135,8 @@ namespace Ecsact.UnitySync {
 		}
 
 		public void InitComponent<T>
-			( System.Int32  entityId
-			, in T          component
+			( Int32  entityId
+			, in T   component
 			) where T : Ecsact.Component
 		{
 			InitComponent(
@@ -147,9 +147,9 @@ namespace Ecsact.UnitySync {
 		}
 
 		public void InitComponent
-			( System.Int32  entityId
-			, System.Int32  componentId
-			, in object     component
+			( Int32      entityId
+			, Int32      componentId
+			, in object  component
 			)
 		{
 			EnsureEntityLists(entityId);
@@ -216,8 +216,8 @@ namespace Ecsact.UnitySync {
 		}
 
 		public void UpdateComponent<T>
-			( System.Int32  entityId
-			, in T          component
+			( Int32  entityId
+			, in T   component
 			) where T : Ecsact.Component
 		{
 			UpdateComponent(
@@ -228,9 +228,9 @@ namespace Ecsact.UnitySync {
 		}
 
 		public void UpdateComponent
-			( System.Int32  entityId
-			, System.Int32  componentId
-			, in object     component
+			( Int32      entityId
+			, Int32      componentId
+			, in object  component
 			)
 		{
 			var gameObject = GetEntityGameObject(entityId);
@@ -244,8 +244,8 @@ namespace Ecsact.UnitySync {
 		}
 
 		public void RemoveComponent<T>
-			( System.Int32  entityId
-			, in T          component
+			( Int32  entityId
+			, in T   component
 			) where T : Ecsact.Component
 		{
 			var compObj = (object)component;
@@ -257,9 +257,9 @@ namespace Ecsact.UnitySync {
 		}
 
 		public void RemoveComponent
-			( System.Int32  entityId
-			, System.Int32  componentId
-			, in object      component
+			( Int32      entityId
+			, Int32      componentId
+			, in object  component
 			)
 		{
 			if(entityGameObjects[entityId] != null) {
@@ -333,7 +333,7 @@ namespace Ecsact.UnitySync {
 		}
 
 		private GameObject EnsureEntityGameObject
-			( System.Int32 entityId
+			( Int32 entityId
 			)
 		{
 			GameObject? gameObject = entityGameObjects[entityId];
@@ -351,7 +351,7 @@ namespace Ecsact.UnitySync {
 		}
 
 		private void EnsureEntityLists
-			( System.Int32 entityId
+			( Int32 entityId
 			)
 		{
 			var capacity = Math.Max(entityId + 1, entityComponentIds.Count);

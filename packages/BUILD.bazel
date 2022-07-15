@@ -1,16 +1,23 @@
-load("@bzlws//:index.bzl", "bzlws_copy")
+load("@bzlws//:index.bzl", "bzlws_copy", "bzlws_extract")
 
 package(default_visibility = ["//visibility:public"])
 
-bzlws_copy(
+# bzlws_copy(
+#     name = "copy_for_dev",
+#     testonly = True,
+#     srcs = ["//packages/com.seaube.ecsact:generators"],
+#     out = "packages/com.seaube.ecsact/generators~.tar",
+#     force = True,
+#     metafile_path = "generators~/.copy_for_dev.yml",
+#     visibility = ["//visibility:private"],
+# )
+
+bzlws_extract(
     name = "copy_for_dev",
-    visibility = ["//visibility:private"],
     testonly = True,
+    srcs = ["//packages/com.seaube.ecsact:generators"],
+    out = "packages/com.seaube.ecsact/generators~",
     force = True,
-    out = "packages/com.seaube.ecsact/generators~/{FILENAME}",
     metafile_path = "generators~/.copy_for_dev.yml",
-    srcs = [
-        "@ecsact//generator/csharp:cli",
-        "@ecsact//generator/parser_info:cli",
-    ],
+    visibility = ["//visibility:private"],
 )
