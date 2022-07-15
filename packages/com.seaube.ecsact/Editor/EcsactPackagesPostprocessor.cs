@@ -87,7 +87,7 @@ public class EcsactPackagesPostprocessor : AssetPostprocessor {
 		)
 	{
 		string csharpCodegenExecutable = Path.GetFullPath(
-			"Packages/com.seaube.ecsact/generators~/ecsact_csharp_codegen.exe"
+			"Packages/com.seaube.ecsact/generators/ecsact_csharp_codegen.exe"
 		);
 
 		var progressId = Progress.Start(
