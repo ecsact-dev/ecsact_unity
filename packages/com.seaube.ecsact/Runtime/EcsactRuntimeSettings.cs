@@ -10,13 +10,19 @@ using UnityEditor;
 
 [System.Serializable]
 public class EcsactRuntimeDefaultRegistry {
+	public enum RunnerType {
+		None,
+		Update,
+		FixedUpdate,
+	}
+
 	[Tooltip("Name given to registry. For display and debug purposes only")]
 	public string registryName = "";
 	[Tooltip(
-		"Create game object at startup with the Ecsact.DefaultRunner script for " +
-		"this registry."
+		"Create game object at startup with the Ecsact.DefaultRunner or " +
+		"Ecsact.DefaultFixedRunner script for this registry."
 	)]
-	public bool useDefaultRunner = true;
+	public RunnerType runner;
 	public EcsactRuntime.ExecutionOptions executionOptions;
 	public Int32 registryId { get; internal set; } = -1;
 }
