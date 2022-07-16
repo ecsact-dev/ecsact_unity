@@ -7,7 +7,7 @@ using System.Runtime.CompilerServices;
 
 namespace Ecsact {
 	[AddComponentMenu("")]
-	public class DefaultRunner : MonoBehaviour {
+	public class DefaultFixedRunner : MonoBehaviour {
 		private EcsactRuntime? runtimeInstance = null;
 
 		private EcsactRuntimeDefaultRegistry? defReg;
@@ -26,17 +26,17 @@ namespace Ecsact {
 			var settings = EcsactRuntimeSettings.Get();
 
 			foreach(var defReg in settings.defaultRegistries) {
-				if(defReg.runner != EcsactRuntimeDefaultRegistry.RunnerType.Update) {
+				if(defReg.runner != EcsactRuntimeDefaultRegistry.RunnerType.FixedUpdate) {
 					continue;
 				}
 
-				var gameObjectName = $"Ecsact Default Runner";
+				var gameObjectName = $"Ecsact Default Fixed Runner";
 				if(!string.IsNullOrWhiteSpace(defReg.registryName)) {
 					gameObjectName += " - " + defReg.registryName;
 				}
 
 				var gameObject = new GameObject(gameObjectName);
-				var runner = gameObject.AddComponent<DefaultRunner>();
+				var runner = gameObject.AddComponent<DefaultFixedRunner>();
 				runner.defReg = defReg;
 				DontDestroyOnLoad(gameObject);
 			}
@@ -50,7 +50,7 @@ namespace Ecsact {
 			gameObject.name += $" ({defReg!.registryId})";
 		}
 
-		void Update() {
+		void FixedUpdate() {
 			if(defReg == null) return;
 			UnityEngine.Debug.Assert(defReg.registryId != -1);
 
