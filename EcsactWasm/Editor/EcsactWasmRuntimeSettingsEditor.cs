@@ -3,11 +3,22 @@ using UnityEditor;
 using UnityEngine;
 using System.Linq;
 using System.Collections.Generic;
+using Ecsact.Editor.Internal;
 
 #nullable enable
 
+#if HAS_UNITY_WASM_PACKAGE
+
+[InitializeOnLoad]
 [CustomEditor(typeof(EcsactWasmRuntimeSettings))]
 public class EcsactWasmRuntimeSettingsEditor : Editor {
+
+	static EcsactWasmRuntimeSettingsEditor() {
+		EcsactWasmEditorInternalUtil.GetEcsactWasmRuntimeSettingsEditor = () => {
+			var wasmRuntimeSettings = EcsactWasmRuntimeSettings.Get();
+			return Editor.CreateEditor(wasmRuntimeSettings);
+		};
+	}
 
 	private List<Type>? systemLikeTypes;
 	private Dictionary<Int32, WasmInfo?> wasmInfos = new();
@@ -110,3 +121,41 @@ public class EcsactWasmRuntimeSettingsEditor : Editor {
 		return !allWasmInfoLoaded;
 	}
 }
+
+#else
+
+[InitializeOnLoad]
+public class EcsactWasmRuntimeSettingsEditor : Editor {
+	static EcsactWasmRuntimeSettingsEditor() {
+		EcsactWasmEditorInternalUtil.GetEcsactWasmRuntimeSettingsEditor = () => {
+			return ScriptableObject.CreateInstance<EcsactWasmRuntimeSettingsEditor>();
+		};
+	}
+
+	private static UnityEditor.PackageManager.Requests.AddRequest? addRequest;
+
+	public override void OnInspectorGUI() {
+		var packageUrl = "https://github.com/seaube/unity-wasm.git";
+		EditorGUILayout.Space();
+		EditorGUILayout.HelpBox(
+			"The Unity Wasm package must be installed to use Wasm with Ecsact. " +
+			$"It can be found here on github {packageUrl} or you can add it by " +
+			"clicking the button below.",
+			MessageType.Info,
+			true
+		);
+
+		EditorGUI.BeginDisabledGroup(addRequest != null);
+		if(addRequest != null && addRequest.IsCompleted) {
+			addRequest = null;
+		}
+
+		if(EditorGUILayout.LinkButton("Add 'Unity Wasm' Package")) {
+			addRequest = UnityEditor.PackageManager.Client.Add(packageUrl);
+		}
+
+		EditorGUI.EndDisabledGroup();
+	}
+}
+
+#endif // HAS_UNITY_WASM_PACKAGE

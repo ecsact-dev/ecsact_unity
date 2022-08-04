@@ -1,9 +1,9 @@
 {
-    "name": "Ecsact",
+    "name": "EcsactWasmRuntime",
     "rootNamespace": "",
     "references": [
-        "GUID:21b0c8d1703a94250bfac916590cea4f",
-        "GUID:ea715009a4efd4c6cbc85be3ae097dd3"
+        "GUID:7faa839a710e565409361b9f0c62a4da",
+        "GUID:6e7029456009ab94da19a8f93d5e3523"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
