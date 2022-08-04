@@ -8,6 +8,7 @@
     "name" : "Seaube"
   },
   "dependencies": {
+    "com.seaube.unity-wasm": "https://github.com/seaube/unity-wasm.git",
     "com.unity.editorcoroutines": "1.0.0",
     "com.unity.visualscripting": "1.7.8"
   },
