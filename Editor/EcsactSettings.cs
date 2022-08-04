@@ -4,6 +4,7 @@ using UnityEngine.UIElements;
 using UnityEditor.UIElements;
 using System.Linq;
 using System.Collections.Generic;
+using Ecsact.Editor.Internal;
 
 #nullable enable
 
@@ -167,12 +168,10 @@ static class EcsactSettingsUIElementsRegister {
 					runtimeSettingsEditor.OnInspectorGUI();
 				};
 
-				var wasmRuntimeSettings = EcsactWasmRuntimeSettings.Get();
 				var wasmRuntimeSettingsContainer =
 					ui.Q<IMGUIContainer>("wasm-runtime-settings-container");
-
-				wasmRuntimeSettingsEditor = Editor.CreateEditor(wasmRuntimeSettings);
-
+				wasmRuntimeSettingsEditor =
+					EcsactWasmEditorInternalUtil.GetEcsactWasmRuntimeSettingsEditor();
 				wasmRuntimeSettingsContainer.onGUIHandler = () => {
 					wasmRuntimeSettingsEditor.OnInspectorGUI();
 				};

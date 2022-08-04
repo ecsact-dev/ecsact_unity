@@ -1,6 +1,8 @@
 using System;
 using UnityEngine;
 
+#if HAS_UNITY_WASM_PACKAGE
+
 namespace Ecsact {
 	public static class EcsactWasmRuntimeLoader {
 		[RuntimeInitializeOnLoadMethod]
@@ -34,3 +36,5 @@ namespace Ecsact {
 		}
 	}
 }
+
+#endif // HAS_UNITY_WASM_PACKAGE

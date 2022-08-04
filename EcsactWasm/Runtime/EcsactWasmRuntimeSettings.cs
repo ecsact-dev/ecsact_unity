@@ -8,6 +8,8 @@ using UnityEditor;
 
 #nullable enable
 
+#if HAS_UNITY_WASM_PACKAGE
+
 [System.Serializable]
 public class EcsactWasmRuntimeSettings : ScriptableObject {
 	[System.Serializable]
@@ -51,3 +53,5 @@ public class EcsactWasmRuntimeSettings : ScriptableObject {
 		return _instance;
 	}
 }
+
+#endif // HAS_UNITY_WASM_PACKAGE
