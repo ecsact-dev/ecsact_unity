@@ -4,6 +4,7 @@ using UnityEditor.AssetImporters;
 using System.IO;
 using System.Diagnostics;
 using System.Collections.Generic;
+using Ecsact.Editor;
 
 [System.Serializable]
 class PkgInfoJson {
@@ -15,9 +16,8 @@ class PkgInfoJson {
 [ScriptedImporter(version: 1, ext: "ecsact")]
 public class EcsactImporter : ScriptedImporter {
 	public override void OnImportAsset(AssetImportContext ctx) {
-		string codegenExecutable = Path.GetFullPath(
-			"Packages/com.seaube.ecsact/generators~/ecsact_parser_info_codegen.exe"
-		);
+		string codegenExecutable =
+			EcsactSdk.FindExecutable("ecsact_parser_info_codegen");
 
 		Process codegen = new Process();
 		codegen.StartInfo.FileName = codegenExecutable;
@@ -34,13 +34,13 @@ public class EcsactImporter : ScriptedImporter {
 
 		codegen.ErrorDataReceived += (_, ev) => {
 			if(ev.Data != null) {
-				errMessage += ev.Data;
+				errMessage += ev.Data + "\n";
 			}
 		};
 
 		codegen.OutputDataReceived  += (_, ev) => {
 			if(ev.Data != null) {
-				pkgJsonStr += ev.Data;
+				pkgJsonStr += ev.Data + "\n";
 			}
 		};
 		
@@ -61,7 +61,7 @@ public class EcsactImporter : ScriptedImporter {
 		}
 
 		if(codegen.ExitCode != 0) {
-			ctx.LogImportError(codegen.StandardError.ReadToEnd());
+			ctx.LogImportError(errMessage);
 			return;
 		}
 

@@ -3,6 +3,7 @@ using UnityEngine;
 using System.IO;
 using System.Diagnostics;
 using System.Collections.Generic;
+using Ecsact.Editor;
 
 public static class EcsactRuntimeBuilder {
 
@@ -29,9 +30,8 @@ public static class EcsactRuntimeBuilder {
 			return;
 		}
 
-		string runtimeBuilderExecutablePath = Path.GetFullPath(
-			"Packages/com.seaube.ecsact/generators~/ecsact-rtb.exe"
-		);
+		string runtimeBuilderExecutablePath =
+			EcsactSdk.FindExecutable("ecsact-rtb");
 
 		var progressId = Progress.Start("Ecsact Runtime Builder");
 

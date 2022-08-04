@@ -4,6 +4,7 @@ using System.IO;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.Linq;
+using Ecsact.Editor;
 
 public class EcsactPackagesPostprocessor : AssetPostprocessor {
 
@@ -86,9 +87,8 @@ public class EcsactPackagesPostprocessor : AssetPostprocessor {
 		, List<MovedPkg>  movedPkgs
 		)
 	{
-		string csharpCodegenExecutable = Path.GetFullPath(
-			"Packages/com.seaube.ecsact/generators~/ecsact_csharp_codegen.exe"
-		);
+		string csharpCodegenExecutable =
+			EcsactSdk.FindExecutable("ecsact_csharp_codegen");
 
 		var progressId = Progress.Start(
 			"Ecsact Codegen",
