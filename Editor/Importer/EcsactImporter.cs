@@ -24,7 +24,10 @@ public class EcsactImporter : ScriptedImporter {
 		codegen.StartInfo.CreateNoWindow = true;
 		codegen.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
 		codegen.EnableRaisingEvents = true;
-		codegen.StartInfo.Arguments = ctx.assetPath + " --ignore_unknown_imports";
+		codegen.StartInfo.Arguments =
+			ctx.assetPath + 
+			" --ignore_unknown_imports" +
+			" --stdout";
 		codegen.StartInfo.RedirectStandardError = true;
 		codegen.StartInfo.RedirectStandardOutput = true;
 		codegen.StartInfo.UseShellExecute = false;
