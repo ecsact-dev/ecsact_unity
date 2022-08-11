@@ -1142,6 +1142,156 @@ public class EcsactRuntime {
 			( IntPtr context
 			);
 		internal ecsact_system_execution_context_id_delegate? ecsact_system_execution_context_id;
+
+		public void SetSystemExecutionImpl
+			( Int32                systemId
+			, SystemExecutionImpl  executionImpl
+			)
+		{
+			if(ecsact_set_system_execution_impl == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_set_system_execution_impl");
+			}
+
+			ecsact_set_system_execution_impl(systemId, executionImpl);
+		}
+		
+		public void SystemExecutionContextAction
+			( IntPtr  context
+			, IntPtr  outActionData
+			)
+		{
+			if(ecsact_system_execution_context_action == null) {
+				throw new EcsactRuntimeMissingMethod(
+					"ecsact_system_execution_context_action"
+				);
+			}
+
+			ecsact_system_execution_context_action(context, outActionData);
+		}
+
+		public void SystemExecutionContextAdd
+			( IntPtr  context
+			, Int32   componentId
+			, object  componentData
+			)
+		{
+			if(ecsact_system_execution_context_add == null) {
+				throw new EcsactRuntimeMissingMethod(
+					"ecsact_system_execution_context_add"
+				);
+			}
+
+			ecsact_system_execution_context_add(context, componentId, componentData);
+		}
+
+		public void SystemExecutionContextGenerate
+			( IntPtr    context
+			, Int32     componentCount
+			, Int32[]   componentIds
+			, object[]  componentsData
+			)
+		{
+			if(ecsact_system_execution_context_generate == null) {
+				throw new EcsactRuntimeMissingMethod(
+					"ecsact_system_execution_context_generate"
+				);
+			}
+
+			ecsact_system_execution_context_generate(
+				context,
+				componentCount,
+				componentIds,
+				componentsData
+			);
+		}
+
+		public void SystemExecutionContextGet
+			( IntPtr      context
+			, Int32       componentId
+			, out object  outComponentData
+			)
+		{
+			if(ecsact_system_execution_context_get == null) {
+				throw new EcsactRuntimeMissingMethod(
+					"ecsact_system_execution_context_get"
+				);
+			}
+
+			ecsact_system_execution_context_get(
+				context,
+				componentId,
+				out outComponentData
+			);
+		}
+
+		public void SystemExecutionContextHas
+			( IntPtr  context
+			, Int32   componentId
+			)
+		{
+			if(ecsact_system_execution_context_has == null) {
+				throw new EcsactRuntimeMissingMethod(
+					"ecsact_system_execution_context_has"
+				);
+			}
+
+			ecsact_system_execution_context_has(context, componentId);
+		}
+
+		public void SystemExecutionContextID
+			( IntPtr context
+			)
+		{
+			if(ecsact_system_execution_context_id == null) {
+				throw new EcsactRuntimeMissingMethod(
+					"ecsact_system_execution_context_id"
+				);
+			}
+
+			ecsact_system_execution_context_id(context);
+		}
+
+		public void SystemExecutionContextParent
+			( IntPtr context
+			)
+		{
+			if(ecsact_system_execution_context_parent == null) {
+				throw new EcsactRuntimeMissingMethod(
+					"ecsact_system_execution_context_parent"
+				);
+			}
+
+			ecsact_system_execution_context_parent(context);
+		}
+
+		public void SystemExecutionContextRemove
+			( IntPtr  context
+			, Int32   componentId
+			)
+		{
+			if(ecsact_system_execution_context_remove == null) {
+				throw new EcsactRuntimeMissingMethod(
+					"ecsact_system_execution_context_remove"
+				);
+			}
+
+			ecsact_system_execution_context_remove(context, componentId);
+		}
+
+		public void SystemExecutionContextSame
+			( IntPtr  firstContext
+			, IntPtr  secondContext
+			)
+		{
+			if(ecsact_system_execution_context_same == null) {
+				throw new EcsactRuntimeMissingMethod(
+					"ecsact_system_execution_context_remove"
+				);
+			}
+
+			ecsact_system_execution_context_same(firstContext, secondContext);
+		}
+	
 	}
 
 	public class Meta {
@@ -1256,6 +1406,80 @@ public class EcsactRuntime {
 			, out object  outComponentData
 			);
 		internal ecsact_deserialize_component_delegate? ecsact_deserialize_component;
+
+		public void DeserializeAction
+			( Int32   actionId
+			, IntPtr  inBytes
+			, IntPtr  outActionData
+			)
+		{
+			if(ecsact_deserialize_action == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_deserialize_action");
+			}
+
+			ecsact_deserialize_action(actionId, inBytes, outActionData);
+		}
+
+		public void DeserializeComponent
+			( Int32       componentId
+			, IntPtr      inBytes
+			, out object  outComponentData
+			)
+		{
+			if(ecsact_deserialize_component == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_deserialize_component");
+			}
+
+			ecsact_deserialize_component(componentId, inBytes, out outComponentData);
+		}
+
+		public void SerializeActionSize
+			( Int32 actionId
+			)
+		{
+			if(ecsact_serialize_action_size == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_serialize_action_size");
+			}
+
+			ecsact_serialize_action_size(actionId);
+		}
+
+		public void SerializeAction
+			( Int32   actionId
+			, IntPtr  actionData
+			, IntPtr  outBytes
+			)
+		{
+			if(ecsact_serialize_action == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_serialize_action");
+			}
+
+			ecsact_serialize_action(actionId, actionData, outBytes);
+		}
+
+		public void SerializeComponentSize
+			( Int32 componentId
+			)
+		{
+			if(ecsact_serialize_component_size == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_serialize_component_size");
+			}
+
+			ecsact_serialize_component_size(componentId);
+		}
+
+		public void SerializeComponent
+			( Int32   componentId
+			, object  inComponentData
+			, IntPtr  outBytes
+			)
+		{
+			if(ecsact_serialize_component == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_serialize_component");
+			}
+
+			ecsact_serialize_component(componentId, inComponentData, outBytes);
+		}
 	}
 
 	public class Static {
