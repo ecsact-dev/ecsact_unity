@@ -340,7 +340,7 @@ public class EcsactRuntime {
 			);
 		}
 	
-		bool Has<C>() where C : Ecsact.Component {
+		public bool Has<C>() where C : Ecsact.Component {
 			var rt = CurrentSystemExecutionState.runtime;
 			if(rt.dynamic.ecsact_system_execution_context_has == null) {
 				throw new EcsactRuntimeMissingMethod(
@@ -367,7 +367,7 @@ public class EcsactRuntime {
 			return rt.dynamic.ecsact_system_execution_context_id(contextPtr);
 		}
 
-		IntPtr Parent() {
+		public SystemExecutionContext Parent() {
 			var rt = CurrentSystemExecutionState.runtime;
 			if(rt.dynamic.ecsact_system_execution_context_parent == null) {
 				throw new EcsactRuntimeMissingMethod(
@@ -375,23 +375,29 @@ public class EcsactRuntime {
 				);
 			}
 
-			return rt.dynamic.ecsact_system_execution_context_parent(contextPtr);
+			var parentPtr = rt.dynamic.ecsact_system_execution_context_parent(
+				contextPtr
+			);
+
+			var context = new SystemExecutionContext(parentPtr);
+
+			return context;
 		}
 
-		bool Same
-			( IntPtr ctxToCompare
+		public bool Same
+			( SystemExecutionContext ctxToCompare
 			)
 		{
 			var rt = CurrentSystemExecutionState.runtime;
 			if(rt.dynamic.ecsact_system_execution_context_same == null) {
 				throw new EcsactRuntimeMissingMethod(
-					"ecsact_system_execution_context_remove"
+					"ecsact_system_execution_context_same"
 				);
 			}
 
 			return rt.dynamic.ecsact_system_execution_context_same(
 				contextPtr,
-				ctxToCompare
+				ctxToCompare.contextPtr
 			);
 		}
 
