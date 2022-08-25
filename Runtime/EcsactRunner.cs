@@ -13,8 +13,7 @@ namespace Ecsact {
 		protected EcsactRuntime? runtimeInstance = null;
 
 		protected EcsactRuntimeDefaultRegistry? defReg;
-		protected List<EcsactRuntime.EcsactAction> actionList = 
-			new List<EcsactRuntime.EcsactAction>();
+		protected List<EcsactRuntime.EcsactAction> actionList = new();
 		public Int32 registryId => defReg?.registryId ?? -1;
 
 #if UNITY_EDITOR
@@ -94,6 +93,34 @@ namespace Ecsact {
 				Marshal.FreeHGlobal(ecsAction.actionData);
 			}
 			actionList.Clear();
+		}
+
+		protected void Execute() {
+			if(defReg == null) return;
+			UnityEngine.Debug.Assert(defReg.registryId != -1);
+
+#if UNITY_EDITOR
+			var executionTimeWatch = Stopwatch.StartNew();
+#endif
+
+			AddActionsToReg();
+			try {
+				runtimeInstance!.core.ExecuteSystems(
+					registryId: defReg.registryId,
+					executionCount: 1,
+					new EcsactRuntime.ExecutionOptions[]{defReg.executionOptions}
+				);
+			} finally {
+				FreeActions();
+			}
+
+#if UNITY_EDITOR
+			executionTimeWatch.Stop();
+			debugExecutionTimeMs = (int)executionTimeWatch.ElapsedMilliseconds;
+			debugExecutionCountTotal += 1;
+#endif
+
+			defReg.executionOptions = new EcsactRuntime.ExecutionOptions();
 		}
 
 		void Awake() {
