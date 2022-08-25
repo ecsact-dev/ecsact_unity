@@ -5,6 +5,10 @@ using System.Runtime.InteropServices;
 
 #nullable enable
 
+class CurrentSystemExecutionState {
+	public static EcsactRuntime runtime;
+}
+
 namespace Ecsact {
 	public enum AsyncError : Int32 {
 		ConnectionClosed,
@@ -114,21 +118,26 @@ public class EcsactRuntime {
 		, IntPtr       callbackUserData
 		);
 
+	public struct EcsactAction {
+		public Int32 actionId;
+		public IntPtr actionData;
+	}
+
 	public struct ExecutionOptions {
 		public Int32 addComponentsLength;
 		public Int32[] addComponentsEntities;
-		public object[] addComponents;
+		public IntPtr[] addComponents;
 
 		public Int32 updateComponentsLength;
 		public Int32[] updateComponentsEntities;
-		public object[] updateComponents;
+		public IntPtr[] updateComponents;
 
 		public Int32 removeComponentsLength;
 		public Int32[] removeComponentsEntities;
 		public Int32[] removeComponents;
 
 		public Int32 actionsLength;
-		public object[] actions;
+		public EcsactAction[] actions;
 	};
 
 	public struct ExecutionEventsCollector {
@@ -188,7 +197,7 @@ public class EcsactRuntime {
 		public Int32 capabilitiesCount;
 		public Int32[] capabilityComponents;
 		public SystemCapability[] capabilities;
-		public SystemExecutionImpl executionImpl;
+		public CSystemExecutionImpl executionImpl;
 	}
 
 	public struct StaticActionInfo {
@@ -202,7 +211,7 @@ public class EcsactRuntime {
 		public Int32 capabilitiesCount;
 		public Int32[] capabilityComponents;
 		public SystemCapability[] capabilities;
-		public SystemExecutionImpl executionImpl;
+		public CSystemExecutionImpl executionImpl;
 	}
 
 	public delegate void StaticReloadCallback
@@ -227,8 +236,227 @@ public class EcsactRuntime {
 		Optional = 2,
 	}
 
-	public delegate void SystemExecutionImpl
+	public struct SystemExecutionContext {
+		public SystemExecutionContext
+			( IntPtr context
+			)
+		{
+			contextPtr = context;
+		}
+
+		public C Get<C>() where C : Ecsact.Component, new() {
+			var rt = CurrentSystemExecutionState.runtime;
+			if(rt.dynamic.ecsact_system_execution_context_get == null) {
+				throw new EcsactRuntimeMissingMethod(
+					"ecsact_system_execution_context_get"
+				);
+			}
+
+			var componentID = Ecsact.Util.GetComponentID<C>();
+			object componentData = new C();
+
+			GCHandle handle = GCHandle.Alloc(componentData, GCHandleType.Pinned);
+			IntPtr componentPtr = handle.AddrOfPinnedObject();
+			try {
+				rt.dynamic.ecsact_system_execution_context_get(
+					contextPtr,
+					componentID,
+					componentPtr
+				);
+			} finally {
+				handle.Free();
+			}
+
+			var componentObject =
+					Ecsact.Util.PtrToComponent(componentPtr, componentID);
+			var component = (C)componentObject;
+
+			return component;
+		}
+
+		public void Add<C>
+			( C component
+			) where C : Ecsact.Component
+		{
+			var rt = CurrentSystemExecutionState.runtime;
+			if(rt.dynamic.ecsact_system_execution_context_add == null) {
+				throw new EcsactRuntimeMissingMethod(
+					"ecsact_system_execution_context_add"
+				);
+			}
+
+			var componentId = Ecsact.Util.GetComponentID<C>();
+			var componentPtr = Marshal.AllocHGlobal(Marshal.SizeOf(component));
+
+			try {
+				Marshal.StructureToPtr(component, componentPtr, false);
+				rt.dynamic.ecsact_system_execution_context_add(
+					contextPtr,
+					componentId,
+					componentPtr
+				);
+			} finally {
+				Marshal.FreeHGlobal(componentPtr);
+			}
+		}
+
+		public void Remove<C>() where C : Ecsact.Component {
+			var rt = CurrentSystemExecutionState.runtime;
+			if(rt.dynamic.ecsact_system_execution_context_remove == null) {
+				throw new EcsactRuntimeMissingMethod(
+					"ecsact_system_execution_context_remove"
+				);
+			}
+
+			var componentId = Ecsact.Util.GetComponentID<C>();
+
+			rt.dynamic.ecsact_system_execution_context_remove(
+				contextPtr,
+				componentId
+			);
+		}
+
+		void Generate
+			( Dictionary<Int32, object> components
+			) 
+		{
+			var rt = CurrentSystemExecutionState.runtime;
+			if(rt.dynamic.ecsact_system_execution_context_generate == null) {
+				throw new EcsactRuntimeMissingMethod(
+					"ecsact_system_execution_context_generate"
+				);
+			}
+
+			var componentCount = components.Count;
+
+			Int32[] componentIds = components.Keys.ToArray();
+			object[] componentsData = components.Values.ToArray();
+
+			rt.dynamic.ecsact_system_execution_context_generate(
+				contextPtr,
+				componentCount,
+				componentIds,
+				componentsData
+			);
+		}
+	
+		bool Has<C>() where C : Ecsact.Component {
+			var rt = CurrentSystemExecutionState.runtime;
+			if(rt.dynamic.ecsact_system_execution_context_has == null) {
+				throw new EcsactRuntimeMissingMethod(
+					"ecsact_system_execution_context_has"
+				);
+			}
+
+			var componentID = Ecsact.Util.GetComponentID<C>();
+
+			return rt.dynamic.ecsact_system_execution_context_has(
+				contextPtr,
+				componentID
+			);
+		}
+
+		Int32 ID() {
+			var rt = CurrentSystemExecutionState.runtime;
+			if(rt.dynamic.ecsact_system_execution_context_id == null) {
+				throw new EcsactRuntimeMissingMethod(
+					"ecsact_system_execution_context_id"
+				);
+			}
+
+			return rt.dynamic.ecsact_system_execution_context_id(contextPtr);
+		}
+
+		IntPtr Parent() {
+			var rt = CurrentSystemExecutionState.runtime;
+			if(rt.dynamic.ecsact_system_execution_context_parent == null) {
+				throw new EcsactRuntimeMissingMethod(
+					"ecsact_system_execution_context_parent"
+				);
+			}
+
+			return rt.dynamic.ecsact_system_execution_context_parent(contextPtr);
+		}
+
+		bool Same
+			( IntPtr ctxToCompare
+			)
+		{
+			var rt = CurrentSystemExecutionState.runtime;
+			if(rt.dynamic.ecsact_system_execution_context_same == null) {
+				throw new EcsactRuntimeMissingMethod(
+					"ecsact_system_execution_context_remove"
+				);
+			}
+
+			return rt.dynamic.ecsact_system_execution_context_same(
+				contextPtr,
+				ctxToCompare
+			);
+		}
+
+		public T Action<T>() where T : Ecsact.Action, new() {
+			var rt = CurrentSystemExecutionState.runtime;
+			if(rt.dynamic.ecsact_system_execution_context_action == null) {
+				throw new EcsactRuntimeMissingMethod(
+					"ecsact_system_execution_context_action"
+				);
+			}
+
+			object actionData = new T();
+
+			GCHandle handle = GCHandle.Alloc(actionData, GCHandleType.Pinned);
+			IntPtr actionPtr = handle.AddrOfPinnedObject();
+
+			try {
+				rt.dynamic.ecsact_system_execution_context_action(
+					contextPtr,
+					actionPtr
+				);
+			} finally {
+				handle.Free();
+			}
+
+			Type actionType = typeof(T);
+			var actionObject = Marshal.PtrToStructure(actionPtr, actionType);
+			var action = (T)actionObject;
+			return action;
+		}
+
+		public void Update<C>
+			( C component
+			) where C : Ecsact.Component
+		{
+			var rt = CurrentSystemExecutionState.runtime;
+			if(rt.dynamic.ecsact_system_execution_context_update == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_update_component");
+			}
+
+			var componentId = Ecsact.Util.GetComponentID<C>();
+			var componentPtr = Marshal.AllocHGlobal(Marshal.SizeOf(component));
+
+			try {
+				Marshal.StructureToPtr(component, componentPtr, false);
+				rt.dynamic.ecsact_system_execution_context_update(
+					contextPtr,
+					componentId,
+					componentPtr
+				);
+			} finally {
+				Marshal.FreeHGlobal(componentPtr);
+			}
+		}
+
+		private IntPtr contextPtr;
+
+	}
+
+	public delegate void CSystemExecutionImpl
 		( IntPtr context
+		);
+	
+	public delegate void SystemExecutionImpl
+		( EcsactRuntime.SystemExecutionContext context
 		);
 
 	public delegate Int32 ActionCompareFn
@@ -606,12 +834,15 @@ public class EcsactRuntime {
 			);
 		internal ecsact_count_components_delegate? ecsact_count_components;
 
+		
 		internal delegate void ecsact_get_components_delegate
 			( Int32         registryId
 			, Int32         entityId
 			, Int32         maxComponentsCount
-			, out Int32[]   outComponentIds
-			, out IntPtr[]  outComponentsData
+			, [Out][MarshalAs(UnmanagedType.LPArray, SizeParamIndex=2)]
+				Int32[]   outComponentIds
+			, [Out][MarshalAs(UnmanagedType.LPArray, SizeParamIndex=2)]
+				IntPtr[]  outComponentsData
 			, out Int32     outComponentsCount
 			);
 		internal ecsact_get_components_delegate? ecsact_get_components;
@@ -620,7 +851,7 @@ public class EcsactRuntime {
 			( Int32   registryId
 			, Int32   entityId
 			, Int32   componentId
-			, object  componentData
+			, IntPtr  componentData
 			);
 		internal ecsact_update_component_delegate? ecsact_update_component;
 
@@ -821,17 +1052,41 @@ public class EcsactRuntime {
 			return ecsact_has_component(registryId, entityId, componentId);
 		}
 
-		public IntPtr GetComponent
+		public bool HasComponent<C>
 			( Int32   registryId
 			, Int32   entityId
-			, Int32   componentId
-			)
+			) where C :Ecsact.Component
+		{
+			if(ecsact_has_component == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_has_component");
+			}
+
+			var componentId = Ecsact.Util.GetComponentID<C>();
+
+			return ecsact_has_component(registryId, entityId, componentId);
+		}
+
+		public C GetComponent<C>
+			( Int32  registryId
+			, Int32  entityId
+			) where C : Ecsact.Component
 		{
 			if(ecsact_get_component == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_get_component");
 			}
+			var componentId = Ecsact.Util.GetComponentID<C>();
 
-			return ecsact_get_component(registryId, entityId, componentId);
+			UnityEngine.Debug.Assert(
+				ecsact_has_component(registryId, entityId, componentId),
+				"Entity has no component"	
+			);
+
+			var componentPtr = ecsact_get_component(registryId, entityId, componentId);
+
+			var componentObject = 
+					Ecsact.Util.PtrToComponent(componentPtr, componentId);
+			var component = (C)componentObject;
+			return component;
 		}
 
 		public Int32 CountComponents
@@ -846,27 +1101,42 @@ public class EcsactRuntime {
 			return ecsact_count_components(registryId, entityId);
 		}
 
-		public void GetComponents
-			( Int32         registryId
-			, Int32         entityId
-			, Int32         maxComponentsCount
-			, out Int32[]   outComponentIds
-			, out IntPtr[]  outComponentsData
-			, out Int32     outComponentsCount
+		public Dictionary<Int32, object> GetComponents
+			( Int32  registryId
+			, Int32  entityId
 			)
 		{
 			if(ecsact_get_components == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_get_components");
 			}
+			// @Kelwan: Remove the +1 from count and the for loop below:
+			// Link to issue: https://github.com/seaube/ecsact-entt/issues/9
+			Int32 count = ecsact_count_components(registryId, entityId) + 1;
+
+			Int32[] componentIds = new Int32[count];
+			IntPtr[] componentsData = new IntPtr[count];
+			Int32 componentCount;
 
 			ecsact_get_components(
 				registryId,
 				entityId,
-				maxComponentsCount,
-				out outComponentIds,
-				out outComponentsData,
-				out outComponentsCount
+				count,
+				componentIds,
+				componentsData,
+				out componentCount
 			);
+			
+			Dictionary<Int32, object> componentObjects = 
+				new Dictionary<Int32, object>();
+
+			for(int i = 1; i < componentCount + 1; i++) {
+				componentObjects.Add(
+					componentIds[i],
+					Ecsact.Util.PtrToComponent(componentsData[i], componentIds[i])
+				);
+				UnityEngine.Debug.Log("ID: " + componentIds[i]);
+			}
+			return componentObjects;
 		}
 
 		public void EachComponent
@@ -888,35 +1158,42 @@ public class EcsactRuntime {
 			);
 		}
 
-		public void UpdateComponent
-			( Int32   registryId
-			, Int32   entityId
-			, Int32   componentId
-			, object  componentData
-			)
+		public void UpdateComponent<C>
+			( Int32  registryId
+			, Int32  entityId
+			, C      component
+			) where C : Ecsact.Component
 		{
 			if(ecsact_update_component == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_update_component");
 			}
+			var componentId = Ecsact.Util.GetComponentID<C>();
+			var componentPtr = Marshal.AllocHGlobal(Marshal.SizeOf(component));
 
-			ecsact_update_component(
+			try {
+				Marshal.StructureToPtr(component, componentPtr, false);
+				ecsact_update_component(
 				registryId,
 				entityId,
 				componentId,
-				componentData
+				componentPtr
 			);
+			} finally {
+				Marshal.FreeHGlobal(componentPtr);
+			}
+
 		}
 
-		public void RemoveComponent
+		public void RemoveComponent<C>
 			( Int32  registryId
 			, Int32  entityId
-			, Int32  componentId
-			)
+			) where C : Ecsact.Component
 		{
 			if(ecsact_remove_component == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_remove_component");
 			}
 
+			var componentId = Ecsact.Util.GetComponentID<C>();
 			ecsact_remove_component(registryId, entityId, componentId);
 		}
 
@@ -929,6 +1206,8 @@ public class EcsactRuntime {
 			if(ecsact_execute_systems == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_execute_systems");
 			}
+
+			CurrentSystemExecutionState.runtime = _owner;
 
 			var ownerPinned = GCHandle.Alloc(_owner, GCHandleType.Pinned);
 
@@ -990,7 +1269,7 @@ public class EcsactRuntime {
 		internal delegate void ecsact_system_execution_context_add_delegate
 			( IntPtr  context
 			, Int32   componentId
-			, object  componentData
+			, IntPtr  componentData
 			);
 		internal ecsact_system_execution_context_add_delegate? ecsact_system_execution_context_add;
 
@@ -1001,16 +1280,16 @@ public class EcsactRuntime {
 		internal ecsact_system_execution_context_remove_delegate? ecsact_system_execution_context_remove;
 
 		internal delegate void ecsact_system_execution_context_get_delegate
-			( IntPtr      context
-			, Int32       componentId
-			, out object  outComponentData
+			( IntPtr  context
+			, Int32   componentId
+			, IntPtr  outComponentData
 			);
 		internal ecsact_system_execution_context_get_delegate? ecsact_system_execution_context_get;
 
 		internal delegate void ecsact_system_execution_context_update_delegate
 			( IntPtr  context
 			, Int32   componentId
-			, object  componentData
+			, IntPtr  outComponentData
 			);
 		internal ecsact_system_execution_context_update_delegate? ecsact_system_execution_context_update;
 
@@ -1051,7 +1330,7 @@ public class EcsactRuntime {
 
 		internal delegate void ecsact_set_system_execution_impl_delegate
 			( Int32                systemId
-			, SystemExecutionImpl  executionImpl
+			, CSystemExecutionImpl  executionImpl
 			);
 		internal ecsact_set_system_execution_impl_delegate? ecsact_set_system_execution_impl;
 
@@ -1062,7 +1341,7 @@ public class EcsactRuntime {
 			, Int32[]                                  capabilityComponentIds
 			, SystemCapability[]                       capabilities
 			, Int32                                    capabilitiesCount
-			, SystemExecutionImpl                      executionImpl
+			, CSystemExecutionImpl                     executionImpl
 			);
 		internal ecsact_create_action_delegate? ecsact_create_action;
 
@@ -1152,145 +1431,53 @@ public class EcsactRuntime {
 				throw new EcsactRuntimeMissingMethod("ecsact_set_system_execution_impl");
 			}
 
-			ecsact_set_system_execution_impl(systemId, executionImpl);
+			_system_impls.Add(systemId, executionImpl);
+
+			ecsact_set_system_execution_impl(systemId, CExecutionImpl);
 		}
-		
-		public void SystemExecutionContextAction
-			( IntPtr  context
-			, IntPtr  outActionData
-			)
+
+		public void SetSystemExecutionImpl<System>
+			( SystemExecutionImpl  executionImpl
+			) where System : Ecsact.System
 		{
-			if(ecsact_system_execution_context_action == null) {
-				throw new EcsactRuntimeMissingMethod(
-					"ecsact_system_execution_context_action"
-				);
+			if(ecsact_set_system_execution_impl == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_set_system_execution_impl");
 			}
 
-			ecsact_system_execution_context_action(context, outActionData);
+			var systemId = Ecsact.Util.GetSystemID<System>();
+			_system_impls.Add(systemId, executionImpl);
+
+			ecsact_set_system_execution_impl(systemId, CExecutionImpl);
 		}
 
-		public void SystemExecutionContextAdd
-			( IntPtr  context
-			, Int32   componentId
-			, object  componentData
-			)
+		public void SetActionExecutionImpl<Action>
+			( SystemExecutionImpl  executionImpl
+			) where Action : Ecsact.Action
 		{
-			if(ecsact_system_execution_context_add == null) {
-				throw new EcsactRuntimeMissingMethod(
-					"ecsact_system_execution_context_add"
-				);
+			if(ecsact_set_system_execution_impl == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_set_system_execution_impl");
 			}
 
-			ecsact_system_execution_context_add(context, componentId, componentData);
+			var systemId = Ecsact.Util.GetActionID<Action>();
+			_system_impls.Add(systemId, executionImpl);
+
+			ecsact_set_system_execution_impl(systemId, CExecutionImpl);	
 		}
 
-		public void SystemExecutionContextGenerate
-			( IntPtr    context
-			, Int32     componentCount
-			, Int32[]   componentIds
-			, object[]  componentsData
+		static void CExecutionImpl
+			( IntPtr contextPtr
 			)
 		{
-			if(ecsact_system_execution_context_generate == null) {
-				throw new EcsactRuntimeMissingMethod(
-					"ecsact_system_execution_context_generate"
-				);
-			}
+			var rt = CurrentSystemExecutionState.runtime;
+			Int32 sysID = rt.dynamic.ecsact_system_execution_context_id(contextPtr);
 
-			ecsact_system_execution_context_generate(
-				context,
-				componentCount,
-				componentIds,
-				componentsData
-			);
+			var sysExecCtx = new SystemExecutionContext(contextPtr);
+
+			rt._dynamic._system_impls[sysID](sysExecCtx);
 		}
 
-		public void SystemExecutionContextGet
-			( IntPtr      context
-			, Int32       componentId
-			, out object  outComponentData
-			)
-		{
-			if(ecsact_system_execution_context_get == null) {
-				throw new EcsactRuntimeMissingMethod(
-					"ecsact_system_execution_context_get"
-				);
-			}
-
-			ecsact_system_execution_context_get(
-				context,
-				componentId,
-				out outComponentData
-			);
-		}
-
-		public void SystemExecutionContextHas
-			( IntPtr  context
-			, Int32   componentId
-			)
-		{
-			if(ecsact_system_execution_context_has == null) {
-				throw new EcsactRuntimeMissingMethod(
-					"ecsact_system_execution_context_has"
-				);
-			}
-
-			ecsact_system_execution_context_has(context, componentId);
-		}
-
-		public void SystemExecutionContextID
-			( IntPtr context
-			)
-		{
-			if(ecsact_system_execution_context_id == null) {
-				throw new EcsactRuntimeMissingMethod(
-					"ecsact_system_execution_context_id"
-				);
-			}
-
-			ecsact_system_execution_context_id(context);
-		}
-
-		public void SystemExecutionContextParent
-			( IntPtr context
-			)
-		{
-			if(ecsact_system_execution_context_parent == null) {
-				throw new EcsactRuntimeMissingMethod(
-					"ecsact_system_execution_context_parent"
-				);
-			}
-
-			ecsact_system_execution_context_parent(context);
-		}
-
-		public void SystemExecutionContextRemove
-			( IntPtr  context
-			, Int32   componentId
-			)
-		{
-			if(ecsact_system_execution_context_remove == null) {
-				throw new EcsactRuntimeMissingMethod(
-					"ecsact_system_execution_context_remove"
-				);
-			}
-
-			ecsact_system_execution_context_remove(context, componentId);
-		}
-
-		public void SystemExecutionContextSame
-			( IntPtr  firstContext
-			, IntPtr  secondContext
-			)
-		{
-			if(ecsact_system_execution_context_same == null) {
-				throw new EcsactRuntimeMissingMethod(
-					"ecsact_system_execution_context_remove"
-				);
-			}
-
-			ecsact_system_execution_context_same(firstContext, secondContext);
-		}
+		internal Dictionary<Int32, SystemExecutionImpl> _system_impls = 
+			new Dictionary<Int32, SystemExecutionImpl>();
 	
 	}
 

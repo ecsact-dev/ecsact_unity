@@ -7,12 +7,7 @@ using System.Runtime.CompilerServices;
 
 namespace Ecsact {
 	[AddComponentMenu("")]
-	public class DefaultRunner : MonoBehaviour {
-		private EcsactRuntime? runtimeInstance = null;
-
-		private EcsactRuntimeDefaultRegistry? defReg;
-
-		public Int32 registryId => defReg?.registryId ?? -1;
+	public class DefaultRunner : EcsactRunner {
 
 #if UNITY_EDITOR
 		[NonSerialized]
@@ -23,31 +18,10 @@ namespace Ecsact {
 
 		[RuntimeInitializeOnLoadMethod]
 		private static void OnRuntimeLoad() {
-			var settings = EcsactRuntimeSettings.Get();
-
-			foreach(var defReg in settings.defaultRegistries) {
-				if(defReg.runner != EcsactRuntimeDefaultRegistry.RunnerType.Update) {
-					continue;
-				}
-
-				var gameObjectName = $"Ecsact Default Runner";
-				if(!string.IsNullOrWhiteSpace(defReg.registryName)) {
-					gameObjectName += " - " + defReg.registryName;
-				}
-
-				var gameObject = new GameObject(gameObjectName);
-				var runner = gameObject.AddComponent<DefaultRunner>();
-				runner.defReg = defReg;
-				DontDestroyOnLoad(gameObject);
-			}
-		}
-
-		void Awake() {
-			runtimeInstance = EcsactRuntime.GetOrLoadDefault();
-		}
-
-		void Start() {
-			gameObject.name += $" ({defReg!.registryId})";
+			EcsactRunner.OnRuntimeLoad<DefaultRunner>(
+				EcsactRuntimeDefaultRegistry.RunnerType.Update,
+				"Default Runner"
+			);
 		}
 
 		void Update() {
@@ -57,6 +31,10 @@ namespace Ecsact {
 #if UNITY_EDITOR
 			var executionTimeWatch = Stopwatch.StartNew();
 #endif
+
+			var actionArray = actionList.ToArray();
+			defReg.executionOptions.actions = actionArray;
+			defReg.executionOptions.actionsLength = actionArray.Length;
 
 			runtimeInstance!.core.ExecuteSystems(
 				registryId: defReg.registryId,
@@ -70,6 +48,7 @@ namespace Ecsact {
 			debugExecutionCountTotal += 1;
 #endif
 
+			actionList.Clear();
 			defReg.executionOptions = new EcsactRuntime.ExecutionOptions();
 		}
 	}
