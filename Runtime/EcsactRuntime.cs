@@ -3,6 +3,8 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
+using Ecsact.UnitySync;
+
 #nullable enable
 
 class CurrentSystemExecutionState {
@@ -236,6 +238,111 @@ public class EcsactRuntime {
 		Optional = 2,
 	}
 
+	public struct ContextGenerateBuilder {
+		private IntPtr contextPtr;
+		private Dictionary<Int32, object> components;
+
+		internal ContextGenerateBuilder
+			( IntPtr context
+			)
+		{
+			contextPtr = context;
+			components = new();
+		}
+
+		public ContextGenerateBuilder AddComponent<C>
+			( C component
+			) where C : Ecsact.Component
+		{
+			var componentId = Ecsact.Util.GetComponentID<C>();
+			components.Add(componentId, component);
+			return this;
+		}
+
+		public ContextGenerateBuilder AddManyComponent
+			( Dictionary<Int32, object> componentsToAdd
+			)
+		{
+			MergeInPlace(components, componentsToAdd);
+			return this;
+		}
+
+		public void Finish() {
+			var rt = CurrentSystemExecutionState.runtime;
+			if(rt.dynamic.ecsact_system_execution_context_generate == null) {
+				throw new EcsactRuntimeMissingMethod(
+					"ecsact_system_execution_context_generate"
+				);
+			}
+
+			var componentCount = components.Count;
+			if(componentCount == 0) {
+				throw new Exception("Can't generate entities with no components (Yet?)");
+			}
+
+			if(contextPtr == IntPtr.Zero) {
+				UnityEngine.Debug.Log("This is bad!");
+			}
+
+			Int32[] componentIds = components.Keys.ToArray();
+
+			List<IntPtr> componentsList = new();
+
+			foreach(var component in components) {
+				var componentPtr = 
+					Marshal.AllocHGlobal(Marshal.SizeOf(component.Value));
+
+				Ecsact.Util.ComponentToPtr(
+					component.Value,
+					component.Key,
+					componentPtr
+				);
+				componentsList.Add(componentPtr);
+			}
+
+			IntPtr[] componentsData = componentsList.ToArray();
+
+			UnityEngine.Debug.Log("Length: " + componentCount);
+
+			rt.dynamic.ecsact_system_execution_context_generate(
+				contextPtr,
+				componentCount,
+				componentIds,
+				componentsData
+			);
+
+			foreach(var componentPtr in componentsData) {
+				Marshal.FreeHGlobal(componentPtr);
+			}
+			components.Clear();
+		}
+
+		private Dictionary<Int32, object> MergeInPlace
+			( Dictionary<Int32, object> left
+			, Dictionary<Int32, object> right
+			)
+		{
+			if (left == null) {
+				throw new ArgumentNullException("Can't merge into a null dictionary");
+			}
+			else if (right == null) {
+				return left;
+			}
+
+			foreach (var kvp in right) {
+				if (!left.ContainsKey(kvp.Key))
+				{
+					left.Add(kvp.Key, kvp.Value);
+				} else {
+					throw new Exception(
+						"Attempted to duplicate a component in context.Generate"
+					);
+				}
+			}
+			return left;
+		}
+	}
+
 	public struct SystemExecutionContext {
 		public SystemExecutionContext
 			( IntPtr context
@@ -316,30 +423,10 @@ public class EcsactRuntime {
 			);
 		}
 
-		void Generate
-			( Dictionary<Int32, object> components
-			) 
-		{
-			var rt = CurrentSystemExecutionState.runtime;
-			if(rt.dynamic.ecsact_system_execution_context_generate == null) {
-				throw new EcsactRuntimeMissingMethod(
-					"ecsact_system_execution_context_generate"
-				);
-			}
-
-			var componentCount = components.Count;
-
-			Int32[] componentIds = components.Keys.ToArray();
-			object[] componentsData = components.Values.ToArray();
-
-			rt.dynamic.ecsact_system_execution_context_generate(
-				contextPtr,
-				componentCount,
-				componentIds,
-				componentsData
-			);
+		public ContextGenerateBuilder Generate() {
+			return new ContextGenerateBuilder(contextPtr);
 		}
-	
+
 		public bool Has<C>() where C : Ecsact.Component {
 			var rt = CurrentSystemExecutionState.runtime;
 			if(rt.dynamic.ecsact_system_execution_context_has == null) {
@@ -516,6 +603,21 @@ public class EcsactRuntime {
 					defReg.registryId = defaultInstance.core.CreateRegistry(
 						defReg.registryName
 					);
+
+					if(defReg.pool == null) {
+						if(settings.useUnitySync) {
+								defReg.pool = EntityGameObjectPool.CreateInstance(
+									new RegistryEntitySource(defReg.registryId)
+								);
+								defaultInstance.OnInitComponent((entityId, componentId, componentObject) => {
+								defReg.pool.InitComponent(
+									entityId,
+									componentId,
+									in componentObject
+								);
+							});
+						}
+					}
 				}
 			}
 		}
@@ -892,7 +994,9 @@ public class EcsactRuntime {
 			_owner = owner;
 		}
 
-		public Int32 CreateRegistry
+		// NOTE: Currently internal to keep the registry count to 1
+		// Addressed in issue: https://github.com/seaube/ecsact-unity/issues/28
+		internal Int32 CreateRegistry
 			( string registryName
 			)
 		{
@@ -1030,6 +1134,13 @@ public class EcsactRuntime {
 			}
 
 			var componentId = Ecsact.Util.GetComponentID<C>();
+
+#if UNITY_EDITOR
+			var result = HasComponent<C>(registryId, entityId);
+			if(result == true) {
+				throw new Exception("Entity already has added component");
+			}
+#endif
 			var componentPtr = Marshal.AllocHGlobal(Marshal.SizeOf(component));
 
 			try {
@@ -1082,19 +1193,41 @@ public class EcsactRuntime {
 			}
 			var componentId = Ecsact.Util.GetComponentID<C>();
 
-			UnityEngine.Debug.Assert(
-				ecsact_has_component(registryId, entityId, componentId),
-				"Entity has no component"	
-			);
+#if UNITY_EDITOR
+			var result = HasComponent<C>(registryId, entityId);
+			if(result == false) {
+				throw new Exception("Can't get a component that doesn't exist");
+			}
+#endif
 
-			var componentPtr = ecsact_get_component(registryId, entityId, componentId);
+			var componentPtr = 
+				ecsact_get_component(registryId, entityId, componentId);
 
-			var componentObject = 
+			var componentObject =
 					Ecsact.Util.PtrToComponent(componentPtr, componentId);
 			var component = (C)componentObject;
 			return component;
 		}
 
+		public object GetComponent
+			( Int32 registryId
+			, Int32 entityId
+			, Int32 componentId
+			)
+		{
+			if(ecsact_get_component == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_get_component");
+			}
+
+			var componentPtr =
+				ecsact_get_component(registryId, entityId, componentId);
+
+			var componentObject =
+					Ecsact.Util.PtrToComponent(componentPtr, componentId);
+
+			return componentObject;
+		}
+	
 		public Int32 CountComponents
 			( Int32  registryId
 			, Int32  entityId
@@ -1174,6 +1307,14 @@ public class EcsactRuntime {
 				throw new EcsactRuntimeMissingMethod("ecsact_update_component");
 			}
 			var componentId = Ecsact.Util.GetComponentID<C>();
+
+#if UNITY_EDITOR
+			var result = HasComponent<C>(registryId, entityId);
+			if(result == false) {
+				throw new Exception("Can't update a component that doesn't exist");
+			}
+#endif
+
 			var componentPtr = Marshal.AllocHGlobal(Marshal.SizeOf(component));
 
 			try {
@@ -1198,6 +1339,13 @@ public class EcsactRuntime {
 			if(ecsact_remove_component == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_remove_component");
 			}
+
+#if UNITY_EDITOR
+			var result = HasComponent<C>(registryId, entityId);
+			if(result == false) {
+				throw new Exception("Can't remove a component that doesn't exist");
+			}
+#endif
 
 			var componentId = Ecsact.Util.GetComponentID<C>();
 			ecsact_remove_component(registryId, entityId, componentId);
@@ -1309,7 +1457,7 @@ public class EcsactRuntime {
 			( IntPtr    context
 			, Int32     componentCount
 			, Int32[]   componentIds
-			, object[]  componentsData
+			, IntPtr[]  componentsData
 			);
 		internal ecsact_system_execution_context_generate_delegate? ecsact_system_execution_context_generate;
 
