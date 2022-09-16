@@ -31,8 +31,6 @@ namespace Ecsact {
 			internal ExecuteOptions
 				( EcsactRuntimeDefaultRegistry reg
 				, ref List<EcsactRuntime.EcsactAction> actionList
-				//Theory: Does cleanup happen like C++?
-				//Then the ref to this actionList could be dying
 				)
 			{
 				actions = actionList;
@@ -64,8 +62,6 @@ namespace Ecsact {
 				if(defReg.runner != runnerType) {
 					continue;
 				}
-
-				UnityEngine.Debug.Log("Execution options initialized");
 
 				defReg.executionOptions = new EcsactRuntime.ExecutionOptions{};
 
