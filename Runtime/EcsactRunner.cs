@@ -31,6 +31,8 @@ namespace Ecsact {
 			internal ExecuteOptions
 				( EcsactRuntimeDefaultRegistry reg
 				, ref List<EcsactRuntime.EcsactAction> actionList
+				//Theory: Does cleanup happen like C++?
+				//Then the ref to this actionList could be dying
 				)
 			{
 				actions = actionList;
@@ -63,6 +65,8 @@ namespace Ecsact {
 					continue;
 				}
 
+				UnityEngine.Debug.Log("Execution options initialized");
+
 				defReg.executionOptions = new EcsactRuntime.ExecutionOptions{};
 
 				var gameObjectName = name;
@@ -74,18 +78,26 @@ namespace Ecsact {
 				var runner = gameObject.AddComponent(
 					typeof(ComponentT)
 				) as EcsactRunner;
-				runner.defReg = defReg;
+				if(runner is not null) {
+					runner.defReg = defReg;
 
-				runner.executeOptions = new ExecuteOptions(defReg, ref runner.actionList);
-				DontDestroyOnLoad(gameObject);
+					runner.executeOptions = new ExecuteOptions(
+						defReg,
+						ref runner.actionList
+					);
+					DontDestroyOnLoad(gameObject);			
+				} else {
+					throw new Exception("Runner is not valid");
+				}
+
 			}
 		}
 
 		protected void AddActionsToReg() {
 			var actionsArray = actionList.ToArray();
 
-			defReg.executionOptions.actions = actionsArray;
-			defReg.executionOptions.actionsLength = actionsArray.Length;
+			defReg!.executionOptions.actions = actionsArray;
+			defReg!.executionOptions.actionsLength = actionsArray.Length;
 		}
 
 		protected void FreeActions() {
@@ -103,7 +115,10 @@ namespace Ecsact {
 			var executionTimeWatch = Stopwatch.StartNew();
 #endif
 
-			AddActionsToReg();
+			if(actionList.Count > 0) {
+				AddActionsToReg();
+			}
+
 			try {
 				runtimeInstance!.core.ExecuteSystems(
 					registryId: defReg.registryId,

@@ -81,6 +81,28 @@ namespace Ecsact {
 			return null;
 		}
 
+		public static object PtrToComponent<C>
+			( IntPtr componentPtr
+			) where C : Ecsact.Component
+		{
+			if(componentPtr == IntPtr.Zero) {
+				return Activator.CreateInstance(typeof(C));
+			}
+
+			return Marshal.PtrToStructure(componentPtr, typeof(C));
+		}
+
+		public static object HandlePtrToComponent
+			(ref object? componentObject
+			)
+		{
+			if(componentObject is null) {
+				throw new Exception("Unknown component ID used");
+			} else {
+				return componentObject;
+			}
+		}
+
 		public static void ComponentToPtr
 			( object  component
 			, Int32   componentId

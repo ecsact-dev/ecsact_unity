@@ -46,7 +46,10 @@ public class EcsactRuntimeSettings : ScriptableObject {
 	)]
 	public List<EcsactRuntimeDefaultRegistry> defaultRegistries = new();
 	public bool useUnitySync = false;
-	// [ShowIf("_instance.useUnitySync", true)]
+	/*
+		NOTE(Kelwan): The constraints on this list are ambiguous. We should
+		eventually have a strict type that can be visible in the editor
+	**/
 	public List<string> unitySyncScripts = new();
 	public List<string> runtimeLibraryPaths = new();
 
@@ -56,7 +59,7 @@ public class EcsactRuntimeSettings : ScriptableObject {
 		}
 
 	void OnValidate() {
-		if(_instance.defaultRegistries.Count > 1) {
+		if(_instance!.defaultRegistries.Count > 1) {
 			throw new Exception(
 				"Only 1 registry is supported (multiple will be supported in a later update"
 			);
