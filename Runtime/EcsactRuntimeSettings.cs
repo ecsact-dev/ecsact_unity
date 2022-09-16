@@ -8,6 +8,8 @@ using UnityEditor;
 
 #nullable enable
 
+using Ecsact.UnitySync;
+
 [System.Serializable]
 public class EcsactRuntimeDefaultRegistry {
 	public enum RunnerType {
@@ -15,6 +17,8 @@ public class EcsactRuntimeDefaultRegistry {
 		Update,
 		FixedUpdate,
 	}
+
+	public EntityGameObjectPool? pool;
 
 	[Tooltip("Name given to registry. For display and debug purposes only")]
 	public string registryName = "";
@@ -41,12 +45,23 @@ public class EcsactRuntimeSettings : ScriptableObject {
 		"the game loads."
 	)]
 	public List<EcsactRuntimeDefaultRegistry> defaultRegistries = new();
+	public bool useUnitySync = false;
+	// [ShowIf("_instance.useUnitySync", true)]
+	public List<string> unitySyncScripts = new();
 	public List<string> runtimeLibraryPaths = new();
 
 	public static EcsactRuntimeSettings Get() {
 		if(_instance != null) {
 			return _instance;
 		}
+
+	void OnValidate() {
+		if(_instance.defaultRegistries.Count > 1) {
+			throw new Exception(
+				"Only 1 registry is supported (multiple will be supported in a later update"
+			);
+		}
+	}
 
 #if UNITY_EDITOR
 		_instance = AssetDatabase.LoadAssetAtPath<EcsactRuntimeSettings>(assetPath);
