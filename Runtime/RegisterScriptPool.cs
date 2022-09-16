@@ -9,9 +9,9 @@ public class RegistryEntitySource : EntityGameObjectPool.EntitySource {
     EcsactRuntime runtime;
     private int registryId;
 
-    internal RegistryEntitySource(int registryId) {
-        runtime = EcsactRuntime.GetOrLoadDefault();
-        registryId = registryId;
+    internal RegistryEntitySource(int registryId, EcsactRuntime runtime) {
+        this.runtime = runtime;
+        this.registryId = registryId;
     }
 
     public override object GetComponent(int entityId, int componentId) {
@@ -41,10 +41,10 @@ public class RegisterScriptPool : MonoBehaviour {
 
             var type = Type.GetType(monoStr + ",Assembly-CSharp");
             if(type == null) {
-                UnityEngine.Debug.Log(monoStr);
-                throw new Exception("Unity Sync: Incorrectly typed Monobehaviour");
+                throw new Exception(
+                    "Unity Sync: Monobehaviour " + monoStr + " not found "
+                );
             } else {
-                UnityEngine.Debug.Log("Behaviour registered");
                 UnitySyncMonoBehaviours.RegisterMonoBehaviourType(
                     type
                 );
