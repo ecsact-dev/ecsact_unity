@@ -9,7 +9,7 @@ using System.Runtime.InteropServices;
 namespace Ecsact.Editor {
 	public static class EcsactSdk {
 		public const string INSTALL_URL =
-			"https://github.com/seaube/ecsact-sdk/releases";
+			"https://github.com/ecsact-dev/ecsact_sdk/releases";
 
 		private static bool shownDialogRecently = false;
 

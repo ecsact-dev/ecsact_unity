@@ -16,17 +16,17 @@ class PkgInfoJson {
 [ScriptedImporter(version: 1, ext: "ecsact")]
 public class EcsactImporter : ScriptedImporter {
 	public override void OnImportAsset(AssetImportContext ctx) {
-		string codegenExecutable =
-			EcsactSdk.FindExecutable("ecsact_parser_info_codegen");
+		string ecsactExecutable = EcsactSdk.FindExecutable("ecsact");
 
 		Process codegen = new Process();
-		codegen.StartInfo.FileName = codegenExecutable;
+		codegen.StartInfo.FileName = ecsactExecutable;
 		codegen.StartInfo.CreateNoWindow = true;
 		codegen.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
 		codegen.EnableRaisingEvents = true;
 		codegen.StartInfo.Arguments =
+			"codegen " + 
 			ctx.assetPath + 
-			" --ignore_unknown_imports" +
+			" --plugin=json" +
 			" --stdout";
 		codegen.StartInfo.RedirectStandardError = true;
 		codegen.StartInfo.RedirectStandardOutput = true;
@@ -68,13 +68,14 @@ public class EcsactImporter : ScriptedImporter {
 			return;
 		}
 
+		UnityEngine.Debug.Log(pkgJsonStr);
+
 		var pkgJson = JsonUtility.FromJson<PkgInfoJson>(pkgJsonStr);
 		var pkg = (EcsactPackage)ScriptableObject.CreateInstance(
 			typeof(EcsactPackage)
 		);
 
 		pkg._name = pkgJson.name;
-		pkg._main = pkgJson.main;
 		pkg._imports = pkgJson.imports;
 
 		ctx.AddObjectToAsset("ecsact package", pkg);

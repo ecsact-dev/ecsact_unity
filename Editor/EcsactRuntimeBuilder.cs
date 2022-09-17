@@ -31,7 +31,7 @@ public static class EcsactRuntimeBuilder {
 		}
 
 		string runtimeBuilderExecutablePath =
-			EcsactSdk.FindExecutable("ecsact-rtb");
+			EcsactSdk.FindExecutable("ecsact_rtb");
 
 		var progressId = Progress.Start("Ecsact Runtime Builder");
 
@@ -64,7 +64,7 @@ public static class EcsactRuntimeBuilder {
 		proc.Exited += (_, _) => {
 			if(proc.ExitCode != 0) {
 				UnityEngine.Debug.LogError(
-					$"ecsact-rtb exited with code {proc.ExitCode}"
+					$"ecsact_rtb exited with code {proc.ExitCode}"
 				);
 				Progress.Finish(progressId, Progress.Status.Failed);
 			} else {

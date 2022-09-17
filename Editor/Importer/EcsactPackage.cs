@@ -6,14 +6,11 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("EcsactPackagesPostprocessor")]
 
 public class EcsactPackage : ScriptableObject {
-  [SerializeField]
-  internal string _name = "";
-  [SerializeField]
-  internal bool _main = false;
-  [SerializeField]
-  internal List<string> _imports = new List<string>();
+	[SerializeField]
+	internal string _name = "";
+	[SerializeField]
+	internal List<string> _imports = new List<string>();
 
-  public new string name => _name;
-  public bool main => _main;
-  public IList<string> imports => _imports.AsReadOnly();
+	public new string name => _name;
+	public IList<string> imports => _imports.AsReadOnly();
 }

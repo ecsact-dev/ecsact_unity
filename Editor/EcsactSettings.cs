@@ -14,21 +14,16 @@ class EcsactSettings : ScriptableObject {
 	public const string path = "Project/EcsactProjectSettings";
 	public const SettingsScope scope = SettingsScope.Project;
 
-	/// <summary>Path to <c>ecsact_parser_info_codegen.exe</c>. If unset
-	/// the latest will be downloaded and used instead.</summary>
-	public string parseInfoCodegenPluginPath = "";
-
-	/// <summary>Path to <c>ecsact_csharp_codegen.exe</c>. If unset the latest
-	/// will be downloaded and used instead.</summary>
-	public string csharpCodegenPluginPath = "";
-
-	public string runtimeBuilderOutputPath = "Assets/Plugins/EcsactRuntime.dll";
+	public string runtimeBuilderOutputPath = "Assets/Plugins/EcsactRuntime";
 
 	public string runtimeBuilderCompilerPath = "";
 
 	public static EcsactSettings GetOrCreateSettings() {
 		var settings = AssetDatabase.LoadAssetAtPath<EcsactSettings>(assetPath);
 		if(settings == null) {
+			if(!System.IO.Directory.Exists("Assets/Editor")) {
+				System.IO.Directory.CreateDirectory("Assets/Editor");
+			}
 			settings = ScriptableObject.CreateInstance<EcsactSettings>();
 			AssetDatabase.CreateAsset(settings, assetPath);
 			AssetDatabase.SaveAssetIfDirty(settings);
@@ -94,7 +89,7 @@ static class EcsactSettingsUIElementsRegister {
 			activateHandler = (searchContext, rootElement) => {
 				var settings = EcsactSettings.GetSerializedSettings();
 				var template = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(
-					"Packages/com.seaube.ecsact/Editor/EcsactSettings.uxml"
+					"Packages/dev.ecsact.unity/Editor/EcsactSettings.uxml"
 				);
 				var ui = template.Instantiate();
 				BindingExtensions.Bind(ui, settings);

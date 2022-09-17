@@ -11,16 +11,11 @@ public class EcsactPackageEditor : Editor {
 		new Dictionary<string, bool>();
 
 	public override void OnInspectorGUI() {
-		EcsactPackage? mainPkg = null;
 		List<EcsactPackage> pkgList = new List<EcsactPackage>();
 
 		foreach(var target in targets) {
 			var pkg = (EcsactPackage)target;
 			pkgList.Add(pkg);
-
-			if(pkg.main) {
-				mainPkg = pkg;
-			}
 		}
 
 		foreach(var pkg in pkgList) {
@@ -34,7 +29,6 @@ public class EcsactPackageEditor : Editor {
 			);
 			EditorGUI.BeginDisabledGroup(true);
 
-			EditorGUILayout.Toggle("Main Package", pkg.main);
 			EditorGUILayout.LabelField(
 				"Imports",
 				pkg.imports.Count == 0 ? "(none)" : pkg.imports[0]

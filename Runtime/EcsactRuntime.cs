@@ -1064,7 +1064,7 @@ internal static class CleanupInstances {
 		}
 
 		// NOTE(Kelwan): Currently internal to keep the registry count to 1
-		// Addressed in issue: https://github.com/seaube/ecsact-unity/issues/28
+		// Addressed in issue: https://github.com/ecsact-dev/ecsact_unity/issues/28
 		internal Int32 CreateRegistry
 			( string registryName
 			)
@@ -1321,7 +1321,7 @@ internal static class CleanupInstances {
 				throw new EcsactRuntimeMissingMethod("ecsact_get_components");
 			}
 			// @Kelwan: Remove the +1 from count and the for loop below:
-			// Link to issue: https://github.com/seaube/ecsact-entt/issues/9
+			// Link to issue: https://github.com/ecsact-dev/ecsact_rt_entt/issues/9
 			Int32 count = CountComponents(registryId, entityId) + 1;
 
 			Int32[] componentIds = new Int32[count];

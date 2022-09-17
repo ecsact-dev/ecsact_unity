@@ -87,8 +87,7 @@ public class EcsactPackagesPostprocessor : AssetPostprocessor {
 		, List<MovedPkg>  movedPkgs
 		)
 	{
-		string csharpCodegenExecutable =
-			EcsactSdk.FindExecutable("ecsact_csharp_codegen");
+		string ecsactExecutable = EcsactSdk.FindExecutable("ecsact");
 
 		var progressId = Progress.Start(
 			"Ecsact Codegen",
@@ -104,11 +103,11 @@ public class EcsactPackagesPostprocessor : AssetPostprocessor {
 		}
 
 		Process codegen = new Process();
-		codegen.StartInfo.FileName = csharpCodegenExecutable;
+		codegen.StartInfo.FileName = ecsactExecutable;
 		codegen.StartInfo.CreateNoWindow = true;
 		codegen.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
 		codegen.EnableRaisingEvents = true;
-		codegen.StartInfo.Arguments = "";
+		codegen.StartInfo.Arguments = "codegen --plugin=csharp ";
 		codegen.StartInfo.RedirectStandardError = true;
 		codegen.StartInfo.RedirectStandardOutput = true;
 		codegen.StartInfo.UseShellExecute = false;
@@ -132,39 +131,9 @@ public class EcsactPackagesPostprocessor : AssetPostprocessor {
 
 		Progress.Report(progressId, 0.1f);
 		codegen.Start();
-		
-		foreach(var plugin in GetCodegenPlugins()) {
-			// TODO: Custom codegen plugins
-		}
 
 		EcsactRuntimeBuilder.Build(new EcsactRuntimeBuilder.Options{
 			ecsactFiles = packages.Select(item => item.Item2).ToList(),
 		});
-	}
-
-	static IEnumerable<EcsactCodegenPlugin> GetCodegenPlugins() {
-		var assemblies = System.AppDomain.CurrentDomain.GetAssemblies();
-
-		foreach(var assembly in assemblies) {
-			foreach(var type in assembly.GetTypes()) {
-				var pluginAttrs = type.GetCustomAttributes(
-					typeof(EcsactCodegenPluginAttribute),
-					inherit: true
-				);
-
-				if(pluginAttrs.Length > 0) {
-					var pluginAttr = pluginAttrs[0] as EcsactCodegenPluginAttribute;
-					var plugin =
-						System.Activator.CreateInstance(type) as EcsactCodegenPlugin;
-					if(plugin == null) {
-						UnityEngine.Debug.LogError(
-							$"Invalid EcsactCodegenPlugin: {pluginAttr!.name}"
-						);
-					} else {
-						yield return plugin;
-					}
-				}
-			}
-		}
 	}
 }
