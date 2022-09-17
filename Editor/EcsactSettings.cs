@@ -18,6 +18,10 @@ class EcsactSettings : ScriptableObject {
 
 	public string runtimeBuilderCompilerPath = "";
 
+	static EcsactSettings() {
+		EcsactRuntimeSettings.editorValidateEvent += OnRuntimeSettingsValidate;
+	}
+
 	public static EcsactSettings GetOrCreateSettings() {
 		var settings = AssetDatabase.LoadAssetAtPath<EcsactSettings>(assetPath);
 		if(settings == null) {
@@ -35,6 +39,26 @@ class EcsactSettings : ScriptableObject {
 	internal static SerializedObject GetSerializedSettings() {
 		return new SerializedObject(GetOrCreateSettings());
 	}
+
+#if UNITY_EDITOR
+	static void OnRuntimeSettingsValidate(EcsactRuntimeSettings rtSettings) {
+		var settings = GetOrCreateSettings();
+		var outputPath = settings.runtimeBuilderOutputPath;
+		if(rtSettings.runtimeLibraryPaths.Count == 0) {
+			rtSettings.runtimeLibraryPaths.Add(outputPath);
+		} else {
+			rtSettings.runtimeLibraryPaths[0] = outputPath;
+		}
+	}
+	void OnValidate() {
+		var rtSettings = EcsactRuntimeSettings.Get();
+		if(rtSettings.runtimeLibraryPaths.Count == 0) {
+			rtSettings.runtimeLibraryPaths.Add(runtimeBuilderOutputPath);
+		} else {
+			rtSettings.runtimeLibraryPaths[0] = runtimeBuilderOutputPath;
+		}
+	}
+#endif
 }
 
 [System.Serializable]

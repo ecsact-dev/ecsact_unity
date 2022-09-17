@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using System.IO;
 using System;
+using System.Linq;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -38,6 +39,10 @@ public class EcsactRuntimeSettings : ScriptableObject {
 	public const string resourcePath = "Settings/EcsactRuntimeSettings";
 	public const string assetPath = "Assets/Resources/" + resourcePath + ".asset";
 
+#if UNITY_EDITOR
+	public static event Action<EcsactRuntimeSettings>? editorValidateEvent;
+#endif
+
 	public bool useAsyncRunner = true;
 	public bool useVisualScriptingEvents = true;
 	[Tooltip(
@@ -51,8 +56,14 @@ public class EcsactRuntimeSettings : ScriptableObject {
 		eventually have a strict type that can be visible in the editor
 	**/
 	public List<string> unitySyncScripts = new();
+
+	[Tooltip(
+		"Path to ecsact runtime library. First element is always the generated " +
+		"runtime from the runtime builder."
+	)]
 	public List<string> runtimeLibraryPaths = new();
 
+#if UNITY_EDITOR
 	void OnValidate() {
 		if(defaultRegistries.Count > 1) {
 			throw new Exception(
@@ -66,7 +77,12 @@ public class EcsactRuntimeSettings : ScriptableObject {
 				runner = EcsactRuntimeDefaultRegistry.RunnerType.FixedUpdate,
 			});
 		}
+
+		if(editorValidateEvent != null) {
+			editorValidateEvent.Invoke(this);
+		}
 	}
+#endif
 
 	public static EcsactRuntimeSettings Get() {
 		if(_instance != null) {
