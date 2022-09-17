@@ -264,7 +264,7 @@ public class EcsactUnitySyncDebugWindow : EditorWindow {
 					"Ecsact.UnitySync.IOnInitComponent<>, " +
 					"Ecsact.UnitySync.IOnUpdateComponent<>, or " +
 					"Ecsact.UnitySync.IOnRemoveComponent<> interfaces for your " +
-					"MonoBehaviour scripts to be considered for ECSACT Unity Sync.",
+					"MonoBehaviour scripts to be considered for Ecsact Unity Sync.",
 					MessageType.Info
 				);
 			}
