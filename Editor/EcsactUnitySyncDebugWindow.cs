@@ -61,7 +61,7 @@ public class EcsactUnitySyncDebugWindow : EditorWindow {
 	static Vector2 scrollPosition = new Vector2();
 	static ComponentIdsList testComponentIds = new ComponentIdsList();
 
-	[MenuItem("Window/ECSACT/Unity Sync Debug")]
+	[MenuItem("Window/Ecsact/Unity Sync Debug")]
 	static void Init() {
 		var window = EditorWindow.GetWindow(typeof(EcsactUnitySyncDebugWindow));
 		window.Show();
@@ -100,7 +100,7 @@ public class EcsactUnitySyncDebugWindow : EditorWindow {
 	}
 
 	IEnumerator<string> Refresh() {
-		int progressId = Progress.Start("Finding ECSACT types");
+		int progressId = Progress.Start("Finding Ecsact types");
 		bool cancelledRequested = false;
 		bool cancelled = false;
 

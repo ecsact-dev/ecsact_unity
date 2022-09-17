@@ -52,7 +52,7 @@ public class EcsactImporter : ScriptedImporter {
 			codegen.BeginOutputReadLine();
 			codegen.BeginErrorReadLine();
 			if(!codegen.WaitForExit(10000)) {
-				ctx.LogImportError("ECSACT Importer timed out");
+				ctx.LogImportError("Ecsact Importer timed out");
 				return;
 			} else {
 				// See documentation https://docs.microsoft.com/en-us/dotnet/api/system.diagnostics.process.waitforexit?view=net-6.0#system-diagnostics-process-waitforexit(system-int32)
@@ -76,7 +76,6 @@ public class EcsactImporter : ScriptedImporter {
 		pkg._name = pkgJson.name;
 		pkg._main = pkgJson.main;
 		pkg._imports = pkgJson.imports;
-		pkg._dependencies.Clear();
 
 		ctx.AddObjectToAsset("ecsact package", pkg);
 		ctx.SetMainObject(pkg);

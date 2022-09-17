@@ -9,13 +9,13 @@ using ComponentIdsList = System.Collections.Generic.SortedSet<System.Int32>;
 #nullable enable
 
 namespace Ecsact {
-	/// <summary>ECSACT Component Marker Interface</summary>
+	/// <summary>Ecsact Component Marker Interface</summary>
 	public interface Component {}
 
-	/// <summary>ECSACT Action Marker Interface</summary>
+	/// <summary>Ecsact Action Marker Interface</summary>
 	public interface Action {}
 
-	/// <summary>ECSACT System Marker Interface</summary>
+	/// <summary>Ecsact System Marker Interface</summary>
 	public interface System {}
 
 	public static class Util {
