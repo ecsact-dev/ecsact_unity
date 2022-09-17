@@ -4,6 +4,7 @@ using UnityEditor.AssetImporters;
 using System.IO;
 using System.Diagnostics;
 using System.Collections.Generic;
+using System.Linq;
 using Ecsact.Editor;
 
 [System.Serializable]
@@ -18,6 +19,13 @@ public class EcsactImporter : ScriptedImporter {
 	public override void OnImportAsset(AssetImportContext ctx) {
 		string ecsactExecutable = EcsactSdk.FindExecutable("ecsact");
 
+		var allEcsactFiles = Directory.GetFiles(
+			path: "Assets",
+			searchPattern: "*.ecsact",
+			SearchOption.AllDirectories
+		).ToHashSet();
+		allEcsactFiles.Remove(ctx.assetPath);
+
 		Process codegen = new Process();
 		codegen.StartInfo.FileName = ecsactExecutable;
 		codegen.StartInfo.CreateNoWindow = true;
@@ -25,7 +33,8 @@ public class EcsactImporter : ScriptedImporter {
 		codegen.EnableRaisingEvents = true;
 		codegen.StartInfo.Arguments =
 			"codegen " + 
-			ctx.assetPath + 
+			ctx.assetPath + " " +
+			System.String.Join(" ", allEcsactFiles) +
 			" --plugin=json" +
 			" --stdout";
 		codegen.StartInfo.RedirectStandardError = true;
