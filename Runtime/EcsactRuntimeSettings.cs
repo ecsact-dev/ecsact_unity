@@ -53,18 +53,25 @@ public class EcsactRuntimeSettings : ScriptableObject {
 	public List<string> unitySyncScripts = new();
 	public List<string> runtimeLibraryPaths = new();
 
-	public static EcsactRuntimeSettings Get() {
-		if(_instance != null) {
-			return _instance;
-		}
-
 	void OnValidate() {
-		if(_instance!.defaultRegistries.Count > 1) {
+		if(defaultRegistries.Count > 1) {
 			throw new Exception(
 				"Only 1 registry is supported (multiple will be supported in a later update"
 			);
 		}
+
+		if(defaultRegistries.Count == 0) {
+			defaultRegistries.Add(new EcsactRuntimeDefaultRegistry{
+				registryName = "Default Registry",
+				runner = EcsactRuntimeDefaultRegistry.RunnerType.FixedUpdate,
+			});
+		}
 	}
+
+	public static EcsactRuntimeSettings Get() {
+		if(_instance != null) {
+			return _instance;
+		}
 
 #if UNITY_EDITOR
 		_instance = AssetDatabase.LoadAssetAtPath<EcsactRuntimeSettings>(assetPath);
