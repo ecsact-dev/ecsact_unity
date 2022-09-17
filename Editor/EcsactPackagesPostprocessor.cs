@@ -119,7 +119,7 @@ public class EcsactPackagesPostprocessor : AssetPostprocessor {
 			} else {
 				Progress.Finish(progressId, Progress.Status.Succeeded);
 				// Import newly created scripts
-				// TryImportAssets(importedPkgs.Select(pkg => pkg + ".cs").ToList());
+				TryImportAssets(importedPkgs.Select(pkg => pkg + ".cs").ToList());
 			}
 		};
 
