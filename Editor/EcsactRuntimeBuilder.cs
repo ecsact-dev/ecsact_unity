@@ -5,6 +5,53 @@ using System.Diagnostics;
 using System.Collections.Generic;
 using Ecsact.Editor;
 
+[System.Serializable]
+struct MessageBase {
+	public string type;
+}
+
+[System.Serializable]
+struct AlertMessage {
+	public const string type = "alert";
+	public string content;
+}
+
+[System.Serializable]
+struct InfoMessage {
+	public const string type = "info";
+	public string content;
+}
+
+[System.Serializable]
+struct ErrorMessage {
+	public const string type = "error";
+	public string content;
+}
+
+[System.Serializable]
+struct WarningMessage {
+	public const string type = "warning";
+	public string content;
+}
+
+[System.Serializable]
+struct SuccessMessage {
+	public const string type = "success";
+	public string content;
+}
+
+[System.Serializable]
+struct ModuleMethodsMessage {
+	[System.Serializable]
+	public struct MethodInfo {
+		public bool available;
+	}
+
+	public const string type = "module_methods";
+	public string module_name;
+	public Dictionary<string, MethodInfo> methods;
+}
+
 public static class EcsactRuntimeBuilder {
 
 	public struct Options {
@@ -56,16 +103,50 @@ public static class EcsactRuntimeBuilder {
 		proc.OutputDataReceived += (_, ev) => {
 			var line = ev.Data;
 			if(!string.IsNullOrWhiteSpace(line)) {
-				Progress.SetDescription(progressId, line);
-				UnityEngine.Debug.Log(line);
+				var baseMessage = JsonUtility.FromJson<MessageBase>(line);
+				switch(baseMessage.type) {
+					case AlertMessage.type:
+						ReceiveMessage(
+							progressId,
+							JsonUtility.FromJson<AlertMessage>(line)
+						);
+						break;
+					case InfoMessage.type:
+						ReceiveMessage(
+							progressId,
+							JsonUtility.FromJson<InfoMessage>(line)
+						);
+						break;
+					case ErrorMessage.type:
+						ReceiveMessage(
+							progressId,
+							JsonUtility.FromJson<ErrorMessage>(line)
+						);
+						break;
+					case WarningMessage.type:
+						ReceiveMessage(
+							progressId,
+							JsonUtility.FromJson<WarningMessage>(line)
+						);
+						break;
+					case SuccessMessage.type:
+						ReceiveMessage(
+							progressId,
+							JsonUtility.FromJson<SuccessMessage>(line)
+						);
+						break;
+					case ModuleMethodsMessage.type:
+						ReceiveMessage(
+							progressId,
+							JsonUtility.FromJson<ModuleMethodsMessage>(line)
+						);
+						break;
+				}
 			}
 		};
 
 		proc.Exited += (_, _) => {
 			if(proc.ExitCode != 0) {
-				UnityEngine.Debug.LogError(
-					$"ecsact_rtb exited with code {proc.ExitCode}"
-				);
 				Progress.Finish(progressId, Progress.Status.Failed);
 			} else {
 				Progress.Finish(progressId, Progress.Status.Succeeded);
@@ -104,13 +185,65 @@ public static class EcsactRuntimeBuilder {
 			FileUtil.GetUniqueTempPathInProject()
 		);
 
-		UnityEngine.Debug.Log(proc.StartInfo.FileName);
-		UnityEngine.Debug.Log(proc.StartInfo.Arguments);
-		UnityEngine.Debug.Log($"CWD: {System.IO.Directory.GetCurrentDirectory()}");
-
 		Progress.Report(progressId, 0.1f);
 		proc.Start();
 		proc.BeginOutputReadLine();
 		proc.BeginErrorReadLine();
+	}
+
+	private static void ReceiveMessage
+		( int           progressId
+		, AlertMessage  message
+		)
+	{
+		EditorUtility.DisplayDialog(
+			title: "Ecsact Runtime Builder",
+			message: message.content,
+			ok: "ok"
+		);
+	}
+
+	private static void ReceiveMessage
+		( int          progressId
+		, InfoMessage  message
+		)
+	{
+		Progress.SetDescription(progressId, message.content);
+		UnityEngine.Debug.Log(message.content);
+	}
+
+	private static void ReceiveMessage
+		( int           progressId
+		, ErrorMessage  message
+		)
+	{
+		Progress.SetDescription(progressId, message.content);
+		UnityEngine.Debug.LogError(message.content);
+	}
+
+	private static void ReceiveMessage
+		( int             progressId
+		, WarningMessage  message
+		)
+	{
+		Progress.SetDescription(progressId, message.content);
+		UnityEngine.Debug.LogWarning(message.content);
+	}
+
+	private static void ReceiveMessage
+		( int             progressId
+		, SuccessMessage  message
+		)
+	{
+		Progress.SetDescription(progressId, message.content);
+		UnityEngine.Debug.Log(message.content);
+	}
+
+	private static void ReceiveMessage
+		( int                   progressId
+		, ModuleMethodsMessage  message
+		)
+	{
+
 	}
 }

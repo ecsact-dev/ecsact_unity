@@ -77,8 +77,6 @@ public class EcsactImporter : ScriptedImporter {
 			return;
 		}
 
-		UnityEngine.Debug.Log(pkgJsonStr);
-
 		var pkgJson = JsonUtility.FromJson<PkgInfoJson>(pkgJsonStr);
 		var pkg = (EcsactPackage)ScriptableObject.CreateInstance(
 			typeof(EcsactPackage)
