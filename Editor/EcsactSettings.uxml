@@ -1,8 +1,9 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
-    <ui:Template name="EcsactRuntimeMethodLoadedUI" src="project://database/Packages/com.seaube.ecsact/Editor/EcsactRuntimeMethodLoadedUI.uxml?fileID=9197481963319205126&amp;guid=a2a638a8b49ec24468a126f89d509035&amp;type=3#EcsactRuntimeMethodLoadedUI" />
+    <ui:Template name="EcsactRuntimeMethodLoadedUI" src="project://database/Packages/dev.ecsact.unity/Editor/EcsactRuntimeMethodLoadedUI.uxml?fileID=9197481963319205126&amp;guid=a2a638a8b49ec24468a126f89d509035&amp;type=3#EcsactRuntimeMethodLoadedUI" />
     <ui:ScrollView>
         <ui:GroupBox>
             <ui:Label text="Runtime Builder Settings" display-tooltip-when-elided="true" style="font-size: 16px; -unity-font-style: bold;" />
+            <ui:Toggle label="Debug Runtime Build" binding-path="runtimeBuilderDebugBuild" />
             <ui:TextField picking-mode="Ignore" label="Runtime Output Path" value="Assets/Plugins/EcsactRuntime" text="Assets/Plugins/EcsactRuntime" multiline="false" binding-path="runtimeBuilderOutputPath" />
             <ui:VisualElement tooltip="Generated runtime dynamic library for Windows" style="flex-direction: row;">
                 <ui:Label text="Assets/Plugins/EcsactRuntime" display-tooltip-when-elided="true" binding-path="runtimeBuilderOutputPath" style="padding-left: 160px; font-size: 10px; color: rgba(210, 210, 210, 0.47); padding-right: 0;" />

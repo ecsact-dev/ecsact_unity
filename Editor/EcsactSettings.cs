@@ -15,6 +15,7 @@ class EcsactSettings : ScriptableObject {
 	public const SettingsScope scope = SettingsScope.Project;
 
 	public string runtimeBuilderOutputPath = "Assets/Plugins/EcsactRuntime";
+	public bool runtimeBuilderDebugBuild = false;
 
 	public string runtimeBuilderCompilerPath = "";
 

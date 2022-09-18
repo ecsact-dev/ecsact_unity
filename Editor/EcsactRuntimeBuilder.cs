@@ -198,6 +198,10 @@ public static class EcsactRuntimeBuilder {
 			proc.StartInfo.Arguments += "\"" + ecsactFile + "\" ";
 		}
 
+		if(settings.runtimeBuilderDebugBuild) {
+			proc.StartInfo.Arguments += " --debug ";
+		}
+
 		proc.StartInfo.Arguments += "--output=\"";
 		proc.StartInfo.Arguments += Path.GetFullPath(
 			settings.runtimeBuilderOutputPath
