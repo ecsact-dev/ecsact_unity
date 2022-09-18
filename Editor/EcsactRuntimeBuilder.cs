@@ -52,7 +52,30 @@ struct ModuleMethodsMessage {
 	public Dictionary<string, MethodInfo> methods;
 }
 
+[System.Serializable]
+struct SubcommandStartMessage {
+	public const string type = "subcommand_start";
+	public long id;
+	public string executable;
+	public List<string> arguments;
+}
+
+[System.Serializable]
+struct SubcommandProgressMessage {
+	public const string type = "subcommand_progress";
+	public long id;
+	public string description;
+}
+
+[System.Serializable]
+struct SubcommandEndMessage {
+	public const string type = "subcommand_end";
+	public long id;
+	public int exit_code;
+}
+
 public static class EcsactRuntimeBuilder {
+	private static Dictionary<long, int> _subcommandProgressIds = new();
 
 	public struct Options {
 		public List<string> ecsactFiles;
@@ -139,6 +162,24 @@ public static class EcsactRuntimeBuilder {
 						ReceiveMessage(
 							progressId,
 							JsonUtility.FromJson<ModuleMethodsMessage>(line)
+						);
+						break;
+					case SubcommandStartMessage.type:
+						ReceiveMessage(
+							progressId,
+							JsonUtility.FromJson<SubcommandStartMessage>(line)
+						);
+						break;
+					case SubcommandProgressMessage.type:
+						ReceiveMessage(
+							progressId,
+							JsonUtility.FromJson<SubcommandProgressMessage>(line)
+						);
+						break;
+					case SubcommandEndMessage.type:
+						ReceiveMessage(
+							progressId,
+							JsonUtility.FromJson<SubcommandEndMessage>(line)
 						);
 						break;
 				}
@@ -245,5 +286,40 @@ public static class EcsactRuntimeBuilder {
 		)
 	{
 
+	}
+
+	private static void ReceiveMessage
+		( int                     progressId
+		, SubcommandStartMessage  message
+		)
+	{
+		var subcommandProgressId = Progress.Start(
+			name: System.IO.Path.GetFileName(message.executable),
+			description: string.Join(" ", message.arguments),
+			parentId: progressId
+		);
+		_subcommandProgressIds.Add(message.id, subcommandProgressId);
+	}
+
+	private static void ReceiveMessage
+		( int                        progressId
+		, SubcommandProgressMessage  message
+		)
+	{
+		var subcommandProgressId = _subcommandProgressIds[message.id];
+		Progress.SetDescription(subcommandProgressId, message.description);
+	}
+
+	private static void ReceiveMessage
+		( int                   progressId
+		, SubcommandEndMessage  message
+		)
+	{
+		var subcommandProgressId = _subcommandProgressIds[message.id];
+		if(message.exit_code == 0) {
+			Progress.Finish(subcommandProgressId, Progress.Status.Succeeded);
+		} else {
+			Progress.Finish(subcommandProgressId, Progress.Status.Failed);
+		}
 	}
 }
