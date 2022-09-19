@@ -3,7 +3,10 @@ using UnityEngine;
 using System.IO;
 using System.Diagnostics;
 using System.Collections.Generic;
+using System.Linq;
 using Ecsact.Editor;
+
+#nullable enable
 
 [System.Serializable]
 struct MessageBase {
@@ -44,12 +47,13 @@ struct SuccessMessage {
 struct ModuleMethodsMessage {
 	[System.Serializable]
 	public struct MethodInfo {
+		public string method_name;
 		public bool available;
 	}
 
 	public const string type = "module_methods";
 	public string module_name;
-	public Dictionary<string, MethodInfo> methods;
+	public List<MethodInfo> methods;
 }
 
 [System.Serializable]
@@ -284,12 +288,59 @@ public static class EcsactRuntimeBuilder {
 		UnityEngine.Debug.Log(message.content);
 	}
 
+	private static void CheckMethods
+		( IEnumerable<string>   methods
+		, ModuleMethodsMessage  message
+		)
+	{
+		var methodsList = methods.ToList();
+
+		foreach(var methodName in methods) {
+			var methodInfoIndex = message.methods.FindIndex(
+				v => v.method_name == methodName
+			);
+			if(methodInfoIndex == -1) {
+				UnityEngine.Debug.LogWarning(
+					$"Old method '{methodName}' should be <color=red>removed</color> " +
+					$"from module <b>{message.module_name}</b>. It no longer exists. " + 
+					"(reported by ecsact_rtb)"
+				);
+			}
+		}
+
+		foreach(var methodInfo in message.methods) {
+			var methodName = methodInfo.method_name;
+			if(!methods.Contains(methodName)) {
+				UnityEngine.Debug.LogWarning(
+					$"New method '{methodName}' should be <color=green>added</color> " +
+					$"to module <b>{message.module_name}</b>. (reported by ecsact_rtb)"
+				);
+			}
+		}
+	}
+
 	private static void ReceiveMessage
 		( int                   progressId
 		, ModuleMethodsMessage  message
 		)
 	{
-
+		switch(message.module_name) {
+			case "core":
+				CheckMethods(EcsactRuntime.Core.methods, message);
+				break;
+			case "dynamic":
+				CheckMethods(EcsactRuntime.Dynamic.methods, message);
+				break;
+			case "meta":
+				CheckMethods(EcsactRuntime.Meta.methods, message);
+				break;
+			case "static":
+				CheckMethods(EcsactRuntime.Static.methods, message);
+				break;
+			case "serialize":
+				CheckMethods(EcsactRuntime.Serialize.methods, message);
+				break;
+		}
 	}
 
 	private static void ReceiveMessage

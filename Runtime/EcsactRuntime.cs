@@ -25,6 +25,8 @@ namespace Ecsact {
 
 #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
 internal static class NativeLibrary {
+	private static Dictionary<IntPtr, string> libraryPaths = new();
+
 	[DllImport("Kernel32.dll",
 		EntryPoint = "LoadLibrary",
 		CharSet = CharSet.Ansi,
@@ -56,14 +58,20 @@ internal static class NativeLibrary {
 		( string libraryPath
 		)
 	{
-		return LoadLibrary(libraryPath);
+		UnityEngine.Debug.Log($"Loading Ecsact Runtime: {libraryPath}");
+		var libIntPtr = LoadLibrary(libraryPath);
+		libraryPaths.Add(libIntPtr, libraryPath);
+		return libIntPtr;
 	}
 
 	public static void Free
 		( IntPtr handle
 		)
 	{
+		var libraryPath = libraryPaths[handle];
+		UnityEngine.Debug.Log($"Unloading Ecsact Runtime: {libraryPath}");
 		FreeLibrary(handle);
+		libraryPaths.Remove(handle);
 	}
 
 	public static bool TryGetExport

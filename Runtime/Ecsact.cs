@@ -12,6 +12,9 @@ namespace Ecsact {
 	/// <summary>Ecsact Component Marker Interface</summary>
 	public interface Component {}
 
+	/// <summary>Ecsact Transient Marker Interface</summary>
+	public interface Transient {}
+
 	/// <summary>Ecsact Action Marker Interface</summary>
 	public interface Action {}
 
