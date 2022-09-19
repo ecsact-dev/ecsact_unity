@@ -43,7 +43,10 @@ public class EcsactRuntimeSettings : ScriptableObject {
 	public static event Action<EcsactRuntimeSettings>? editorValidateEvent;
 #endif
 
-	public bool useAsyncRunner = true;
+	// Turned off for now.
+	// @SEE: https://github.com/ecsact-dev/ecsact_unity/issues/20
+	[NonSerialized]
+	public bool useAsyncRunner = false;
 	public bool useVisualScriptingEvents = true;
 	[Tooltip(
 		"List of ecsact registries that are created automatically when " +
