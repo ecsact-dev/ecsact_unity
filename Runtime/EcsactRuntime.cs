@@ -642,7 +642,25 @@ public class EcsactRuntime {
 		public static List<System.Action> removeActions = new();
 	}
 
+	static EcsactRuntime() {
+#if UNITY_EDITOR
+		EditorApplication.playModeStateChanged += state => {
+			if(state == PlayModeStateChange.ExitingPlayMode) {
+				EditorApplication.delayCall += () => {
+					SetDefault(null);
+				};
+			}
+		};
+#endif
+	}
+
 	public static EcsactRuntime GetOrLoadDefault() {
+		if(!UnityEngine.Application.isPlaying) {
+			throw new Exception(
+				"EcsactRuntime.GetOrLoadDefault() may only be used during play mode"
+			);
+		}
+
 		if(defaultInstance == null) {
 			var settings = EcsactRuntimeSettings.Get();
 			defaultInstance = Load(settings.runtimeLibraryPaths);
@@ -669,7 +687,7 @@ public class EcsactRuntime {
 							});
 							CleanupInstances.initActions.Add(initAction);
 
-							 var updateAction = defaultInstance.OnUpdateComponent((
+							var updateAction = defaultInstance.OnUpdateComponent((
 								entityId, componentId, componentObject
 							) => {
 								defReg.pool.UpdateComponent(
