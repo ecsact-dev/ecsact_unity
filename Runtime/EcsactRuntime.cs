@@ -616,9 +616,8 @@ public class EcsactRuntime {
 
 	private static EcsactRuntime? defaultInstance;
 
-internal static class CleanupInstances {
-    private static void Quit()
-    {
+	internal static class CleanupInstances {
+		private static void Quit() {
 			foreach(var action in initActions) {
 				action();
 			}
@@ -631,18 +630,17 @@ internal static class CleanupInstances {
 			initActions.Clear();
 			updateActions.Clear();
 			removeActions.Clear();
-    }
+		}
 
-    [UnityEngine.RuntimeInitializeOnLoadMethod]
-    private static void RunOnStart()
-    {
-        UnityEngine.Application.quitting += Quit;
-    }
+		[UnityEngine.RuntimeInitializeOnLoadMethod]
+		private static void RunOnStart() {
+			UnityEngine.Application.quitting += Quit;
+		}
 
 		public static List<System.Action> initActions = new();
 		public static List<System.Action> updateActions = new();
 		public static List<System.Action> removeActions = new();
-}
+	}
 
 	public static EcsactRuntime GetOrLoadDefault() {
 		if(defaultInstance == null) {
