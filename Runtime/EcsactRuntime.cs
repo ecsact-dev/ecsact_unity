@@ -1667,6 +1667,12 @@ public class EcsactRuntime {
 			);
 		internal ecsact_system_execution_context_id_delegate? ecsact_system_execution_context_id;
 
+		internal delegate Int32 ecsact_system_execution_context_other_delegate
+			( IntPtr  context
+			, Int32   entityId
+			);
+		internal ecsact_system_execution_context_other_delegate? ecsact_system_execution_context_other;
+
 		public void SetSystemExecutionImpl
 			( Int32                systemId
 			, SystemExecutionImpl  executionImpl
@@ -2175,6 +2181,7 @@ public class EcsactRuntime {
 			LoadDelegate(lib, "ecsact_register_system", out runtime._dynamic.ecsact_register_system, runtime._dynamic);
 			LoadDelegate(lib, "ecsact_register_action", out runtime._dynamic.ecsact_register_action, runtime._dynamic);
 			LoadDelegate(lib, "ecsact_system_execution_context_id", out runtime._dynamic.ecsact_system_execution_context_id, runtime._dynamic);
+			LoadDelegate(lib, "ecsact_system_execution_context_other", out runtime._dynamic.ecsact_system_execution_context_other, runtime._dynamic);
 
 			// Load meta methods
 			LoadDelegate(lib, "ecsact_meta_registry_name", out runtime._meta.ecsact_meta_registry_name, runtime._meta);
