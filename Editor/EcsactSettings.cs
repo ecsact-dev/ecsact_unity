@@ -16,6 +16,8 @@ class EcsactSettings : ScriptableObject {
 
 	public string runtimeBuilderOutputPath = "Assets/Plugins/EcsactRuntime";
 	public bool runtimeBuilderDebugBuild = false;
+	public bool runtimeBuilderPrintSubcommandStdout = false;
+	public bool runtimeBuilderPrintSubcommandStderr = false;
 
 	public string runtimeBuilderCompilerPath = "";
 
