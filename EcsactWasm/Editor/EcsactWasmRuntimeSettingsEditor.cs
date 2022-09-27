@@ -27,6 +27,8 @@ public class EcsactWasmRuntimeSettingsEditor : Editor {
 	public override void OnInspectorGUI() {
 		var settings = target as EcsactWasmRuntimeSettings;
 		if(settings == null) return;
+
+		EditorGUI.BeginChangeCheck();
 		
 		if(systemLikeTypes == null) {
 			systemLikeTypes = Ecsact.Util.GetAllSystemLikeTypes().ToList();
@@ -112,6 +114,10 @@ public class EcsactWasmRuntimeSettingsEditor : Editor {
 			}
 
 			EditorGUILayout.EndHorizontal();
+		}
+
+		if (EditorGUI.EndChangeCheck()) {
+			EditorUtility.SetDirty(settings);
 		}
 
 		serializedObject.ApplyModifiedProperties();
