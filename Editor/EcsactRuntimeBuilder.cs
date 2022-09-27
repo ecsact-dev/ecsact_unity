@@ -414,7 +414,10 @@ public static class EcsactRuntimeBuilder {
 		)
 	{
 		if(_settings!.runtimeBuilderPrintSubcommandStdout) {
-			var name = _subcommandProgressNames[message.id];
+			string name = "unknown";
+			if(_subcommandProgressNames.ContainsKey(message.id)) {
+				name = _subcommandProgressNames[message.id];
+			}
 			UnityEngine.Debug.Log(
 				$"[{name} subcommand stdout] {message.line}"
 			);
@@ -427,7 +430,10 @@ public static class EcsactRuntimeBuilder {
 		)
 	{
 		if(_settings!.runtimeBuilderPrintSubcommandStderr) {
-			var name = _subcommandProgressNames[message.id];
+			string name = "unknown";
+			if(_subcommandProgressNames.ContainsKey(message.id)) {
+				name = _subcommandProgressNames[message.id];
+			}
 			UnityEngine.Debug.Log(
 				$"[{name} subcommand <color=red>stderr</color>] {message.line}"
 			);
