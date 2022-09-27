@@ -20,9 +20,102 @@ public class EcsactWasmRuntimeSettingsEditor : Editor {
 		};
 	}
 
+	static IEnumerable<(WasmAsset, string)> FindWasmAssets() {
+		var guids = AssetDatabase.FindAssets($"t:{typeof(WasmAsset)}");
+		foreach (var t in guids) {
+			var assetPath = AssetDatabase.GUIDToAssetPath(t);
+			var asset = AssetDatabase.LoadAssetAtPath<WasmAsset>(assetPath);
+			if (asset != null) {
+				yield return (asset, assetPath);
+			}
+		}
+	}
+
+	private static void FindSystemImplsInfoLoaded
+		( Dictionary<string, WasmInfo>              wasmInfos
+		, System.Action<EcsactWasmRuntimeSettings>  doneCallback
+		)
+	{
+		var settings = EcsactWasmRuntimeSettings.Get();
+		List<EcsactWasmRuntimeSettings.SystemMapEntry> newEntries = new();
+		var systemLikeTypes = Ecsact.Util.GetAllSystemLikeTypes();
+		foreach(var (path, wasmInfo) in wasmInfos) {
+			var wasmAsset = AssetDatabase.LoadAssetAtPath<WasmAsset>(path);
+
+			foreach(var systemLikeType in systemLikeTypes) {
+				var systemLikeName = systemLikeType.FullName;
+				var systemImplName = systemLikeName.Replace(".", "__");
+				foreach(var exportInfo in wasmInfo.exports) {
+					if(IsValidSystemImplExport(exportInfo)) {
+						if(exportInfo.name == systemImplName) {
+							var entry = new EcsactWasmRuntimeSettings.SystemMapEntry();
+							entry.systemId = Ecsact.Util.GetSystemID(systemLikeType);
+							entry.wasmAsset = wasmAsset;
+							entry.wasmExportName = systemImplName;
+							newEntries.Add(entry);
+						}
+					}
+				}
+			}
+		}
+
+		settings.wasmSystemEntries = newEntries;
+		doneCallback(settings);
+	}
+
+	public static void FindSystemImpls
+		( System.Action<EcsactWasmRuntimeSettings> doneCallback
+		)
+	{
+		var wasmInfoDict = new Dictionary<string, WasmInfo>();
+		var wasmAssets = FindWasmAssets();
+		var validWasmInfosCount = wasmAssets.Count();
+		
+		foreach(var (wasmAsset, path) in wasmAssets) {
+			WasmInfo.Load(
+				wasmAssetPath: path,
+				successCallback: wasmInfo => {
+					wasmInfoDict.Add(path, wasmInfo);
+					if(wasmInfoDict.Count == validWasmInfosCount) {
+						EditorApplication.delayCall += () => {
+							FindSystemImplsInfoLoaded(wasmInfoDict, doneCallback);
+						};
+					}
+				},
+				errorCallback: () => {
+					validWasmInfosCount -= 1;
+					if(wasmInfoDict.Count == validWasmInfosCount) {
+						EditorApplication.delayCall += () => {
+							FindSystemImplsInfoLoaded(wasmInfoDict, doneCallback);
+						};
+					}
+				}
+			);
+		}
+	}
+
 	private List<Type>? systemLikeTypes;
 	private Dictionary<Int32, WasmInfo?> wasmInfos = new();
 	private bool allWasmInfoLoaded = false;
+
+	SerializedProperty? useDefaultLoader;
+	SerializedProperty? autoFindSystemImpls;
+
+	void OnEnable() {
+		useDefaultLoader = serializedObject.FindProperty("useDefaultLoader");
+		autoFindSystemImpls =
+			serializedObject.FindProperty("autoFindSystemImpls");
+	}
+
+	static bool IsValidSystemImplExport
+		( WasmInfo.ExternInfo exportInfo
+		)
+	{
+		return
+			exportInfo.type == "WASM_EXTERN_FUNC" &&
+			exportInfo.results!.Count == 0 &&
+			exportInfo.@params!.Count == 1;
+	}
 
 	public override void OnInspectorGUI() {
 		var settings = target as EcsactWasmRuntimeSettings;
@@ -34,6 +127,15 @@ public class EcsactWasmRuntimeSettingsEditor : Editor {
 			systemLikeTypes = Ecsact.Util.GetAllSystemLikeTypes().ToList();
 		}
 
+		EditorGUILayout.PropertyField(useDefaultLoader);
+		EditorGUI.BeginChangeCheck();
+		EditorGUILayout.PropertyField(autoFindSystemImpls);
+		if(EditorGUI.EndChangeCheck()) {
+			if(autoFindSystemImpls.boolValue) {
+				FindSystemImpls(OnSystemImplsAutoChange);
+			}
+		}
+
 		EditorGUILayout.LabelField(
 			label: "System Implementations",
 			style: EditorStyles.boldLabel
@@ -41,12 +143,19 @@ public class EcsactWasmRuntimeSettingsEditor : Editor {
 
 		allWasmInfoLoaded = true;
 
+		EditorGUI.BeginDisabledGroup(settings.autoFindSystemImpls);
+
 		foreach(Type systemLikeType in systemLikeTypes) {
 			EditorGUILayout.BeginHorizontal();
 
 			var systemLikeId = Ecsact.Util.GetSystemID(systemLikeType);
 
-			EditorGUILayout.LabelField(systemLikeType.FullName);
+			EditorGUILayout.LabelField(
+				"    " + systemLikeType.FullName,
+				new GUILayoutOption[]{
+					GUILayout.ExpandWidth(true)
+				}
+			);
 			var entry = settings.wasmSystemEntries.Find(
 				entry => entry.systemId == systemLikeId
 			);
@@ -58,7 +167,8 @@ public class EcsactWasmRuntimeSettingsEditor : Editor {
 			entry.wasmAsset = EditorGUILayout.ObjectField(
 				obj: entry.wasmAsset,
 				objType: typeof(WasmAsset),
-				allowSceneObjects: false
+				allowSceneObjects: false,
+				options: new GUILayoutOption[]{GUILayout.Width(200)}
 			) as WasmAsset;
 			
 			if(entry.wasmAsset != null) {
@@ -85,7 +195,8 @@ public class EcsactWasmRuntimeSettingsEditor : Editor {
 			var dropdownContent = new GUIContent(entry.wasmExportName);
 			var dropdownPressed = EditorGUILayout.DropdownButton(
 				dropdownContent,
-				FocusType.Keyboard
+				FocusType.Keyboard,
+				options: new GUILayoutOption[]{GUILayout.Width(200)}
 			);
 			EditorGUI.EndDisabledGroup();
 
@@ -93,14 +204,9 @@ public class EcsactWasmRuntimeSettingsEditor : Editor {
 				var dropdownMenu = new GenericMenu();
 				dropdownMenu.allowDuplicateNames = false;
 				foreach(var export in wasmInfo.exports) {
-					bool isValidSystemImpl =
-						export.type == "WASM_EXTERN_FUNC" &&
-						export.results!.Count == 0 &&
-						export.@params!.Count == 1;
-
 					var menuItemContent = new GUIContent(export.name);
 
-					if(isValidSystemImpl) {
+					if(IsValidSystemImplExport(export)) {
 						dropdownMenu.AddItem(
 							menuItemContent,
 							entry.wasmExportName == export.name,
@@ -116,10 +222,19 @@ public class EcsactWasmRuntimeSettingsEditor : Editor {
 			EditorGUILayout.EndHorizontal();
 		}
 
+		EditorGUI.EndDisabledGroup();
+
 		if (EditorGUI.EndChangeCheck()) {
 			EditorUtility.SetDirty(settings);
 		}
 
+		serializedObject.ApplyModifiedProperties();
+	}
+
+	void OnSystemImplsAutoChange
+		( EcsactWasmRuntimeSettings settings
+		)
+	{
 		serializedObject.ApplyModifiedProperties();
 	}
 
