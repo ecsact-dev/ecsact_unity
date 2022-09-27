@@ -1015,7 +1015,13 @@ public class EcsactRuntime {
 			);
 		internal ecsact_get_entities_delegate? ecsact_get_entities;
 
-		internal delegate void ecsact_add_component_delegate
+		internal enum ecsact_add_error {
+			OK = 0,
+			ENTITY_INVALID = 1,
+			CONSTRAINT_BROKEN = 2
+		};
+
+		internal delegate ecsact_add_error ecsact_add_component_delegate
 			( Int32   registryId
 			, Int32   entityId
 			, Int32   componentId
@@ -1064,7 +1070,13 @@ public class EcsactRuntime {
 			);
 		internal ecsact_get_components_delegate? ecsact_get_components;
 
-		internal delegate void ecsact_update_component_delegate
+		internal enum ecsact_update_error {
+			OK = 0,
+			ENTITY_INVALID = 1,
+			CONSTRAINT_BROKEN = 2
+		};
+
+		internal delegate ecsact_update_error ecsact_update_component_delegate
 			( Int32   registryId
 			, Int32   entityId
 			, Int32   componentId
@@ -1086,7 +1098,14 @@ public class EcsactRuntime {
 			, object       componentData
 			, IntPtr       callbackUserData
 			);
-		internal delegate void ecsact_execute_systems_delegate
+
+		internal enum ecsact_exec_systems_error {
+			OK = 0,
+			ENTITY_INVALID = 1,
+			CONSTRAINT_BROKEN = 2
+		};
+
+		internal delegate ecsact_exec_systems_error ecsact_execute_systems_delegate
 			( Int32                        registryId
 			, Int32                        executionCount
 			, ExecutionOptions[]           executionOptionsList
@@ -1254,12 +1273,18 @@ public class EcsactRuntime {
 
 			try {
 				Marshal.StructureToPtr(component, componentPtr, false);
-				ecsact_add_component(
+				var error = ecsact_add_component(
 					registryId,
 					entityId,
 					componentId,
 					componentPtr
 				);
+				if(error == ecsact_add_error.ENTITY_INVALID) {
+					throw new Exception("Component add happening on invalid entity");
+				}
+				if(error == ecsact_add_error.CONSTRAINT_BROKEN) {
+					throw new Exception("Component add constraint broken");
+				}
 			} finally {
 				Marshal.FreeHGlobal(componentPtr);
 			}
@@ -1436,12 +1461,19 @@ public class EcsactRuntime {
 
 			try {
 				Marshal.StructureToPtr(component, componentPtr, false);
-				ecsact_update_component(
+				var error = ecsact_update_component(
 				registryId,
 				entityId,
 				componentId,
 				componentPtr
 			);
+
+			if(error == ecsact_update_error.ENTITY_INVALID) {
+				throw new Exception("Component update happening on invalid entity");
+			}
+			if(error == ecsact_update_error.CONSTRAINT_BROKEN) {
+				throw new Exception("Component update constraint broken");
+			}
 			} finally {
 				Marshal.FreeHGlobal(componentPtr);
 			}
@@ -1487,12 +1519,18 @@ public class EcsactRuntime {
 				_owner._execEvs.initCallbackUserData = ownerIntPtr;
 				_owner._execEvs.updateCallbackUserData = ownerIntPtr;
 				_owner._execEvs.removeCallbackUserData = ownerIntPtr;
-				ecsact_execute_systems(
+				var error = ecsact_execute_systems(
 					registryId,
 					executionCount,
 					executionOptionsList,
 					in _owner._execEvs
 				);
+				if(error == ecsact_exec_systems_error.ENTITY_INVALID) {
+					throw new Exception("System execution happening on invalid entity");
+				}
+				if(error == ecsact_exec_systems_error.CONSTRAINT_BROKEN) {
+					throw new Exception("System execution constraint broken");
+				}
 			} finally {
 				ownerPinned.Free();
 				CurrentSystemExecutionState.runtime = null;
