@@ -131,7 +131,7 @@ public class EcsactWasmRuntimeSettingsEditor : Editor {
 		EditorGUI.BeginChangeCheck();
 		EditorGUILayout.PropertyField(autoFindSystemImpls);
 		if(EditorGUI.EndChangeCheck()) {
-			if(autoFindSystemImpls.boolValue) {
+			if(autoFindSystemImpls!.boolValue) {
 				FindSystemImpls(OnSystemImplsAutoChange);
 			}
 		}
