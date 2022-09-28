@@ -105,9 +105,69 @@ static class EcsactSettingsUIElementsRegister {
 		coreMethodTemplate.contentContainer.style.display = DisplayStyle.None;
 	}
 
+	private static void DrawMethodsUI
+		( TemplateContainer      ui
+		, EcsactRuntimeSettings  settings
+		)
+	{
+		var testDefaultRuntime = EcsactRuntime.Load(settings.runtimeLibraryPaths);
+		try {
+			SetupMethodsUI(
+				ui,
+				"async",
+				EcsactRuntime.Async.methods,
+				testDefaultRuntime.async.availableMethods
+			);
+
+			SetupMethodsUI(
+				ui,
+				"core",
+				EcsactRuntime.Core.methods,
+				testDefaultRuntime.core.availableMethods
+			);
+
+			SetupMethodsUI(
+				ui,
+				"dynamic",
+				EcsactRuntime.Dynamic.methods,
+				testDefaultRuntime.dynamic.availableMethods
+			);
+
+			SetupMethodsUI(
+				ui,
+				"meta",
+				EcsactRuntime.Meta.methods,
+				testDefaultRuntime.meta.availableMethods
+			);
+
+			SetupMethodsUI(
+				ui,
+				"serialize",
+				EcsactRuntime.Serialize.methods,
+				testDefaultRuntime.serialize.availableMethods
+			);
+
+			SetupMethodsUI(
+				ui,
+				"static",
+				EcsactRuntime.Static.methods,
+				testDefaultRuntime.@static.availableMethods
+			);
+
+			SetupMethodsUI(
+				ui,
+				"wasm",
+				EcsactRuntime.Wasm.methods,
+				testDefaultRuntime.wasm.availableMethods
+			);
+		} finally {
+			EcsactRuntime.Free(testDefaultRuntime);
+			testDefaultRuntime = null;
+		}
+	}
+
 	[SettingsProvider]
 	public static SettingsProvider CreateEcsactSettingsProvider() {
-		EcsactRuntime? testDefaultRuntime = null;
 		Editor? runtimeSettingsEditor = null;
 		Editor? wasmRuntimeSettingsEditor = null;
 
@@ -122,64 +182,8 @@ static class EcsactSettingsUIElementsRegister {
 				BindingExtensions.Bind(ui, settings);
 				rootElement.Add(ui);
 
-				if(testDefaultRuntime != null) {
-					EcsactRuntime.Free(testDefaultRuntime);
-					testDefaultRuntime = null;
-				}
-
 				var runtimeSettings = EcsactRuntimeSettings.Get();
-				testDefaultRuntime = EcsactRuntime.Load(
-					runtimeSettings.runtimeLibraryPaths
-				);
-
-				SetupMethodsUI(
-					ui,
-					"async",
-					EcsactRuntime.Async.methods,
-					testDefaultRuntime.async.availableMethods
-				);
-
-				SetupMethodsUI(
-					ui,
-					"core",
-					EcsactRuntime.Core.methods,
-					testDefaultRuntime.core.availableMethods
-				);
-
-				SetupMethodsUI(
-					ui,
-					"dynamic",
-					EcsactRuntime.Dynamic.methods,
-					testDefaultRuntime.dynamic.availableMethods
-				);
-
-				SetupMethodsUI(
-					ui,
-					"meta",
-					EcsactRuntime.Meta.methods,
-					testDefaultRuntime.meta.availableMethods
-				);
-
-				SetupMethodsUI(
-					ui,
-					"serialize",
-					EcsactRuntime.Serialize.methods,
-					testDefaultRuntime.serialize.availableMethods
-				);
-
-				SetupMethodsUI(
-					ui,
-					"static",
-					EcsactRuntime.Static.methods,
-					testDefaultRuntime.@static.availableMethods
-				);
-
-				SetupMethodsUI(
-					ui,
-					"wasm",
-					EcsactRuntime.Wasm.methods,
-					testDefaultRuntime.wasm.availableMethods
-				);
+				DrawMethodsUI(ui, runtimeSettings);
 
 				var runtimeSettingsContainer =
 					ui.Q<IMGUIContainer>("runtime-settings-container");
@@ -199,11 +203,6 @@ static class EcsactSettingsUIElementsRegister {
 				};
 			},
 			deactivateHandler = () => {
-				if(testDefaultRuntime != null) {
-					EcsactRuntime.Free(testDefaultRuntime);
-					testDefaultRuntime = null;
-				}
-
 				if(runtimeSettingsEditor != null) {
 					Editor.DestroyImmediate(runtimeSettingsEditor);
 					runtimeSettingsEditor = null;
