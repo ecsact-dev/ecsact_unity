@@ -1290,6 +1290,44 @@ public class EcsactRuntime {
 			}
 		}
 
+		public void AddComponent
+			( Int32   registryId
+			, Int32   entityId
+			, Int32   componentId
+			, object  componentData
+			)
+		{
+			if(ecsact_add_component == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_add_component");
+			}
+
+#if UNITY_EDITOR
+			var result = HasComponent(registryId, entityId, componentId);
+			if(result == true) {
+				throw new Exception("Entity already has added component");
+			}
+#endif
+			var componentPtr = Marshal.AllocHGlobal(Marshal.SizeOf(componentData));
+
+			try {
+				Marshal.StructureToPtr(componentData, componentPtr, false);
+				var error = ecsact_add_component(
+					registryId,
+					entityId,
+					componentId,
+					componentPtr
+				);
+				if(error == ecsact_add_error.ENTITY_INVALID) {
+					throw new Exception("Component add happening on invalid entity");
+				}
+				if(error == ecsact_add_error.CONSTRAINT_BROKEN) {
+					throw new Exception("Component add constraint broken");
+				}
+			} finally {
+				Marshal.FreeHGlobal(componentPtr);
+			}
+		}
+
 		public bool HasComponent
 			( Int32   registryId
 			, Int32   entityId
@@ -1497,6 +1535,26 @@ public class EcsactRuntime {
 #endif
 
 			var componentId = Ecsact.Util.GetComponentID<C>();
+			ecsact_remove_component(registryId, entityId, componentId);
+		}
+
+		public void RemoveComponent
+			( Int32  registryId
+			, Int32  entityId
+			, Int32  componentId
+			)
+		{
+			if(ecsact_remove_component == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_remove_component");
+			}
+
+#if UNITY_EDITOR
+			var result = HasComponent(registryId, entityId, componentId);
+			if(result == false) {
+				throw new Exception("Can't remove a component that doesn't exist");
+			}
+#endif
+
 			ecsact_remove_component(registryId, entityId, componentId);
 		}
 
