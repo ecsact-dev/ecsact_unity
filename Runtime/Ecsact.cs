@@ -22,11 +22,7 @@ namespace Ecsact {
 	public interface System {}
 
 	public static class Util {
-		private static Dictionary<Int32, Type> cachedComponentTypes;
-
-		static Util() {
-			cachedComponentTypes = new Dictionary<Int32, Type>();
-		}
+		private static Dictionary<Int32, Type?> cachedComponentTypes = new();
 
 		public static bool IsComponent
 			( Type componentType
@@ -128,11 +124,14 @@ namespace Ecsact {
 					if(IsComponent(type)) {
 						var typeComponentId = GetComponentID(type);
 						if(typeComponentId == componentId) {
+							cachedComponentTypes[componentId] = type;
 							return type;
 						}
 					}
 				}
 			}
+
+			cachedComponentTypes[componentId] = null;
 
 			return null;
 		}
@@ -239,6 +238,16 @@ namespace Ecsact {
 			foreach(var assembly in AppDomain.CurrentDomain.GetAssemblies()) {
 				foreach(var type in assembly.GetTypes()) {
 					if(Util.IsSystem(type) || Util.IsAction(type)) {
+						yield return type;
+					}
+				}
+			}
+		}
+
+		public static IEnumerable<Type> GetAllComponentTypes() {
+			foreach(var assembly in AppDomain.CurrentDomain.GetAssemblies()) {
+				foreach(var type in assembly.GetTypes()) {
+					if(Util.IsComponent(type)) {
 						yield return type;
 					}
 				}
