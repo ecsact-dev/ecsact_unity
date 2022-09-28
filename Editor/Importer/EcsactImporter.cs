@@ -11,7 +11,8 @@ using Ecsact.Editor;
 class PkgInfoJson {
 	public string name = "";
 	public bool main = false;
-	public List<string> imports = new List<string>();
+	public List<string> imports = new();
+	public List<EcsactPackage.Component> components = new();
 }
 
 [ScriptedImporter(version: 1, ext: "ecsact")]
@@ -84,6 +85,7 @@ public class EcsactImporter : ScriptedImporter {
 
 		pkg._name = pkgJson.name;
 		pkg._imports = pkgJson.imports;
+		pkg._components = pkgJson.components;
 
 		ctx.AddObjectToAsset("ecsact package", pkg);
 		ctx.SetMainObject(pkg);

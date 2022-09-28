@@ -7,8 +7,8 @@ using UnityEditor;
 [CustomEditor(typeof(EcsactPackage))]
 [CanEditMultipleObjects]
 public class EcsactPackageEditor : Editor {
-	private static Dictionary<string, bool> pkgFoldouts =
-		new Dictionary<string, bool>();
+	private static Dictionary<string, bool> pkgFoldouts = new();
+	private static bool componentsFoldout = true;
 
 	public override void OnInspectorGUI() {
 		List<EcsactPackage> pkgList = new List<EcsactPackage>();
@@ -36,6 +36,27 @@ public class EcsactPackageEditor : Editor {
 
 			for(int i=1; pkg.imports.Count > i; ++i) {
 				EditorGUILayout.LabelField(" ", pkg.imports[i]);
+			}
+
+			componentsFoldout = EditorGUILayout.Foldout(
+				componentsFoldout,
+				$"Components ({pkg.components.Count})"
+			);
+			if(componentsFoldout) {
+				EditorGUI.indentLevel += 1;
+				foreach(var comp in pkg.components) {
+					EditorGUILayout.LabelField(comp.full_name);
+					EditorGUI.indentLevel += 1;
+					foreach(var field in comp.fields) {
+						var fieldName = field.field_name;
+						if(field.field_type.length > 1) {
+							fieldName += $"[{field.field_type.length}]";
+						}
+						EditorGUILayout.LabelField(fieldName, field.field_type.type);
+					}
+					EditorGUI.indentLevel -= 1;
+				}
+				EditorGUI.indentLevel -= 1;
 			}
 
 			EditorGUI.EndDisabledGroup();
