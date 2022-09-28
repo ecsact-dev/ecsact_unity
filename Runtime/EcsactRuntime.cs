@@ -616,32 +616,6 @@ public class EcsactRuntime {
 
 	private static EcsactRuntime? defaultInstance;
 
-	internal static class CleanupInstances {
-		private static void Quit() {
-			foreach(var action in initActions) {
-				action();
-			}
-			foreach(var action in updateActions) {
-				action();
-			}
-			foreach(var action in removeActions) {
-				action();
-			}
-			initActions.Clear();
-			updateActions.Clear();
-			removeActions.Clear();
-		}
-
-		[UnityEngine.RuntimeInitializeOnLoadMethod]
-		private static void RunOnStart() {
-			UnityEngine.Application.quitting += Quit;
-		}
-
-		public static List<System.Action> initActions = new();
-		public static List<System.Action> updateActions = new();
-		public static List<System.Action> removeActions = new();
-	}
-
 	static EcsactRuntime() {
 #if UNITY_EDITOR
 		EditorApplication.playModeStateChanged += state => {
