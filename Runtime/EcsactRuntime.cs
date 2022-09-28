@@ -666,51 +666,7 @@ public class EcsactRuntime {
 			defaultInstance = Load(settings.runtimeLibraryPaths);
 
 			if(defaultInstance != null) {
-				foreach(var defReg in settings.defaultRegistries) {
-					defReg.registryId = defaultInstance.core.CreateRegistry(
-						defReg.registryName
-					);
-
-					if(defReg.pool == null) {
-						if(settings.useUnitySync) {
-							defReg.pool = EntityGameObjectPool.CreateInstance(
-								new RegistryEntitySource(defReg.registryId, defaultInstance)
-							);
-							var initAction = defaultInstance.OnInitComponent((
-								entityId, componentId, componentObject
-							) => {
-								defReg.pool.InitComponent(
-									entityId,
-									componentId,
-									in componentObject
-								);
-							});
-							CleanupInstances.initActions.Add(initAction);
-
-							var updateAction = defaultInstance.OnUpdateComponent((
-								entityId, componentId, componentObject
-							) => {
-								defReg.pool.UpdateComponent(
-									entityId,
-									componentId,
-									in componentObject
-								);
-							});
-							CleanupInstances.updateActions.Add(updateAction);
-
-							var removeAction = defaultInstance.OnRemoveComponent((
-								entityId, componentId, componentObject
-							) => {
-								defReg.pool.RemoveComponent(
-									entityId,
-									componentId,
-									in componentObject
-								);
-							});
-							CleanupInstances.removeActions.Add(removeAction);
-						}
-					}
-				}
+				Ecsact.Internal.EcsactRuntimeDefaults.Setup(defaultInstance, settings);
 			}
 		}
 
@@ -1288,6 +1244,8 @@ public class EcsactRuntime {
 			} finally {
 				Marshal.FreeHGlobal(componentPtr);
 			}
+
+			_owner._TriggerInitComponentEvent(entityId, componentId, component);
 		}
 
 		public void AddComponent
@@ -1326,6 +1284,8 @@ public class EcsactRuntime {
 			} finally {
 				Marshal.FreeHGlobal(componentPtr);
 			}
+
+			_owner._TriggerInitComponentEvent(entityId, componentId, componentData);
 		}
 
 		public bool HasComponent
@@ -1534,8 +1494,10 @@ public class EcsactRuntime {
 			}
 #endif
 
+			var componentData = GetComponent<C>(registryId, entityId);
 			var componentId = Ecsact.Util.GetComponentID<C>();
 			ecsact_remove_component(registryId, entityId, componentId);
+			_owner._TriggerRemoveComponentEvent(entityId, componentId, componentData);
 		}
 
 		public void RemoveComponent
@@ -1555,7 +1517,9 @@ public class EcsactRuntime {
 			}
 #endif
 
+			var componentData = GetComponent(registryId, entityId, componentId);
 			ecsact_remove_component(registryId, entityId, componentId);
+			_owner._TriggerRemoveComponentEvent(entityId, componentId, componentData);
 		}
 
 		public void ExecuteSystems
@@ -2506,6 +2470,57 @@ public class EcsactRuntime {
 		};
 	}
 
+	private void _TriggerInitComponentEvent
+		( Int32   entityId
+		, Int32   componentId
+		, object  componentData
+		)
+	{
+		if(_initCompCbs.TryGetValue(componentId, out var cbs)) {
+			foreach(var cb in cbs) {
+				cb(entityId, componentData);
+			}
+		}
+
+		foreach(var cb in _initAnyCompCbs) {
+			cb(entityId, componentId, componentData);
+		}
+	}
+
+	private void _TriggerUpdateComponentEvent
+		( Int32   entityId
+		, Int32   componentId
+		, object  componentData
+		)
+	{
+		if(_updateCompCbs.TryGetValue(componentId, out var cbs)) {
+			foreach(var cb in cbs) {
+				cb(entityId, componentData);
+			}
+		}
+
+		foreach(var cb in _updateAnyCompCbs) {
+			cb(entityId, componentId, componentData);
+		}
+	}
+
+	private void _TriggerRemoveComponentEvent
+		( Int32   entityId
+		, Int32   componentId
+		, object  componentData
+		)
+	{
+		if(_removeCompCbs.TryGetValue(componentId, out var cbs)) {
+			foreach(var cb in cbs) {
+				cb(entityId, componentData);
+			}
+		}
+
+		foreach(var cb in _removeAnyCompCbs) {
+			cb(entityId, componentId, componentData);
+		}
+	}
+
 	[AOT.MonoPInvokeCallback(typeof(ComponentEventCallback))]
 	private static void OnInitComponentHandler
 		( EcsactEvent  ev
@@ -2523,17 +2538,7 @@ public class EcsactRuntime {
 			componentId
 		);
 		componentObject = Ecsact.Util.HandlePtrToComponent(ref componentObject);
-
-
-		if(self._initCompCbs.TryGetValue(componentId, out var cbs)) {
-			foreach(var cb in cbs) {
-				cb(entityId, componentObject);
-			}
-		}
-
-		foreach(var cb in self._initAnyCompCbs) {
-			cb(entityId, componentId, componentObject);
-		}
+		self._TriggerInitComponentEvent(entityId, componentId, componentObject);
 	}
 
 	[AOT.MonoPInvokeCallback(typeof(ComponentEventCallback))]
@@ -2553,16 +2558,7 @@ public class EcsactRuntime {
 			componentId
 		);
 		componentObject = Ecsact.Util.HandlePtrToComponent(ref componentObject);
-
-		if(self._updateCompCbs.TryGetValue(componentId, out var cbs)) {
-			foreach(var cb in cbs) {
-				cb(entityId, componentObject);
-			}
-		}
-
-		foreach(var cb in self._updateAnyCompCbs) {
-			cb(entityId, componentId, componentObject);
-		}
+		self._TriggerUpdateComponentEvent(entityId, componentId, componentObject);
 	}
 
 	[AOT.MonoPInvokeCallback(typeof(ComponentEventCallback))]
@@ -2577,19 +2573,12 @@ public class EcsactRuntime {
 		UnityEngine.Debug.Assert(ev == EcsactEvent.RemoveComponent);
 
 		var self = (GCHandle.FromIntPtr(callbackUserData).Target as EcsactRuntime)!;
-		var componentObject = Ecsact.Util.PtrToComponent(componentData, componentId);
-
+		var componentObject = Ecsact.Util.PtrToComponent(
+			componentData,
+			componentId
+		);
 		componentObject = Ecsact.Util.HandlePtrToComponent(ref componentObject);
-
-		if(self._removeCompCbs.TryGetValue(componentId, out var cbs)) {
-			foreach(var cb in cbs) {
-				cb(entityId, componentObject);
-			}
-		}
-
-		foreach(var cb in self._removeAnyCompCbs) {
-			cb(entityId, componentId, componentObject);
-		}
+		self._TriggerRemoveComponentEvent(entityId, componentId, componentObject);
 	}
 
 }

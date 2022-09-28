@@ -5,6 +5,8 @@ using UnityEngine;
 
 using Ecsact.UnitySync;
 
+namespace Ecsact {
+
 public class RegistryEntitySource : EntityGameObjectPool.EntitySource {
 	EcsactRuntime runtime;
 	private int registryId;
@@ -31,25 +33,4 @@ public class RegistryEntitySource : EntityGameObjectPool.EntitySource {
 	}
 }
 
-public class RegisterScriptPool : MonoBehaviour {
-
-	void Awake() {
-		var settings = EcsactRuntimeSettings.Get();
-		var monobehaviours = settings.unitySyncScripts;
-
-		foreach(var monoStr in monobehaviours) {
-
-			var type = Type.GetType(monoStr + ",Assembly-CSharp");
-			if(type == null) {
-				throw new Exception(
-					"Unity Sync: Monobehaviour " + monoStr + " not found "
-				);
-			} else {
-				UnitySyncMonoBehaviours.RegisterMonoBehaviourType(
-					type
-				);
-			}
-
-		}
-	}
-}
+} // namespace Ecsact

@@ -3,13 +3,12 @@ using System.Collections.Generic;
 using System.IO;
 using System;
 using System.Linq;
+using Ecsact.UnitySync;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
 
 #nullable enable
-
-using Ecsact.UnitySync;
 
 [System.Serializable]
 public class EcsactRuntimeDefaultRegistry {
@@ -19,6 +18,7 @@ public class EcsactRuntimeDefaultRegistry {
 		FixedUpdate,
 	}
 
+	[NonSerialized]
 	public EntityGameObjectPool? pool;
 
 	[Tooltip("Name given to registry. For display and debug purposes only")]
