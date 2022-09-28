@@ -19,6 +19,7 @@ public class EcsactPackage : ScriptableObject {
 
 	[System.Serializable]
 	public class Component {
+		public System.Int32 id = -1;
 		public string full_name = "";
 		public List<FieldInfo> fields = new();
 	}
