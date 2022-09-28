@@ -89,16 +89,20 @@ namespace Ecsact {
 			});
 		}
 
-		void OnEnable() {
-			runtime = EcsactRuntime.GetOrLoadDefault();
-			settings = EcsactRuntimeSettings.Get();
-			defReg = settings.defaultRegistries[0];
-			
-			entityId = runtime.core.CreateEntity(defReg.registryId);
+		void OnEnable() {			
+			if(entityId == -1) {
+				runtime = EcsactRuntime.GetOrLoadDefault();
+				settings = EcsactRuntimeSettings.Get();
+				defReg = settings.defaultRegistries[0];
+				entityId = runtime.core.CreateEntity(defReg.registryId);
+				if(defReg.pool != null) {
+					defReg.pool.SetPreferredEntityGameObject(entityId, gameObject);
+				}
+			}
 
 			foreach(var ecsactComponent in ecsactComponents) {
-				runtime.core.AddComponent(
-					defReg.registryId,
+				runtime!.core.AddComponent(
+					defReg!.registryId,
 					entityId,
 					ecsactComponent.id,
 					ecsactComponent.data!

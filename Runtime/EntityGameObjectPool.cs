@@ -122,6 +122,48 @@ namespace Ecsact.UnitySync {
 			return null;
 		}
 
+		public static bool IsPreferredEntityGameObject
+			( GameObject gameObject
+			)
+		{
+			Ecsact.PreferredEntityGameObject? preferred = null;
+			return gameObject.TryGetComponent(out preferred);
+		}
+
+		public void SetPreferredEntityGameObject
+			( Int32       entityId
+			, GameObject  preferredGameObject
+			)
+		{
+			var existingGameObject = GetEntityGameObject(entityId);
+			if(existingGameObject != null) {
+				if(IsPreferredEntityGameObject(existingGameObject)) {
+					throw new global::System.Exception(
+						"EntityGameObjectPool.SetPreferredEntityGameObject may not be " +
+						"called on an entity that already has a preferred game object."
+					);
+				}
+
+				throw new global::System.Exception("TODO: Support overriding game object with preferred one");
+			}
+
+			EnsureEntityLists(entityId);
+
+			preferredGameObject.AddComponent<Ecsact.PreferredEntityGameObject>();
+			entityGameObjects[entityId] = preferredGameObject;
+
+			Scene scene = _targetScene == null
+				? SceneManager.GetActiveScene()
+				: _targetScene.Value;
+			if(!preferredGameObject.scene.Equals(scene)) {
+				SceneManager.MoveGameObjectToScene(preferredGameObject, scene);
+			}
+
+			if(_rootGameObject != null) {
+				preferredGameObject.transform.SetParent(_rootGameObject.transform);
+			}
+		}
+
 		public void Clear() {
 			foreach(var gameObject in entityGameObjects) {
 				if(Application.isPlaying) {
@@ -324,7 +366,12 @@ namespace Ecsact.UnitySync {
 				}
 
 				if(!allMonoBehaviourTypes.Any()) {
-					gameObject.SetActive(false);
+					// Preferred entity game objects are created manually by the user. We
+					// should not turn them off because they might have other behaviours
+					// than the ones we put on automatically.
+					if(!IsPreferredEntityGameObject(gameObject)) {
+						gameObject.SetActive(false);
+					}
 					gameObject.name = $"entity ({entityId})";
 				}
 			}
