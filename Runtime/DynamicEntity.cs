@@ -14,6 +14,11 @@ namespace Ecsact {
 		[SerializeField, HideInInspector]
 		public global::System.Int32 id;
 		public object? data;
+		[SerializeField, HideInInspector]
+		public List<string> entityFieldNames = new();
+		[SerializeField, HideInInspector]
+		public List<DynamicEntity?> otherEntities = new();
+		[SerializeField, HideInInspector]
 		public string? _dataJson;
 
 		public void OnAfterDeserialize() {
@@ -89,7 +94,7 @@ namespace Ecsact {
 			});
 		}
 
-		void OnEnable() {			
+		private void CreateEntityIfNeeded() {
 			if(entityId == -1) {
 				runtime = EcsactRuntime.GetOrLoadDefault();
 				settings = EcsactRuntimeSettings.Get();
@@ -97,6 +102,22 @@ namespace Ecsact {
 				entityId = runtime.core.CreateEntity(defReg.registryId);
 				if(defReg.pool != null) {
 					defReg.pool.SetPreferredEntityGameObject(entityId, gameObject);
+				}
+			}
+		}
+
+		private void AddInitialEcsactComponents() {
+			foreach(var ecsactComp in ecsactComponents) {
+				for(int i=0; ecsactComp.otherEntities.Count > i; ++i) {
+					var otherEntity = ecsactComp.otherEntities[i];
+					if(otherEntity != null && otherEntity.entityId == -1) {
+						otherEntity.CreateEntityIfNeeded();
+						var fieldName = ecsactComp.entityFieldNames[i];
+						var compType = ecsactComp.data!.GetType();
+						var field = compType.GetField(fieldName);
+						Debug.Assert(field != null, this);
+						field!.SetValue(ecsactComp.data, otherEntity.entityId);
+					}
 				}
 			}
 
@@ -108,6 +129,11 @@ namespace Ecsact {
 					ecsactComponent.data!
 				);
 			}
+		}
+
+		void OnEnable() {			
+			CreateEntityIfNeeded();
+			AddInitialEcsactComponents();
 		}
 
 		void OnDisable() {

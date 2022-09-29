@@ -74,31 +74,136 @@ namespace Ecsact.Editor {
 
 		void DrawEcsactFieldInput
 			( Rect                     position
+			, SerializedProperty       property
 			, ref object               compositeData
 			, EcsactPackage.FieldInfo  fieldInfo
 			)
 		{
 			var type = compositeData.GetType();
 			var field = type.GetField(fieldInfo.field_name);
-			if(fieldInfo.field_type.type == "i32") {
-				EditorGUI.IntField(position, fieldInfo.field_name, 0);
-			} else if(fieldInfo.field_type.type == "f32") {
-				var value = (float)field.GetValue(compositeData);
-				value = EditorGUI.FloatField(position, fieldInfo.field_name, value);
-				field.SetValue(compositeData, value);
+			if(fieldInfo.field_type.length == 1) {
+				if(fieldInfo.field_type.type == "bool") {
+					var value = (bool)field.GetValue(compositeData);
+					value = EditorGUI.ToggleLeft(position, fieldInfo.field_name, value);
+					field.SetValue(compositeData, value);
+				} else if(fieldInfo.field_type.type == "i32") {
+					var value = (Int32)field.GetValue(compositeData);
+					value = EditorGUI.IntField(position, fieldInfo.field_name, value);
+					field.SetValue(compositeData, value);
+				} else if(fieldInfo.field_type.type == "i16") {
+					var value = (Int16)field.GetValue(compositeData);
+					value = (Int16)EditorGUI.IntField(position, fieldInfo.field_name, value);
+					field.SetValue(compositeData, value);
+				} else if(fieldInfo.field_type.type == "i8") {
+					var value = (SByte)field.GetValue(compositeData);
+					value = (SByte)EditorGUI.IntField(position, fieldInfo.field_name, value);
+					field.SetValue(compositeData, value);
+				} else if(fieldInfo.field_type.type == "u32") {
+					var value = (UInt32)field.GetValue(compositeData);
+					value = (UInt32)EditorGUI.IntField(
+						position,
+						fieldInfo.field_name,
+						(int)value
+					);
+					field.SetValue(compositeData, value);
+				} else if(fieldInfo.field_type.type == "u16") {
+					var value = (UInt16)field.GetValue(compositeData);
+					value = (UInt16)EditorGUI.IntField(position, fieldInfo.field_name, value);
+					field.SetValue(compositeData, value);
+				} else if(fieldInfo.field_type.type == "u8") {
+					var value = (Byte)field.GetValue(compositeData);
+					value = (Byte)EditorGUI.IntField(position, fieldInfo.field_name, value);
+					field.SetValue(compositeData, value);
+				} else if(fieldInfo.field_type.type == "f32") {
+					var value = (float)field.GetValue(compositeData);
+					value = EditorGUI.FloatField(position, fieldInfo.field_name, value);
+					field.SetValue(compositeData, value);
+				} else if(fieldInfo.field_type.type == "entity") {
+					var entityFieldNamesProp =
+						property.FindPropertyRelative("entityFieldNames");
+					var otherEntitiesProp =
+						property.FindPropertyRelative("otherEntities");
+
+					int index = 0;
+					for(; entityFieldNamesProp.arraySize > index; ++index) {
+						var fieldNameProp =
+							entityFieldNamesProp.GetArrayElementAtIndex(index);
+						if(fieldNameProp.stringValue == fieldInfo.field_name) {
+							break;
+						}
+					}
+
+					var otherEntityProp = otherEntitiesProp.GetArrayElementAtIndex(index);
+
+					otherEntityProp.objectReferenceValue = EditorGUI.ObjectField(
+						position: position,
+						obj: otherEntityProp.objectReferenceValue,
+						objType: typeof(DynamicEntity),
+						label: new GUIContent(fieldInfo.field_name),
+						allowSceneObjects: true
+					);
+				} else {
+					EditorGUI.LabelField(
+						position,
+						fieldInfo.field_name,
+						"(unsupported type)"
+					);
+				}
 			} else {
+				EditorGUI.LabelField(
+					position,
+					$"{fieldInfo.field_name}[{fieldInfo.field_type.length}]",
+					"(array unsupported)"
+				);
 				EditorGUI.PrefixLabel(position, new GUIContent(fieldInfo.field_name));
 			}
 		}
 
 		void DrawEcsactComponentFieldInputs
 			( Rect                     position
+			, SerializedProperty       property
 			, ref object               componentData
 			, EcsactPackage.Component  componentInfo
 			)
 		{
+			var entityFieldNamesProp =
+				property.FindPropertyRelative("entityFieldNames");
+			var otherEntitiesProp =
+				property.FindPropertyRelative("otherEntities");
+
+			var entityFields = componentInfo.fields
+				.Where(f => f.field_type.type == "entity")
+				.ToList();
+
+			for(int i=0; entityFields.Count > i; ++i) {
+				if(entityFieldNamesProp.arraySize < i + 1) {
+					entityFieldNamesProp.InsertArrayElementAtIndex(i);
+				}
+				if(otherEntitiesProp.arraySize < i + 1) {
+					otherEntitiesProp.InsertArrayElementAtIndex(i);
+				}
+
+				var fieldProp = entityFieldNamesProp.GetArrayElementAtIndex(i);
+				fieldProp.stringValue = entityFields[i].field_name;
+			}
+
+			while(entityFieldNamesProp.arraySize > entityFields.Count) {
+				entityFieldNamesProp.DeleteArrayElementAtIndex(
+					entityFieldNamesProp.arraySize - 1
+				);
+			}
+
+			while(otherEntitiesProp.arraySize > entityFields.Count) {
+				otherEntitiesProp.DeleteArrayElementAtIndex(
+					otherEntitiesProp.arraySize - 1
+				);
+			}
+
+			Debug.Assert(entityFields.Count == entityFieldNamesProp.arraySize);
+			Debug.Assert(entityFields.Count == otherEntitiesProp.arraySize);
+
 			foreach(var fieldInfo in componentInfo.fields) {
-				DrawEcsactFieldInput(position, ref componentData, fieldInfo);
+				DrawEcsactFieldInput(position, property, ref componentData, fieldInfo);
 				position.position += new Vector2{y=24};
 			}
 		}
@@ -124,12 +229,13 @@ namespace Ecsact.Editor {
 			}
 
 			EditorGUI.BeginProperty(position, label, property);
-			var prefixLabelRect = new Rect(position.x, position.y, 120, 20);
+			var prefixLabelRect = new Rect(position.x, position.y, 108, 20);
 			EditorGUI.PrefixLabel(
 				prefixLabelRect,
-				new GUIContent("Component Type: ")
+				new GUIContent("Component Type:")
 			);
 			var dropdownBtnRect = new Rect(prefixLabelRect);
+			dropdownBtnRect.width = 200;
 			dropdownBtnRect.position =
 				prefixLabelRect.position + new Vector2{x=prefixLabelRect.width, y=1};
 			var dropdownPressed = EditorGUI.DropdownButton(
@@ -154,6 +260,7 @@ namespace Ecsact.Editor {
 					componentFieldInputsRect.width = position.width;
 					DrawEcsactComponentFieldInputs(
 						componentFieldInputsRect,
+						property,
 						ref componentData,
 						ecsactCompnent
 					);
