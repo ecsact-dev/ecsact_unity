@@ -562,6 +562,16 @@ public class EcsactRuntime {
 			}
 		}
 
+		public Int32 Entity() {
+			if(rt.dynamic.ecsact_system_execution_context_entity == null) {
+				throw new EcsactRuntimeMissingMethod(
+					"ecsact_system_execution_context_entity"
+				);
+			}
+
+			return rt.dynamic.ecsact_system_execution_context_entity(contextPtr);
+		}
+
 		private IntPtr contextPtr;
 		private EcsactRuntime rt;
 
@@ -1575,6 +1585,7 @@ public class EcsactRuntime {
 			"ecsact_system_execution_context_remove",
 			"ecsact_system_execution_context_same",
 			"ecsact_system_execution_context_update",
+			"ecsact_system_execution_context_entity",
 			"ecsact_system_generates_set_component",
 			"ecsact_system_generates_unset_component",
 			"ecsact_unset_system_association_capability",
@@ -1648,6 +1659,13 @@ public class EcsactRuntime {
 			, SystemExecutionImpl                      executionImpl
 			);
 		internal ecsact_create_system_delegate? ecsact_create_system;
+
+
+		internal delegate Int32 ecsact_system_execution_context_entity_delegate
+			( IntPtr context
+			);
+		internal ecsact_system_execution_context_entity_delegate? ecsact_system_execution_context_entity;
+
 
 		internal delegate void ecsact_set_system_execution_impl_delegate
 			( Int32                systemId
@@ -2206,6 +2224,7 @@ public class EcsactRuntime {
 			LoadDelegate(lib, "ecsact_system_execution_context_generate", out runtime._dynamic.ecsact_system_execution_context_generate, runtime._dynamic);
 			LoadDelegate(lib, "ecsact_system_execution_context_parent", out runtime._dynamic.ecsact_system_execution_context_parent, runtime._dynamic);
 			LoadDelegate(lib, "ecsact_system_execution_context_same", out runtime._dynamic.ecsact_system_execution_context_same, runtime._dynamic);
+			LoadDelegate(lib, "ecsact_system_execution_context_entity", out runtime._dynamic.ecsact_system_execution_context_entity, runtime._dynamic);
 			LoadDelegate(lib, "ecsact_create_system", out runtime._dynamic.ecsact_create_system, runtime._dynamic);
 			LoadDelegate(lib, "ecsact_set_system_execution_impl", out runtime._dynamic.ecsact_set_system_execution_impl, runtime._dynamic);
 			LoadDelegate(lib, "ecsact_create_action", out runtime._dynamic.ecsact_create_action, runtime._dynamic);
