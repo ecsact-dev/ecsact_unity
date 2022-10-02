@@ -2043,7 +2043,7 @@ public class EcsactRuntime {
 			"ecsactsi_wasm_set_trap_handler",
 		};
 
-		internal delegate void ecsactsi_wasm_load_delegate
+		internal delegate Error ecsactsi_wasm_load_delegate
 			( sbyte[]   wasmData
 			, Int32     wasmDataSize
 			, Int32     systemsCount
