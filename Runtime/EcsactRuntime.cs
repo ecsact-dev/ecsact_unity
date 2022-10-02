@@ -2086,7 +2086,7 @@ public class EcsactRuntime {
 			var systemIds = new Int32[]{systemId};
 			var exportNames = new string[]{exportName};
 
-			ecsactsi_wasm_load(
+			return ecsactsi_wasm_load(
 				(sbyte[]) (Array) wasmData,
 				wasmData.Length,
 				1,
