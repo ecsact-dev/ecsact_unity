@@ -2053,7 +2053,7 @@ public class EcsactRuntime {
 
 		internal ecsactsi_wasm_load_delegate? ecsactsi_wasm_load;
 
-		internal delegate void ecsactsi_wasm_load_file_delegate
+		internal delegate Error ecsactsi_wasm_load_file_delegate
 			( [MarshalAs(UnmanagedType.LPStr)] string    wasmFilePath
 			, Int32                                      systemsCount
 			, Int32[]                                    systmIds
