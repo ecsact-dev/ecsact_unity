@@ -25,7 +25,8 @@ namespace Ecsact {
 
 				if(loadError != EcsactRuntime.Wasm.Error.Ok) {
 					UnityEngine.Debug.LogError(
-						$"Failed to ecsact Wasm system impls: {loadError}"
+						$"Failed to ecsact Wasm system impls. " +
+						$"ErrorCode={loadError} ExportName={entry.wasmExportName}"
 					);
 				}
 			}

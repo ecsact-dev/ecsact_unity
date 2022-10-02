@@ -2073,7 +2073,7 @@ public class EcsactRuntime {
 
 		internal ecsactsi_wasm_set_trap_handler_delegate? ecsactsi_wasm_set_trap_handler;
 
-		public void Load
+		public Error Load
 			( byte[]  wasmData
 			, Int32   systemId
 			, string  exportName
