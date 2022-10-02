@@ -17,11 +17,17 @@ namespace Ecsact {
 			foreach(var entry in settings.wasmSystemEntries) {
 				if(string.IsNullOrWhiteSpace(entry.wasmExportName)) continue;
 
-				defaultRuntime.wasm.Load(
+				var loadError = defaultRuntime.wasm.Load(
 					entry.wasmAsset.bytes,
 					entry.systemId,
 					entry.wasmExportName
 				);
+
+				if(loadError != EcsactRuntime.Wasm.Error.Ok) {
+					UnityEngine.Debug.LogError(
+						$"Failed to ecsact Wasm system impls: {loadError}"
+					);
+				}
 			}
 		}
 	}
