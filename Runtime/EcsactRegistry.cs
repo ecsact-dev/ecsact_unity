@@ -6,7 +6,7 @@ using UnityEngine;
 public class EcsactRegistry : MonoBehaviour {
 	
 	private EcsactRuntime rt;
-	int registryId;
+	private int registryId;
 
 	public EcsactRegistry
 		( EcsactRuntime runtime
@@ -115,7 +115,6 @@ public class EcsactRegistry : MonoBehaviour {
 		return rt.core.GetComponent(registryId, entityId, componentId);
 	}
 
-
 	public Int32 CountComponents
 		( Int32 entityId
 		)
@@ -169,27 +168,5 @@ public class EcsactRegistry : MonoBehaviour {
 	{
 		rt.core.ExecuteSystems(registryId, executionCount, executionOptionsList);
 	}
-
-	public void SetSystemExecutionImpl
-		( Int32                systemId
-		, EcsactRuntime.SystemExecutionImpl  executionImpl
-		)
-	{
-		rt.dynamic.SetSystemExecutionImpl(systemId, executionImpl);
-	}
-
-	public void SetSystemExecutionImpl<System>
-		( EcsactRuntime.SystemExecutionImpl executionImpl
-		) where System : Ecsact.System
-	{
-		rt.dynamic.SetSystemExecutionImpl<System>(executionImpl);
-	}
-
-	public void SetActionExecutionImpl<Action>
-		( EcsactRuntime.SystemExecutionImpl executionImpl
-		) where Action : Ecsact.Action
-	{
-		rt.dynamic.SetActionExecutionImpl<Action>(executionImpl);
-	}	
 
 }
