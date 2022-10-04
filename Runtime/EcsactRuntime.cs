@@ -1740,7 +1740,7 @@ public class EcsactRuntime {
 		}
 
 		public void SetSystemExecutionImpl<System>
-			( SystemExecutionImpl  executionImpl
+			( SystemExecutionImpl executionImpl
 			) where System : Ecsact.System
 		{
 			if(ecsact_set_system_execution_impl == null) {
@@ -1754,7 +1754,7 @@ public class EcsactRuntime {
 		}
 
 		public void SetActionExecutionImpl<Action>
-			( SystemExecutionImpl  executionImpl
+			( SystemExecutionImpl executionImpl
 			) where Action : Ecsact.Action
 		{
 			if(ecsact_set_system_execution_impl == null) {
