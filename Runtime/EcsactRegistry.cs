@@ -105,7 +105,7 @@ namespace Ecsact {
 
 		public bool HasComponent<C>
 			( Int32 entityId
-			) where C :Ecsact.Component
+			) where C : Ecsact.Component
 		{
 			return rt.core.HasComponent<C>(registryId, entityId);
 		}
