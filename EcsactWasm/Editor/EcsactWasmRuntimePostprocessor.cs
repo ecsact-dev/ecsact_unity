@@ -2,6 +2,8 @@ using UnityEngine;
 using UnityEditor;
 using System.IO;
 
+#if HAS_UNITY_WASM_PACKAGE
+
 public class EcsactWasmRuntimePostprocessor : AssetPostprocessor {
 	static void OnPostprocessAllAssets
 		( string[]  importedAssets
@@ -50,3 +52,5 @@ public class EcsactWasmRuntimePostprocessor : AssetPostprocessor {
 		});
 	}
 }
+
+#endif // HAS_UNITY_WASM_PACKAGE
