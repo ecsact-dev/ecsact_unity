@@ -52,7 +52,12 @@ public class EcsactRuntimeSettings : ScriptableObject {
 		"List of ecsact registries that are created automatically when " +
 		"the game loads."
 	)]
-	public List<EcsactRuntimeDefaultRegistry> defaultRegistries = new();
+
+	public EcsactRuntimeDefaultRegistry defaultRegistry 
+		= new EcsactRuntimeDefaultRegistry{
+				registryName = "Default Registry",
+				runner = EcsactRuntimeDefaultRegistry.RunnerType.FixedUpdate,
+			};
 
 	[System.Serializable]
 	public struct UnitySyncScriptInfo {
@@ -87,19 +92,6 @@ public class EcsactRuntimeSettings : ScriptableObject {
 
 #if UNITY_EDITOR
 	void OnValidate() {
-		if(defaultRegistries.Count > 1) {
-			throw new Exception(
-				"Only 1 registry is supported (multiple will be supported in a later update"
-			);
-		}
-
-		if(defaultRegistries.Count == 0) {
-			defaultRegistries.Add(new EcsactRuntimeDefaultRegistry{
-				registryName = "Default Registry",
-				runner = EcsactRuntimeDefaultRegistry.RunnerType.FixedUpdate,
-			});
-		}
-
 		if(editorValidateEvent != null) {
 			editorValidateEvent.Invoke(this);
 		}

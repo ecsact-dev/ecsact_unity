@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Runtime.CompilerServices;
 using System.Collections.Generic;
+using System.Collections;
 using Ecsact.UnitySync;
 
 [assembly: InternalsVisibleTo("EcsactRuntime")]
@@ -28,25 +29,90 @@ internal static class EcsactRuntimeDefaults {
 		}
 	}
 
-	internal static void Setup
-		( EcsactRuntime          runtime
-		, EcsactRuntimeSettings  settings
-		)
-	{
-		foreach(var defReg in settings.defaultRegistries) {
-			defReg.registryId = runtime.core.CreateRegistry(
-				defReg.registryName
-			);
+	[RuntimeInitializeOnLoadMethod]
+	internal static void Setup() {
+		var settings = EcsactRuntimeSettings.Get();
 
-			if(settings.enableUnitySync) {
-				SetupUnitySync(runtime, defReg);
-			}
+		//Ecsact.Defaults.Runtime = Load(settings.runtimeLibraryPaths);
+		
+		if(settings.defaultRegistry == null) {
+			settings.defaultRegistry.registryId = Ecsact.Defaults.Runtime.core.CreateRegistry(
+				settings.defaultRegistry.registryName
+			);
+		}
+
+		// Ecsact.Defaults.Runner set here
+		SetRunner(settings);
+
+		var reg = new Ecsact.Registry(
+			Ecsact.Defaults.Runtime,
+			settings.defaultRegistry.registryId
+		);
+
+		EntityGameObjectPool? pool;
+
+		if(!UnityEngine.Application.isPlaying) {
+			throw new Exception(
+				"EcsactRuntime.GetOrLoadDefault() may only be used during play mode"
+			);
 		}
 
 		if(settings.enableUnitySync) {
+			SetupUnitySync(Ecsact.Defaults.Runtime, settings.defaultRegistry);
 			if(!unitySyncScriptsRegistered) {
 				RegisterUnitySyncScripts(settings);
 			}
+			pool = settings.defaultRegistry.pool;
+
+
+		}
+
+// NOTE(Kelwan) Might be unnecessary
+// 		if(Ecsact.Defaults.Runtime == null) {
+// #if UNITY_EDITOR
+// 			UnityEditor.EditorApplication.isPlaying = false;
+// 			var okQuit = UnityEditor.EditorUtility.DisplayDialog(
+// 				title: "Failed to load default ecsact runtime",
+// 				message: "Please check your ecsact runtime settings",
+// 				ok: "Ok Quit",
+// 				cancel: "Continue Anyways"
+// 			);
+
+// 			if(okQuit) {
+// 				UnityEditor.EditorApplication.isPlaying = false;
+// 			}
+// 			UnityEngine.Application.Quit(1);
+// #else
+// 			UnityEngine.Debug.LogError("Failed to load default ecsact runtime");
+// 			UnityEngine.Application.Quit(1);
+// #endif
+// 			throw new Exception("Failed to load default ecsact runtime");
+// 		}
+
+		Ecsact.Defaults.Registry = reg;
+		Ecsact.Defaults.Pool = pool;
+	}
+
+	private static void SetRunner
+		( EcsactRuntimeSettings settings
+		)
+	{
+		var defReg = settings.defaultRegistry;
+
+		if(defReg.runner == EcsactRuntimeDefaultRegistry.RunnerType.FixedUpdate) {
+			EcsactRunner.OnRuntimeLoad<DefaultFixedRunner>(
+				EcsactRuntimeDefaultRegistry.RunnerType.FixedUpdate,
+				"Default Fixed Runner"
+			);
+		}
+		if(defReg.runner == EcsactRuntimeDefaultRegistry.RunnerType.None) {
+			//NOTE(Kelwan): Not sure what we want to happen here
+		}
+		if(defReg.runner == EcsactRuntimeDefaultRegistry.RunnerType.Update) {
+				EcsactRunner.OnRuntimeLoad<DefaultRunner>(
+				EcsactRuntimeDefaultRegistry.RunnerType.Update,
+				"Default Runner"
+			);
 		}
 	}
 

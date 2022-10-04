@@ -18,15 +18,6 @@ namespace Ecsact {
 			registryId = regId;
 		}
 
-		public Registry
-			( EcsactRuntime runtime
-			, string registryName
-			)
-		{
-			rt = runtime;
-			registryId = rt.core.CreateRegistry(registryName);
-		}
-
 		public Int32 CreateEntity() {
 			return rt.core.CreateEntity(registryId);
 		}

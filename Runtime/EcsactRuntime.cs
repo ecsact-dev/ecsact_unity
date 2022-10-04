@@ -624,70 +624,17 @@ public class EcsactRuntime {
 		public IntPtr actionCommittedCallbackUserData;
 	}
 
-	private static EcsactRuntime? defaultInstance;
-
 	static EcsactRuntime() {
 #if UNITY_EDITOR
-		EditorApplication.playModeStateChanged += state => {
-			if(state == PlayModeStateChange.ExitingPlayMode) {
-				EditorApplication.delayCall += () => {
-					SetDefault(null);
-				};
-			}
-		};
+		// NOTE(Kelwan): Do I need this somehow?
+		// EditorApplication.playModeStateChanged += state => {
+		// 	if(state == PlayModeStateChange.ExitingPlayMode) {
+		// 		EditorApplication.delayCall += () => {
+		// 			SetDefault(null);
+		// 		};
+		// 	}
+		// };
 #endif
-	}
-
-	public static EcsactRuntime GetOrLoadDefault() {
-		if(!UnityEngine.Application.isPlaying) {
-			throw new Exception(
-				"EcsactRuntime.GetOrLoadDefault() may only be used during play mode"
-			);
-		}
-
-		if(defaultInstance == null) {
-			var settings = EcsactRuntimeSettings.Get();
-			defaultInstance = Load(settings.runtimeLibraryPaths);
-
-			if(defaultInstance != null) {
-				Ecsact.Internal.EcsactRuntimeDefaults.Setup(defaultInstance, settings);
-			}
-		}
-
-		if(defaultInstance == null) {
-#if UNITY_EDITOR
-			UnityEditor.EditorApplication.isPlaying = false;
-			var okQuit = UnityEditor.EditorUtility.DisplayDialog(
-				title: "Failed to load default ecsact runtime",
-				message: "Please check your ecsact runtime settings",
-				ok: "Ok Quit",
-				cancel: "Continue Anyways"
-			);
-
-			if(okQuit) {
-				UnityEditor.EditorApplication.isPlaying = false;
-			}
-			UnityEngine.Application.Quit(1);
-#else
-			UnityEngine.Debug.LogError("Failed to load default ecsact runtime");
-			UnityEngine.Application.Quit(1);
-#endif
-			throw new Exception("Failed to load default ecsact runtime");
-		}
-
-		return defaultInstance;
-	}
-
-
-
-	public static void SetDefault
-		( EcsactRuntime? runtime
-		)
-	{
-		if(defaultInstance != null) {
-			Free(defaultInstance);
-		}
-		defaultInstance = runtime;
 	}
 
 	private IntPtr[]? _libs;
