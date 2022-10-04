@@ -52,11 +52,9 @@ public class EcsactRuntimeSettingsEditor : UnityEditor.Editor {
 		)
 	{
 		if(loadingUnitySyncTypes) yield break;
-
-		var unitySyncEnabled = settings.unitySyncScripts != null;
 		
 		var progressId = -1;
-		if(unitySyncEnabled) {
+		if(settings.enableUnitySync) {
 			progressId = Progress.Start(
 				"Ecsact Unity Sync Lookup",
 				options: Progress.Options.Managed
@@ -85,7 +83,7 @@ public class EcsactRuntimeSettingsEditor : UnityEditor.Editor {
 
 					if(UnitySync.UnitySyncMonoBehaviours.HasInterfaces(type)) {
 						potentialUnitySyncTypes.Add(type);
-						if(settings.unitySyncScripts != null) {
+						if(settings.enableUnitySync) {
 							EnsureNewUnitySyncScriptExists(
 								settings.unitySyncScripts,
 								type,
@@ -98,7 +96,7 @@ public class EcsactRuntimeSettingsEditor : UnityEditor.Editor {
 				}
 			}
 
-			if(settings.unitySyncScripts != null) {
+			if(settings.enableUnitySync) {
 				if(EnsureUnitySyncScripts(settings.unitySyncScripts, settings)) {
 					EditorUtility.SetDirty(settings);
 				}
