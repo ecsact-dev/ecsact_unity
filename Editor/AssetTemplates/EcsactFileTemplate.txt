@@ -1,0 +1,6 @@
+// This is your package name that will map to a C# namespace. The package
+// statement is required.
+main package example;
+
+// Add your components and systems below the package statement
+// SEE: https://ecsact.dev/docs

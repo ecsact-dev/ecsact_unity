@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEditor;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
@@ -34,4 +35,12 @@ public class EcsactPackage : ScriptableObject {
 	public new string name => _name;
 	public IList<string> imports => _imports.AsReadOnly();
 	public IList<Component> components => _components.AsReadOnly();
+
+	[MenuItem("Assets/Create/Ecsact File", priority=101)]
+	private static void CreateEcsactPackageAsset() {
+		ProjectWindowUtil.CreateScriptAssetFromTemplateFile(
+			"Packages/dev.ecsact.unity/Editor/AssetTemplates/EcsactFileTemplate.txt",
+			"NewEcsactFile.ecsact"
+		);
+	}
 }
