@@ -53,12 +53,18 @@ public class EcsactRuntimeSettings : ScriptableObject {
 		"the game loads."
 	)]
 	public List<EcsactRuntimeDefaultRegistry> defaultRegistries = new();
-	public bool useUnitySync = false;
-	/*
-		NOTE(Kelwan): The constraints on this list are ambiguous. We should
-		eventually have a strict type that can be visible in the editor
-	**/
-	public List<string> unitySyncScripts = new();
+
+	[System.Serializable]
+	public struct UnitySyncScriptInfo {
+		public bool scriptEnabled;
+		public string scriptAssemblyQualifiedName;
+	}
+
+	[HideInInspector]
+	public bool enableUnitySync = false;
+	/// List of Ecsact Unity Sync scripts to be registered on load
+	[HideInInspector]
+	public List<UnitySyncScriptInfo> unitySyncScripts = new();
 
 	[Tooltip(
 		"Path to ecsact runtime library. First element is always the generated " +

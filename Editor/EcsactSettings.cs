@@ -170,9 +170,19 @@ static class EcsactSettingsUIElementsRegister {
 	public static SettingsProvider CreateEcsactSettingsProvider() {
 		Editor? runtimeSettingsEditor = null;
 		Editor? wasmRuntimeSettingsEditor = null;
+		IMGUIContainer? runtimeSettingsContainer = null;
 
 		return new SettingsProvider(EcsactSettings.path, EcsactSettings.scope) {
 			label = "Ecsact",
+			inspectorUpdateHandler = () => {
+				if(runtimeSettingsEditor != null) {
+					if(runtimeSettingsEditor.RequiresConstantRepaint()) {
+						if(runtimeSettingsContainer != null) {
+							runtimeSettingsContainer.MarkDirtyRepaint();
+						}
+					}
+				}
+			},
 			activateHandler = (searchContext, rootElement) => {
 				var settings = EcsactSettings.GetSerializedSettings();
 				var template = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(
@@ -185,7 +195,7 @@ static class EcsactSettingsUIElementsRegister {
 				var runtimeSettings = EcsactRuntimeSettings.Get();
 				DrawMethodsUI(ui, runtimeSettings);
 
-				var runtimeSettingsContainer =
+				runtimeSettingsContainer =
 					ui.Q<IMGUIContainer>("runtime-settings-container");
 
 				runtimeSettingsEditor = Editor.CreateEditor(runtimeSettings);
