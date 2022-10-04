@@ -38,12 +38,12 @@ internal static class EcsactRuntimeDefaults {
 				defReg.registryName
 			);
 
-			if(settings.useUnitySync) {
+			if(settings.enableUnitySync) {
 				SetupUnitySync(runtime, defReg);
 			}
 		}
 
-		if(settings.useUnitySync) {
+		if(settings.enableUnitySync) {
 			if(!unitySyncScriptsRegistered) {
 				RegisterUnitySyncScripts(settings);
 			}
@@ -81,12 +81,13 @@ internal static class EcsactRuntimeDefaults {
 		( EcsactRuntimeSettings  settings
 		)
 	{
-		foreach(var monoStr in settings.unitySyncScripts) {
-			var type = global::System.Type.GetType(monoStr + ",Assembly-CSharp");
+		foreach(var scriptInfo in settings.unitySyncScripts!) {
+			if(!scriptInfo.scriptEnabled) continue;
+
+			var monoStr = scriptInfo.scriptAssemblyQualifiedName;
+			var type = global::System.Type.GetType(monoStr);
 			if(type == null) {
-				throw new global::System.Exception(
-					$"Unity Sync: MonoBehaviour {monoStr} not found."
-				);
+				Debug.LogError($"Unity Sync: MonoBehaviour {monoStr} not found.");
 			} else {
 				if(UnitySyncMonoBehaviours.RegisterMonoBehaviourType(type)) {
 					Debug.Log(
