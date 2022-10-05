@@ -26,6 +26,12 @@ namespace Ecsact.Editor {
 
 [CustomEditor(typeof(CsharpSystemImplSettings))]
 public class CsharpSystemImplSettingsEditor : UnityEditor.Editor {
+	const float maxWidthMethodDetails = 400f;
+	const float minWidthMethodDetails = 300f;
+	private static GUILayoutOption[] methodDetailsLayoutOptions = new[]{
+		GUILayout.MaxWidth(maxWidthMethodDetails),
+		GUILayout.MinWidth(minWidthMethodDetails),
+	};
 	private static List<global::System.Type>? systemLikeTypes;
 
 	public override void OnInspectorGUI() {
@@ -48,10 +54,11 @@ public class CsharpSystemImplSettingsEditor : UnityEditor.Editor {
 
 			if(!asmDef.noEngineReferences) {
 				EditorGUILayout.HelpBox(
-					"Your assembly definition has engine references enabled. Ecsact " +
-					"system implementations run on multiple threads and should not use " +
-					"engine apis that are not thread safe.",
-					MessageType.Warning
+					$"The assembly definition {asmDef.name} has engine references " +
+					"enabled. Ecsact system implementations run on multiple threads " +
+					"and should not use engine apis that are not thread safe.",
+					MessageType.Warning,
+					wide: false
 				);
 			}
 
@@ -77,6 +84,16 @@ public class CsharpSystemImplSettingsEditor : UnityEditor.Editor {
 					systemLikeTypes = Ecsact.Util.GetAllSystemLikeTypes().ToList();
 				}
 
+				if(implDict.Count == 0) {
+					EditorGUILayout.HelpBox(
+						$"No system implementations detected in assembly {asmDef.name}. " +
+						"Add the Ecsact.DefaultSystemImpl attribute to a public static " +
+						$"method found in the {asmDef.name} assembly.",
+						MessageType.Info,
+						wide: false
+					);
+				}
+
 				foreach(var systemLikeType in systemLikeTypes) {
 					var systemLikeId = Ecsact.Util.GetSystemID(systemLikeType);
 					var methods = implDict.GetValueOrDefault(systemLikeId, new());
@@ -86,7 +103,8 @@ public class CsharpSystemImplSettingsEditor : UnityEditor.Editor {
 			} else {
 				EditorGUILayout.HelpBox(
 					$"Unable to load assembly definition by name: {asmDef.name}",
-					MessageType.Error
+					MessageType.Error,
+					wide: false
 				);
 			}
 		}
@@ -99,21 +117,84 @@ public class CsharpSystemImplSettingsEditor : UnityEditor.Editor {
 		return methodInfo.DeclaringType.FullName + "." + methodInfo.Name;
 	}
 
+	private void DrawSystemImplMethodDetails
+		( MethodInfo methodInfo
+		)
+	{
+		EditorGUILayout.BeginHorizontal(methodDetailsLayoutOptions);
+		
+		var style = new GUIStyle(EditorStyles.label);
+		style.richText = true;
+		var label = GetMethodFullName(methodInfo);
+		var warnings = new List<string>();
+		var errors = new List<string>();
+		if(!methodInfo.IsStatic) {
+			warnings.Add("Method is non-static");
+		}
+
+		var parameters = methodInfo.GetParameters();
+		if(parameters.Length != 1) {
+			errors.Add($"Method has {parameters.Length} parameter(s). Expected 1.");
+		} else {
+			var paramType = parameters[0].ParameterType;
+			if(paramType != typeof(EcsactRuntime.SystemExecutionContext)) {
+				errors.Add(
+					$"Invalid method parameter type {paramType.FullName}. Expected " +
+					"EcsactRuntime.SystemExecutionContext."
+				);
+			}
+		}
+
+		if(errors.Count > 0) {
+			label = $"<color=red>{label}</color>";
+		} else if(warnings.Count > 0) {
+			label = $"<color=yellow>{label}</color>";
+		}
+
+		EditorGUILayout.LabelField(
+			label: new GUIContent(label, string.Join("\n", errors.Concat(warnings))),
+			options: new GUILayoutOption[]{},
+			style: style
+		);
+
+		EditorGUILayout.EndHorizontal();
+	}
+
 	private void DrawSystemImplDetail
 		( global::System.Int32  systemLikeId
 		, global::System.Type   systemLikeType
 		, List<MethodInfo>      methods
 		)
 	{
-		string implName = "";
+		EditorGUILayout.BeginHorizontal();
+		EditorGUILayout.LabelField(
+			systemLikeType.FullName,
+			new GUILayoutOption[]{
+				GUILayout.ExpandWidth(true)
+			}
+		);
+
 		if(methods.Count == 0) {
-			implName = "(none)";
+			EditorGUILayout.LabelField(
+				label: "(none)",
+				options: methodDetailsLayoutOptions
+			);
+			GUILayout.Space(10f);
 		} else if(methods.Count == 1) {
-			implName = GetMethodFullName(methods[0]);
+			DrawSystemImplMethodDetails(methods[0]);
 		} else {
-			implName = "(multiple methods)";
+			EditorGUILayout.BeginVertical(methodDetailsLayoutOptions);
+			foreach(var method in methods) {
+				DrawSystemImplMethodDetails(method);
+			}
+			EditorGUILayout.HelpBox(
+				"Multiple default system impls for the same system is not allowed.",
+				MessageType.Error,
+				wide: true
+			);
+			EditorGUILayout.EndVertical();
 		}
-		EditorGUILayout.LabelField(systemLikeType.FullName, implName);
+		EditorGUILayout.EndHorizontal();
 	}
 }
 
