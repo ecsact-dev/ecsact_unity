@@ -46,6 +46,15 @@ public class CsharpSystemImplSettingsEditor : UnityEditor.Editor {
 				asmDefJson
 			);
 
+			if(!asmDef.noEngineReferences) {
+				EditorGUILayout.HelpBox(
+					"Your assembly definition has engine references enabled. Ecsact " +
+					"system implementations run on multiple threads and should not use " +
+					"engine apis that are not thread safe.",
+					MessageType.Warning
+				);
+			}
+
 			var assembly = Assembly.Load(asmDef.name);
 			if(assembly != null) {
 				var implDict = new Dictionary<int, List<MethodInfo>>();
