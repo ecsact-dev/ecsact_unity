@@ -30,50 +30,55 @@
             <ui:IMGUIContainer name="runtime-settings-container" />
         </ui:GroupBox>
         <ui:GroupBox>
-            <ui:Label text="Wasm Runtime Settings" display-tooltip-when-elided="true" style="font-size: 16px; -unity-font-style: bold;" />
+            <ui:Label text="System Implementations" display-tooltip-when-elided="true" style="font-size: 16px; -unity-font-style: bold;" />
+            <ui:DropdownField label="Source" index="0" choices="C#,Wasm" name="system-impls-source-dropdown" style="margin-left: 0;" />
+            <ui:IMGUIContainer name="csharp-system-impl-settings-container" />
             <ui:IMGUIContainer name="wasm-runtime-settings-container" />
         </ui:GroupBox>
         <ui:GroupBox>
-            <ui:Label text="Async Module" display-tooltip-when-elided="true" style="font-size: 14px; -unity-font-style: bold;" />
-            <ui:VisualElement>
-                <ui:Instance template="EcsactRuntimeMethodLoadedUI" name="async-method-template" />
-            </ui:VisualElement>
-        </ui:GroupBox>
-        <ui:GroupBox>
-            <ui:Label text="Core Module" display-tooltip-when-elided="true" style="font-size: 14px; -unity-font-style: bold;" />
-            <ui:VisualElement>
-                <ui:Instance template="EcsactRuntimeMethodLoadedUI" name="core-method-template" />
-            </ui:VisualElement>
-        </ui:GroupBox>
-        <ui:GroupBox>
-            <ui:Label text="Dynamic Module" display-tooltip-when-elided="true" style="font-size: 14px; -unity-font-style: bold;" />
-            <ui:VisualElement>
-                <ui:Instance template="EcsactRuntimeMethodLoadedUI" name="dynamic-method-template" />
-            </ui:VisualElement>
-        </ui:GroupBox>
-        <ui:GroupBox>
-            <ui:Label text="Meta Module" display-tooltip-when-elided="true" style="font-size: 14px; -unity-font-style: bold;" />
-            <ui:VisualElement>
-                <ui:Instance template="EcsactRuntimeMethodLoadedUI" name="meta-method-template" />
-            </ui:VisualElement>
-        </ui:GroupBox>
-        <ui:GroupBox>
-            <ui:Label text="Serialize Module" display-tooltip-when-elided="true" style="font-size: 14px; -unity-font-style: bold;" />
-            <ui:VisualElement>
-                <ui:Instance template="EcsactRuntimeMethodLoadedUI" name="serialize-method-template" />
-            </ui:VisualElement>
-        </ui:GroupBox>
-        <ui:GroupBox>
-            <ui:Label text="Static Module" display-tooltip-when-elided="true" style="font-size: 14px; -unity-font-style: bold;" />
-            <ui:VisualElement>
-                <ui:Instance template="EcsactRuntimeMethodLoadedUI" name="static-method-template" />
-            </ui:VisualElement>
-        </ui:GroupBox>
-        <ui:GroupBox>
-            <ui:Label text="Wasm" display-tooltip-when-elided="true" style="font-size: 14px; -unity-font-style: bold;" />
-            <ui:VisualElement>
-                <ui:Instance template="EcsactRuntimeMethodLoadedUI" name="wasm-method-template" />
-            </ui:VisualElement>
+            <ui:Label text="Runtime Modules" display-tooltip-when-elided="true" style="font-size: 16px; -unity-font-style: bold;" />
+            <ui:GroupBox>
+                <ui:Label text="Dynamic Module" display-tooltip-when-elided="true" style="font-size: 14px; -unity-font-style: bold;" />
+                <ui:VisualElement>
+                    <ui:Instance template="EcsactRuntimeMethodLoadedUI" name="dynamic-method-template" />
+                </ui:VisualElement>
+            </ui:GroupBox>
+            <ui:GroupBox>
+                <ui:Label text="Meta Module" display-tooltip-when-elided="true" style="font-size: 14px; -unity-font-style: bold;" />
+                <ui:VisualElement>
+                    <ui:Instance template="EcsactRuntimeMethodLoadedUI" name="meta-method-template" />
+                </ui:VisualElement>
+            </ui:GroupBox>
+            <ui:GroupBox>
+                <ui:Label text="Serialize Module" display-tooltip-when-elided="true" style="font-size: 14px; -unity-font-style: bold;" />
+                <ui:VisualElement>
+                    <ui:Instance template="EcsactRuntimeMethodLoadedUI" name="serialize-method-template" />
+                </ui:VisualElement>
+            </ui:GroupBox>
+            <ui:GroupBox>
+                <ui:Label text="Static Module" display-tooltip-when-elided="true" style="font-size: 14px; -unity-font-style: bold;" />
+                <ui:VisualElement>
+                    <ui:Instance template="EcsactRuntimeMethodLoadedUI" name="static-method-template" />
+                </ui:VisualElement>
+            </ui:GroupBox>
+            <ui:GroupBox>
+                <ui:Label text="Wasm" display-tooltip-when-elided="true" style="font-size: 14px; -unity-font-style: bold;" />
+                <ui:VisualElement>
+                    <ui:Instance template="EcsactRuntimeMethodLoadedUI" name="wasm-method-template" />
+                </ui:VisualElement>
+            </ui:GroupBox>
+            <ui:GroupBox>
+                <ui:Label text="Async Module" display-tooltip-when-elided="true" style="font-size: 14px; -unity-font-style: bold;" />
+                <ui:VisualElement>
+                    <ui:Instance template="EcsactRuntimeMethodLoadedUI" name="async-method-template" />
+                </ui:VisualElement>
+            </ui:GroupBox>
+            <ui:GroupBox>
+                <ui:Label text="Core Module" display-tooltip-when-elided="true" style="font-size: 14px; -unity-font-style: bold;" />
+                <ui:VisualElement label="Source">
+                    <ui:Instance template="EcsactRuntimeMethodLoadedUI" name="core-method-template" />
+                </ui:VisualElement>
+            </ui:GroupBox>
         </ui:GroupBox>
     </ui:ScrollView>
 </ui:UXML>
