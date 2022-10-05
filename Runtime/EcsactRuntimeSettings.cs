@@ -66,6 +66,15 @@ public class EcsactRuntimeSettings : ScriptableObject {
 	[HideInInspector]
 	public List<UnitySyncScriptInfo> unitySyncScripts = new();
 
+	[System.Serializable]
+	public struct CsharpSystemImplInfo {
+		public bool enabled;
+		public string assemblyQualifiedName;
+		public string implMethodName;
+	}
+	[HideInInspector]
+	public string defaultCsharpSystemImplsAssemblyName = "";
+
 	[Tooltip(
 		"Path to ecsact runtime library. First element is always the generated " +
 		"runtime from the runtime builder."

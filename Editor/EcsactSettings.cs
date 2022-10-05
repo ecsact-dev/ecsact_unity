@@ -170,7 +170,9 @@ static class EcsactSettingsUIElementsRegister {
 	public static SettingsProvider CreateEcsactSettingsProvider() {
 		Editor? runtimeSettingsEditor = null;
 		Editor? wasmRuntimeSettingsEditor = null;
+		Editor? csharpSystemImplSettingsEditor = null;
 		IMGUIContainer? runtimeSettingsContainer = null;
+		IMGUIContainer? csharpSystemImplSettingsContainer = null;
 
 		return new SettingsProvider(EcsactSettings.path, EcsactSettings.scope) {
 			label = "Ecsact",
@@ -179,6 +181,14 @@ static class EcsactSettingsUIElementsRegister {
 					if(runtimeSettingsEditor.RequiresConstantRepaint()) {
 						if(runtimeSettingsContainer != null) {
 							runtimeSettingsContainer.MarkDirtyRepaint();
+						}
+					}
+				}
+
+				if(csharpSystemImplSettingsEditor != null) {
+					if(csharpSystemImplSettingsEditor.RequiresConstantRepaint()) {
+						if(csharpSystemImplSettingsContainer != null) {
+							csharpSystemImplSettingsContainer.MarkDirtyRepaint();
 						}
 					}
 				}
@@ -204,12 +214,29 @@ static class EcsactSettingsUIElementsRegister {
 					runtimeSettingsEditor.OnInspectorGUI();
 				};
 
+				var systemImplsSourceDropdown = 
+					ui.Q<DropdownField>("system-impls-source-dropdown");
+
 				var wasmRuntimeSettingsContainer =
 					ui.Q<IMGUIContainer>("wasm-runtime-settings-container");
 				wasmRuntimeSettingsEditor =
 					EcsactWasmEditorInternalUtil.GetEcsactWasmRuntimeSettingsEditor();
 				wasmRuntimeSettingsContainer.onGUIHandler = () => {
-					wasmRuntimeSettingsEditor.OnInspectorGUI();
+					if(systemImplsSourceDropdown.index == 1) {
+						wasmRuntimeSettingsEditor.OnInspectorGUI();
+					}
+				};
+
+				var csharpSystemImplSettings =
+					Ecsact.Editor.CsharpSystemImplSettings.Get();
+				csharpSystemImplSettingsContainer =
+					ui.Q<IMGUIContainer>("csharp-system-impl-settings-container");
+				csharpSystemImplSettingsEditor =
+					Editor.CreateEditor(csharpSystemImplSettings);
+				csharpSystemImplSettingsContainer.onGUIHandler = () => {
+					if(systemImplsSourceDropdown.index == 0) {
+						csharpSystemImplSettingsEditor.OnInspectorGUI();
+					}
 				};
 			},
 			deactivateHandler = () => {
