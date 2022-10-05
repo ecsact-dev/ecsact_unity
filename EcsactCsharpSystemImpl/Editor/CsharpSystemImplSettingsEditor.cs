@@ -3,6 +3,7 @@ using UnityEngine;
 using System.Linq;
 using System.Reflection;
 using System.Collections.Generic;
+using EcsactInternal;
 
 #nullable enable
 
@@ -24,6 +25,7 @@ struct UnityAssemblyDefinitionFile {
 
 namespace Ecsact.Editor {
 
+[InitializeOnLoad]
 [CustomEditor(typeof(CsharpSystemImplSettings))]
 public class CsharpSystemImplSettingsEditor : UnityEditor.Editor {
 	const float maxWidthMethodDetails = 400f;
@@ -34,15 +36,60 @@ public class CsharpSystemImplSettingsEditor : UnityEditor.Editor {
 	};
 	private static List<global::System.Type>? systemLikeTypes;
 
+	static CsharpSystemImplSettingsEditor() {
+		EditorApplication.delayCall += () => {
+			InitializeDelayed();
+		};
+	}
+
+	private static void InitializeDelayed() {
+		var settings = CsharpSystemImplSettings.Get();
+		var runtimeSettings = EcsactRuntimeSettings.Get();
+		EnsureDefaultCsharpSystemImplsAssemblyName(settings, runtimeSettings);
+	}
+
+	private static void EnsureDefaultCsharpSystemImplsAssemblyName
+		( CsharpSystemImplSettings  settings
+		, EcsactRuntimeSettings     runtimeSettings
+		)
+	{
+		var newDefault = "";
+		if(settings.systemImplsAssembly != null) {
+			var asmDefJson = global::System.Text.Encoding.Default.GetString(
+				settings.systemImplsAssembly.bytes
+			);
+			var asmDef = JsonUtility.FromJson<UnityAssemblyDefinitionFile>(
+				asmDefJson
+			);
+
+			newDefault = asmDef.name;
+		} else {
+			newDefault = "";
+		}
+
+		if(runtimeSettings.defaultCsharpSystemImplsAssemblyName != newDefault) {
+			runtimeSettings.defaultCsharpSystemImplsAssemblyName = newDefault;
+			EditorUtility.SetDirty(runtimeSettings);
+		}
+	}
+
 	public override void OnInspectorGUI() {
 		var settings = (target as CsharpSystemImplSettings)!;
 
+		EditorGUI.BeginChangeCheck();
 		settings.systemImplsAssembly = EditorGUILayout.ObjectField(
 			obj: settings.systemImplsAssembly,
 			objType: typeof(UnityEditorInternal.AssemblyDefinitionAsset),
 			allowSceneObjects: false,
 			label: "Assembly"
 		) as UnityEditorInternal.AssemblyDefinitionAsset;
+
+		if(EditorGUI.EndChangeCheck()) {
+			EnsureDefaultCsharpSystemImplsAssemblyName(
+				settings,
+				EcsactRuntimeSettings.Get()
+			);
+		}
 
 		if(settings.systemImplsAssembly != null) {
 			var asmDefJson = global::System.Text.Encoding.Default.GetString(
@@ -126,33 +173,16 @@ public class CsharpSystemImplSettingsEditor : UnityEditor.Editor {
 		var style = new GUIStyle(EditorStyles.label);
 		style.richText = true;
 		var label = GetMethodFullName(methodInfo);
-		var warnings = new List<string>();
-		var errors = new List<string>();
-		if(!methodInfo.IsStatic) {
-			warnings.Add("Method is non-static");
-		}
-
-		var parameters = methodInfo.GetParameters();
-		if(parameters.Length != 1) {
-			errors.Add($"Method has {parameters.Length} parameter(s). Expected 1.");
-		} else {
-			var paramType = parameters[0].ParameterType;
-			if(paramType != typeof(EcsactRuntime.SystemExecutionContext)) {
-				errors.Add(
-					$"Invalid method parameter type {paramType.FullName}. Expected " +
-					"EcsactRuntime.SystemExecutionContext."
-				);
-			}
-		}
+		var errors = DefaultCsharpSystemImplsLoader.ValidateImplMethodInfo(
+			methodInfo
+		);
 
 		if(errors.Count > 0) {
 			label = $"<color=red>{label}</color>";
-		} else if(warnings.Count > 0) {
-			label = $"<color=yellow>{label}</color>";
 		}
 
 		EditorGUILayout.LabelField(
-			label: new GUIContent(label, string.Join("\n", errors.Concat(warnings))),
+			label: new GUIContent(label, string.Join("\n", errors)),
 			options: new GUILayoutOption[]{},
 			style: style
 		);
