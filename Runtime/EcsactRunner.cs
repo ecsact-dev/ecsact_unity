@@ -53,13 +53,14 @@ namespace Ecsact {
 			}
 		};
 
-		internal static EcsactRunner CreateRunner<ComponentT>
-			( EcsactRuntimeDefaultRegistry.RunnerType runnerType
+		internal static EcsactRunner CreateInstance<ComponentT>
+			( EcsactRuntimeDefaultRegistry.RunnerType  runnerType
+			, EcsactRuntimeSettings                    settings
 			, string name
 			) where ComponentT : EcsactRunner
 		{
-
-			var defReg = Ecsact.Defaults.Runner!.defReg;
+			var defReg = settings.defaultRegistry;
+	
 			defReg!.executionOptions = 
 				new EcsactRuntime.ExecutionOptions{};
 
@@ -79,13 +80,12 @@ namespace Ecsact {
 					defReg,
 					ref runner.actionList
 				);
-				DontDestroyOnLoad(gameObject);		
+				DontDestroyOnLoad(gameObject);
 			} else {
 				throw new Exception("Runner is not valid");
 			}
 
 			return runner;
-
 		}
 
 		protected void AddActionsToReg() {

@@ -49,23 +49,25 @@ namespace EcsactInternal {
 
 		[RuntimeInitializeOnLoadMethod]
 		internal static void Load() {
+
 			if(!Enabled()) {
 				return;
 			}
 
-			var runtimeSettings = EcsactRuntimeSettings.Get();
-			var runtime = EcsactRuntime.GetOrLoadDefault();
-			var implsAssembly = Assembly.Load(
-				runtimeSettings.defaultCsharpSystemImplsAssemblyName
-			);
+			Ecsact.Defaults.WhenReady(() => {
+				var runtimeSettings = EcsactRuntimeSettings.Get();
+				var runtime = Ecsact.Defaults.Runtime;
+				var implsAssembly = Assembly.Load(
+					runtimeSettings.defaultCsharpSystemImplsAssemblyName
+				);
 
-			foreach(var type in implsAssembly.GetTypes()) {
-				foreach(var method in type.GetMethods()) {
-					var defaultSystemImplAttr =
-						method.GetCustomAttribute<Ecsact.DefaultSystemImplAttribute>();
-					if(defaultSystemImplAttr == null) continue;
+				foreach(var type in implsAssembly.GetTypes()) {
+					foreach(var method in type.GetMethods()) {
+						var defaultSystemImplAttr =
+							method.GetCustomAttribute<Ecsact.DefaultSystemImplAttribute>();
+						if(defaultSystemImplAttr == null) continue;
 
-					var systemLikeId = defaultSystemImplAttr.systemLikeId;
+						var systemLikeId = defaultSystemImplAttr.systemLikeId;
 
 #if UNITY_EDITOR
 					var errors = ValidateImplMethodInfo(method);
@@ -85,14 +87,15 @@ namespace EcsactInternal {
 					}
 #endif // UNITY_EDITOR
 
-					var implDelegate = Delegate.CreateDelegate(
-						type: typeof(EcsactRuntime.SystemExecutionImpl),
-						method: method
-					) as EcsactRuntime.SystemExecutionImpl;
-					Debug.Assert(implDelegate != null);
-					runtime.dynamic.SetSystemExecutionImpl(systemLikeId, implDelegate!);
-				}
-			}
+						var implDelegate = Delegate.CreateDelegate(
+							type: typeof(EcsactRuntime.SystemExecutionImpl),
+							method: method
+						) as EcsactRuntime.SystemExecutionImpl;
+						Debug.Assert(implDelegate != null);
+						runtime.dynamic.SetSystemExecutionImpl(systemLikeId, implDelegate!);
+					}
+				}		
+			});
 		}
 	}
 }

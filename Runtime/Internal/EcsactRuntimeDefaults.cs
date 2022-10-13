@@ -105,21 +105,23 @@ internal static class EcsactRuntimeDefaults {
 		var defReg = settings.defaultRegistry;
 
 		if(defReg.runner == EcsactRuntimeDefaultRegistry.RunnerType.FixedUpdate) {
-			Ecsact.Defaults.Runner = EcsactRunner.CreateRunner<DefaultFixedRunner>(
+			Ecsact.Defaults.Runner = EcsactRunner.CreateInstance<DefaultFixedRunner>(
 				EcsactRuntimeDefaultRegistry.RunnerType.FixedUpdate,
+				settings,
 				"Default Fixed Runner"
 			);
 		}
 		if(defReg.runner == EcsactRuntimeDefaultRegistry.RunnerType.None) {
-			//NOTE(Kelwan): Not sure what we want to happen here
+			Ecsact.Defaults.Runner = null;
 		}
 		if(defReg.runner == EcsactRuntimeDefaultRegistry.RunnerType.Update) {
-				Ecsact.Defaults.Runner = EcsactRunner.CreateRunner<DefaultRunner>(
+				Ecsact.Defaults.Runner = EcsactRunner.CreateInstance<DefaultRunner>(
 				EcsactRuntimeDefaultRegistry.RunnerType.Update,
+				settings,
 				"Default Runner"
 			);
 		}
-		
+
 	}
 
 	private static void SetupUnitySync
