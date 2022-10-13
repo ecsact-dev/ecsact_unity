@@ -626,14 +626,13 @@ public class EcsactRuntime {
 
 	static EcsactRuntime() {
 #if UNITY_EDITOR
-		// NOTE(Kelwan): Do I need this somehow?
-		// EditorApplication.playModeStateChanged += state => {
-		// 	if(state == PlayModeStateChange.ExitingPlayMode) {
-		// 		EditorApplication.delayCall += () => {
-		// 			SetDefault(null);
-		// 		};
-		// 	}
-		// };
+		EditorApplication.playModeStateChanged += state => {
+			if(state == PlayModeStateChange.ExitingPlayMode) {
+				EditorApplication.delayCall += () => {
+					Ecsact.Internal.EcsactRuntimeDefaults.ClearDefaults();
+				};
+			}
+		};
 #endif
 	}
 

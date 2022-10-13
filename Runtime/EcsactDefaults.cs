@@ -1,16 +1,29 @@
 using System.Runtime.CompilerServices;
+using System;
+
+#nullable enable
 
 [assembly: InternalsVisibleTo("EcsactRuntimeDefaults")]
 
 namespace Ecsact {
 	static public class Defaults {
-		public static EcsactRuntime? Runtime;
-		// NOTE(KELWAN) Default registry is currently guaranteed
-		public static Ecsact.Registry Registry;
-		public static Ecsact.UnitySync.EntityGameObjectPool? Pool;
-		public static EcsactRunner Runner;
 
-		private static global::System.Action onReady;
+		internal static EcsactRuntime? _Runtime;
+		public static EcsactRuntime Runtime => _Runtime
+			?? throw new Exception(
+				"Runtime is null, if you want to access it as early as possible" +
+				" use Ecsact.Defaults.WhenReady"
+			);
+		internal static Ecsact.Registry? _Registry;
+		public static Ecsact.Registry Registry => _Registry 
+			?? throw new Exception(
+				"Registry is null, if you want to access it as early as possible" +
+				" use Ecsact.Defaults.WhenReady"
+			);
+		public static Ecsact.UnitySync.EntityGameObjectPool? Pool;
+		public static EcsactRunner? Runner;
+
+		private static event global::System.Action? onReady;
 
 		public static void WhenReady
 			( global::System.Action callback
@@ -23,12 +36,23 @@ namespace Ecsact {
 			}
 		}
 
-		internal static void IsReady() {
+		internal static void NotifyReady() {
 			if(Runtime != null) {
-				onReady.Invoke();
+				onReady!.Invoke();
+				onReady = null;
 			} else {
-				// throw something?
+				throw new Exception(
+					"Cannot notify ready until the Ecsact Runtime is ready"
+				);
 			}
+		}
+
+		internal static void ClearDefaults() {
+			// NOTE(Kelwan) Use some sort of ecsact_registry_clear
+			Runner = null;
+			_Runtime = null;
+			_Registry = null;
+			Pool = null;
 		}
 	}
 

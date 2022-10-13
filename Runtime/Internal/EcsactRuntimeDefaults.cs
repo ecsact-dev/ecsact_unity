@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Collections.Generic;
 using System.Collections;
 using Ecsact.UnitySync;
+using System;
 
 [assembly: InternalsVisibleTo("EcsactRuntime")]
 
@@ -33,12 +34,13 @@ internal static class EcsactRuntimeDefaults {
 	internal static void Setup() {
 		var settings = EcsactRuntimeSettings.Get();
 
-		//Ecsact.Defaults.Runtime = Load(settings.runtimeLibraryPaths);
+		Ecsact.Defaults._Runtime = EcsactRuntime.Load(settings.runtimeLibraryPaths);
 		
 		if(settings.defaultRegistry == null) {
-			settings.defaultRegistry.registryId = Ecsact.Defaults.Runtime.core.CreateRegistry(
-				settings.defaultRegistry.registryName
-			);
+			settings.defaultRegistry!.registryId = 
+				Ecsact.Defaults.Runtime!.core.CreateRegistry(
+					settings.defaultRegistry.registryName
+				);
 		}
 
 		// Ecsact.Defaults.Runner set here
@@ -53,18 +55,17 @@ internal static class EcsactRuntimeDefaults {
 
 		if(!UnityEngine.Application.isPlaying) {
 			throw new Exception(
-				"EcsactRuntime.GetOrLoadDefault() may only be used during play mode"
+				"EcsactRuntime Setup may only be used during play mode"
 			);
 		}
 
 		if(settings.enableUnitySync) {
-			SetupUnitySync(Ecsact.Defaults.Runtime, settings.defaultRegistry);
+			SetupUnitySync(Ecsact.Defaults.Runtime!, settings.defaultRegistry);
 			if(!unitySyncScriptsRegistered) {
 				RegisterUnitySyncScripts(settings);
 			}
 			pool = settings.defaultRegistry.pool;
-
-
+			Ecsact.Defaults.Pool = pool;
 		}
 
 // NOTE(Kelwan) Might be unnecessary
@@ -89,8 +90,12 @@ internal static class EcsactRuntimeDefaults {
 // 			throw new Exception("Failed to load default ecsact runtime");
 // 		}
 
-		Ecsact.Defaults.Registry = reg;
-		Ecsact.Defaults.Pool = pool;
+		Ecsact.Defaults._Registry = reg;
+		Ecsact.Defaults.NotifyReady();
+	}
+
+	internal static void ClearDefaults() {
+		Ecsact.Defaults.ClearDefaults();
 	}
 
 	private static void SetRunner
@@ -100,7 +105,7 @@ internal static class EcsactRuntimeDefaults {
 		var defReg = settings.defaultRegistry;
 
 		if(defReg.runner == EcsactRuntimeDefaultRegistry.RunnerType.FixedUpdate) {
-			EcsactRunner.OnRuntimeLoad<DefaultFixedRunner>(
+			Ecsact.Defaults.Runner = EcsactRunner.CreateRunner<DefaultFixedRunner>(
 				EcsactRuntimeDefaultRegistry.RunnerType.FixedUpdate,
 				"Default Fixed Runner"
 			);
@@ -109,11 +114,12 @@ internal static class EcsactRuntimeDefaults {
 			//NOTE(Kelwan): Not sure what we want to happen here
 		}
 		if(defReg.runner == EcsactRuntimeDefaultRegistry.RunnerType.Update) {
-				EcsactRunner.OnRuntimeLoad<DefaultRunner>(
+				Ecsact.Defaults.Runner = EcsactRunner.CreateRunner<DefaultRunner>(
 				EcsactRuntimeDefaultRegistry.RunnerType.Update,
 				"Default Runner"
 			);
 		}
+		
 	}
 
 	private static void SetupUnitySync

@@ -63,7 +63,7 @@ namespace Ecsact {
 			) where C : Ecsact.Component
 		{
 			if(Application.isPlaying) {
-				Ecsact.Defaults.Registry!.AddComponent(entityId, component);
+				Ecsact.Defaults.Registry.AddComponent(entityId, component);
 			}
 
 			ecsactComponents.Add(new SerializableEcsactComponent{
@@ -94,7 +94,7 @@ namespace Ecsact {
 		private void CreateEntityIfNeeded() {
 			if(entityId == -1) {
 				entityId = Ecsact.Defaults.Registry.CreateEntity();
-				if(defReg.pool != null) {
+				if(defReg!.pool != null) {
 					defReg.pool.SetPreferredEntityGameObject(entityId, gameObject);
 				}
 			}

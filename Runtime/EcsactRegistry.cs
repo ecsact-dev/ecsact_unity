@@ -12,11 +12,13 @@ namespace Ecsact {
 		public Registry
 			( EcsactRuntime runtime
 			, int regId
-			) 
+			)
 		{
 			rt = runtime;
 			registryId = regId;
 		}
+
+		// NOTE(Kelwan) Add registry clear impl?
 
 		public Int32 CreateEntity() {
 			return rt.core.CreateEntity(registryId);

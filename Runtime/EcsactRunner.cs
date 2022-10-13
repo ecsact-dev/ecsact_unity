@@ -7,11 +7,14 @@ using System.Runtime.InteropServices;
 
 #nullable enable
 
+[assembly: InternalsVisibleTo("EcsactRuntimeDefaults")]
+
 namespace Ecsact {
 	[AddComponentMenu("")]
 	public class EcsactRunner : MonoBehaviour {
 
-		protected EcsactRuntimeDefaultRegistry? defReg;
+		protected EcsactRuntimeDefaultRegistry? 
+		defReg;
 		protected List<EcsactRuntime.EcsactAction> actionList = new();
 		public Int32 registryId => defReg?.registryId ?? -1;
 
@@ -50,14 +53,15 @@ namespace Ecsact {
 			}
 		};
 
-		protected static void OnRuntimeLoad<ComponentT>
+		internal static EcsactRunner CreateRunner<ComponentT>
 			( EcsactRuntimeDefaultRegistry.RunnerType runnerType
 			, string name
 			) where ComponentT : EcsactRunner
 		{
 
-			var defReg = Ecsact.Defaults.Runner.defReg;
-			defReg.executeOptions = new EcsactRuntime.ExecutionOptions{};
+			var defReg = Ecsact.Defaults.Runner!.defReg;
+			defReg!.executionOptions = 
+				new EcsactRuntime.ExecutionOptions{};
 
 			var gameObjectName = name;
 			if(!string.IsNullOrWhiteSpace(defReg.registryName)) {
@@ -75,11 +79,12 @@ namespace Ecsact {
 					defReg,
 					ref runner.actionList
 				);
-				DontDestroyOnLoad(gameObject);
-				Ecsact.Defaults.Runner = runner;		
+				DontDestroyOnLoad(gameObject);		
 			} else {
 				throw new Exception("Runner is not valid");
 			}
+
+			return runner;
 
 		}
 
@@ -111,7 +116,6 @@ namespace Ecsact {
 
 			try {
 				Ecsact.Defaults.Registry.ExecuteSystems(
-					registryId: defReg.registryId,
 					executionCount: 1,
 					new EcsactRuntime.ExecutionOptions[]{defReg.executionOptions}
 				);

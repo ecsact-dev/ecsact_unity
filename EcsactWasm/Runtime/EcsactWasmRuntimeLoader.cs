@@ -20,12 +20,13 @@ namespace Ecsact {
 				return;
 			}
 
-			var defaultRuntime = Ecsact.Defaults.WhenReady(() => {
+			Ecsact.Defaults.WhenReady(() => {
 				Load();
 			});
 		}
 
 		private static void Load() {
+			var settings = EcsactWasmRuntimeSettings.Get();
 			foreach(var entry in settings.wasmSystemEntries) {
 				if(string.IsNullOrWhiteSpace(entry.wasmExportName)) continue;
 
