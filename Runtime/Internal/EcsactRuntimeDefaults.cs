@@ -38,7 +38,7 @@ internal static class EcsactRuntimeDefaults {
 		
 
 		settings.defaultRegistry!.registryId = 
-			Ecsact.Defaults.Runtime!.core.CreateRegistry(
+			Ecsact.Defaults._Runtime.core.CreateRegistry(
 				settings.defaultRegistry.registryName
 			);
 

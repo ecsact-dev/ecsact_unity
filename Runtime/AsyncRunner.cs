@@ -22,12 +22,8 @@ namespace Ecsact {
 			DontDestroyOnLoad(gameObject);
 		}
 
-		void Start() {
-
-		}
-
 		void Update() {
-			Ecsact.Defaults.Runtime!.async.FlushEvents();
+			Ecsact.Defaults._Runtime.async.FlushEvents();
 		}
 
 		void OnDestroy() {
