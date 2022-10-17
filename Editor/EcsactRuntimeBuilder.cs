@@ -32,6 +32,15 @@ struct ErrorMessage {
 }
 
 [System.Serializable]
+struct EcsactErrorMessage {
+	public const string type = "ecsact_error";
+	public string ecsact_source_path;
+	public string message;
+	public global::System.Int32 line;
+	public global::System.Int32 character;
+}
+
+[System.Serializable]
 struct WarningMessage {
 	public const string type = "warning";
 	public string content;
@@ -169,6 +178,12 @@ public static class EcsactRuntimeBuilder {
 							ReceiveMessage(
 								progressId,
 								JsonUtility.FromJson<ErrorMessage>(line)
+							);
+							break;
+						case EcsactErrorMessage.type:
+							ReceiveMessage(
+								progressId,
+								JsonUtility.FromJson<EcsactErrorMessage>(line)
 							);
 							break;
 						case WarningMessage.type:
@@ -309,6 +324,25 @@ public static class EcsactRuntimeBuilder {
 	{
 		Progress.SetDescription(progressId, message.content);
 		UnityEngine.Debug.LogError(message.content);
+	}
+
+	private static void ReceiveMessage
+		( int                 progressId
+		, EcsactErrorMessage  message
+		)
+	{
+		Progress.SetDescription(progressId, message.message);
+		UnityEditor.EditorApplication.delayCall += () => {
+			var ecsactAsset = UnityEditor.AssetDatabase.LoadAssetAtPath<Object>(
+				message.ecsact_source_path
+			);
+			UnityEngine.Debug.LogFormat(
+				context: ecsactAsset,
+				format: $"{message.ecsact_source_path}:{message.line}:{message.character} {message.message}",
+				logType: LogType.Error,
+				logOptions: LogOption.NoStacktrace
+			);
+		};
 	}
 
 	private static void ReceiveMessage
