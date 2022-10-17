@@ -24,8 +24,9 @@ public class EcsactImporter : ScriptedImporter {
 			path: "Assets",
 			searchPattern: "*.ecsact",
 			SearchOption.AllDirectories
-		).ToHashSet();
-		allEcsactFiles.Remove(ctx.assetPath);
+		).Select(filePath => filePath.Replace('\\', '/')).ToHashSet();
+		
+		allEcsactFiles.Remove(ctx.assetPath.Replace('\\', '/'));
 
 		Process codegen = new Process();
 		codegen.StartInfo.FileName = ecsactExecutable;
