@@ -29,7 +29,7 @@ namespace Ecsact {
 			( global::System.Action callback
 			)
 		{
-			if(Runtime != null) {
+			if(_Runtime != null) {
 				callback();
 			} else {
 				onReady += callback;
@@ -37,8 +37,8 @@ namespace Ecsact {
 		}
 
 		internal static void NotifyReady() {
-			if(Runtime != null) {
-				onReady!.Invoke();
+			if(_Runtime != null) {
+				onReady?.Invoke();
 				onReady = null;
 			} else {
 				throw new Exception(
@@ -48,7 +48,6 @@ namespace Ecsact {
 		}
 
 		internal static void ClearDefaults() {
-			// NOTE(Kelwan) Use some sort of ecsact_registry_clear
 			Runner = null;
 			_Runtime = null;
 			_Registry = null;

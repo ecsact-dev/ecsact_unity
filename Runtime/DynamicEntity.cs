@@ -55,9 +55,7 @@ namespace Ecsact {
 	public class DynamicEntity : MonoBehaviour {
 		public global::System.Int32 entityId { get; private set; } = -1;
 		public List<SerializableEcsactComponent> ecsactComponents = new();
-	
-		private EcsactRuntimeDefaultRegistry? defReg;
-
+		
 		public void AddEcsactCompnent<C>
 			( C component
 			) where C : Ecsact.Component
@@ -94,8 +92,11 @@ namespace Ecsact {
 		private void CreateEntityIfNeeded() {
 			if(entityId == -1) {
 				entityId = Ecsact.Defaults.Registry.CreateEntity();
-				if(defReg!.pool != null) {
-					defReg.pool.SetPreferredEntityGameObject(entityId, gameObject);
+				if(Ecsact.Defaults.Pool != null) {
+					Ecsact.Defaults.Pool.SetPreferredEntityGameObject(
+						entityId,
+						gameObject
+					);
 				}
 			}
 		}
@@ -124,23 +125,29 @@ namespace Ecsact {
 			}
 		}
 
-		void OnEnable() {			
-			CreateEntityIfNeeded();
-			AddInitialEcsactComponents();
+		void OnEnable() {		
+			Ecsact.Defaults.WhenReady(() => {
+				CreateEntityIfNeeded();
+				AddInitialEcsactComponents();
+			});
 		}
 
 		void OnDisable() {
-			foreach(var ecsactComponent in ecsactComponents) {
-				var hasComponent = Ecsact.Defaults.Registry.HasComponent(
-					entityId,
-					ecsactComponent.id
-				);
-				if(hasComponent) {
-					Ecsact.Defaults.Registry.RemoveComponent(
+			if(entityId != -1) {
+				foreach(var ecsactComponent in ecsactComponents) {
+					var hasComponent = Ecsact.Defaults.Registry.HasComponent(
 						entityId,
 						ecsactComponent.id
 					);
+					if(hasComponent) {
+						Ecsact.Defaults.Registry.RemoveComponent(
+							entityId,
+							ecsactComponent.id
+						);
+					}
 				}
+			} else {
+				Debug.LogError("NOT READY");
 			}
 		}
 	};

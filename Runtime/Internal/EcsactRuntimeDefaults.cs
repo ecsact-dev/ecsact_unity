@@ -36,12 +36,12 @@ internal static class EcsactRuntimeDefaults {
 
 		Ecsact.Defaults._Runtime = EcsactRuntime.Load(settings.runtimeLibraryPaths);
 		
-		if(settings.defaultRegistry == null) {
-			settings.defaultRegistry!.registryId = 
-				Ecsact.Defaults.Runtime!.core.CreateRegistry(
-					settings.defaultRegistry.registryName
-				);
-		}
+
+		settings.defaultRegistry!.registryId = 
+			Ecsact.Defaults.Runtime!.core.CreateRegistry(
+				settings.defaultRegistry.registryName
+			);
+
 
 		// Ecsact.Defaults.Runner set here
 		SetRunner(settings);
@@ -59,36 +59,35 @@ internal static class EcsactRuntimeDefaults {
 			);
 		}
 
+		if(Ecsact.Defaults._Runtime == null) {
+#if UNITY_EDITOR
+			UnityEditor.EditorApplication.isPlaying = false;
+			var okQuit = UnityEditor.EditorUtility.DisplayDialog(
+				title: "Failed to load default ecsact runtime",
+				message: "Please check your ecsact runtime settings",
+				ok: "Ok Quit",
+				cancel: "Continue Anyways"
+			);
+
+			if(okQuit) {
+				UnityEditor.EditorApplication.isPlaying = false;
+			}
+			UnityEngine.Application.Quit(1);
+#else
+			UnityEngine.Debug.LogError("Failed to load default ecsact runtime");
+			UnityEngine.Application.Quit(1);
+#endif
+			throw new Exception("Failed to load default ecsact runtime");
+		}
+
 		if(settings.enableUnitySync) {
-			SetupUnitySync(Ecsact.Defaults.Runtime!, settings.defaultRegistry);
+			SetupUnitySync(Ecsact.Defaults._Runtime, settings.defaultRegistry);
 			if(!unitySyncScriptsRegistered) {
 				RegisterUnitySyncScripts(settings);
 			}
 			pool = settings.defaultRegistry.pool;
 			Ecsact.Defaults.Pool = pool;
 		}
-
-// NOTE(Kelwan) Might be unnecessary
-// 		if(Ecsact.Defaults.Runtime == null) {
-// #if UNITY_EDITOR
-// 			UnityEditor.EditorApplication.isPlaying = false;
-// 			var okQuit = UnityEditor.EditorUtility.DisplayDialog(
-// 				title: "Failed to load default ecsact runtime",
-// 				message: "Please check your ecsact runtime settings",
-// 				ok: "Ok Quit",
-// 				cancel: "Continue Anyways"
-// 			);
-
-// 			if(okQuit) {
-// 				UnityEditor.EditorApplication.isPlaying = false;
-// 			}
-// 			UnityEngine.Application.Quit(1);
-// #else
-// 			UnityEngine.Debug.LogError("Failed to load default ecsact runtime");
-// 			UnityEngine.Application.Quit(1);
-// #endif
-// 			throw new Exception("Failed to load default ecsact runtime");
-// 		}
 
 		Ecsact.Defaults._Registry = reg;
 		Ecsact.Defaults.NotifyReady();
@@ -129,6 +128,7 @@ internal static class EcsactRuntimeDefaults {
 		, EcsactRuntimeDefaultRegistry  defReg
 		)
 	{
+		
 		Debug.Assert(
 			defReg.pool == null,
 			"EntityGameObjectPool already created. SetupUnitySync should only be " +

@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 namespace Ecsact {
-	public class Registry : MonoBehaviour {
+	public class Registry {
 		
 		private EcsactRuntime rt;
 		private int registryId;
@@ -14,11 +14,14 @@ namespace Ecsact {
 			, int regId
 			)
 		{
+			UnityEngine.Debug.Assert(regId > -1, "Invalid registry ID");
 			rt = runtime;
 			registryId = regId;
 		}
 
-		// NOTE(Kelwan) Add registry clear impl?
+		public void ClearRegistry() {
+			rt.core.ClearRegistry(registryId);
+		}
 
 		public Int32 CreateEntity() {
 			return rt.core.CreateEntity(registryId);
