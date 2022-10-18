@@ -1561,9 +1561,6 @@ public class EcsactRuntime {
 			"ecsact_destroy_enum",
 			"ecsact_destroy_package",
 			"ecsact_destroy_transient",
-			"ecsact_register_action",
-			"ecsact_register_component",
-			"ecsact_register_system",
 			"ecsact_remove_child_system",
 			"ecsact_remove_dependency",
 			"ecsact_remove_enum_value",
@@ -1695,24 +1692,6 @@ public class EcsactRuntime {
 			( Int32 componentId
 			);
 		internal ecsact_destroy_component_delegate? ecsact_destroy_component;
-
-		internal delegate void ecsact_register_component_delegate
-			( Int32  registryId
-			, Int32  componentId
-			);
-		internal ecsact_register_component_delegate? ecsact_register_component;
-
-		internal delegate void ecsact_register_system_delegate
-			( Int32  registryId
-			, Int32  systemId
-			);
-		internal ecsact_register_system_delegate? ecsact_register_system;
-
-		internal delegate void ecsact_register_action_delegate
-			( Int32  registryId
-			, Int32  actionId
-			);
-		internal ecsact_register_action_delegate? ecsact_register_action;
 
 		internal delegate Int32 ecsact_system_execution_context_id_delegate
 			( IntPtr context
@@ -2230,9 +2209,6 @@ public class EcsactRuntime {
 			LoadDelegate(lib, "ecsact_create_action", out runtime._dynamic.ecsact_create_action, runtime._dynamic);
 			LoadDelegate(lib, "ecsact_create_component", out runtime._dynamic.ecsact_create_component, runtime._dynamic);
 			LoadDelegate(lib, "ecsact_destroy_component", out runtime._dynamic.ecsact_destroy_component, runtime._dynamic);
-			LoadDelegate(lib, "ecsact_register_component", out runtime._dynamic.ecsact_register_component, runtime._dynamic);
-			LoadDelegate(lib, "ecsact_register_system", out runtime._dynamic.ecsact_register_system, runtime._dynamic);
-			LoadDelegate(lib, "ecsact_register_action", out runtime._dynamic.ecsact_register_action, runtime._dynamic);
 			LoadDelegate(lib, "ecsact_system_execution_context_id", out runtime._dynamic.ecsact_system_execution_context_id, runtime._dynamic);
 			LoadDelegate(lib, "ecsact_system_execution_context_other", out runtime._dynamic.ecsact_system_execution_context_other, runtime._dynamic);
 
