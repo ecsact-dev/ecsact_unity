@@ -59,7 +59,6 @@ public class EcsactImporter : ScriptedImporter {
 		};
 		
 		try {
-			UnityEngine.Debug.Log(codegen.StartInfo.Arguments);
 			codegen.Start();
 			codegen.BeginOutputReadLine();
 			codegen.BeginErrorReadLine();

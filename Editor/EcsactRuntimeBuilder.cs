@@ -105,6 +105,7 @@ public static class EcsactRuntimeBuilder {
 	private static Dictionary<long, int> _subcommandProgressIds = new();
 	private static Dictionary<long, string> _subcommandProgressNames = new();
 	private static EcsactSettings? _settings;
+	private static EcsactRuntimeSettings? _rtSettings;
 
 	public struct Options {
 		public List<string> ecsactFiles;
@@ -128,6 +129,8 @@ public static class EcsactRuntimeBuilder {
 			);
 			return;
 		}
+
+		_rtSettings = EcsactRuntimeSettings.Get();
 
 		string runtimeBuilderExecutablePath =
 			EcsactSdk.FindExecutable("ecsact_rtb");
@@ -260,6 +263,12 @@ public static class EcsactRuntimeBuilder {
 
 		if(_settings.runtimeBuilderDebugBuild) {
 			proc.StartInfo.Arguments += " --debug ";
+		}
+
+		if(_rtSettings.systemImplSource == Ecsact.SystemImplSource.WebAssembly) {
+			proc.StartInfo.Arguments += " --wasm=wasmer ";
+		} else if(_rtSettings.systemImplSource == Ecsact.SystemImplSource.Csharp) {
+			proc.StartInfo.Arguments += " --wasm=none ";
 		}
 
 		proc.StartInfo.Arguments += "--output=\"";
