@@ -71,8 +71,8 @@ namespace Ecsact {
 		}
 
 		public void AddComponent<C>
-			( int entityId
-			, C component
+			( int  entityId
+			, C    component
 			) where C : Ecsact.Component
 		{
 			rt.core.AddComponent<C>(
@@ -129,7 +129,7 @@ namespace Ecsact {
 		}
 
 		public Dictionary<Int32, object> GetComponents
-			( Int32  entityId
+			( Int32 entityId
 			)
 		{
 			return rt.core.GetComponents(registryId, entityId);
@@ -168,11 +168,25 @@ namespace Ecsact {
 		}
 
 		public void ExecuteSystems
-			( Int32                             executionCount
-			, EcsactRuntime.ExecutionOptions[]  executionOptionsList
+			( Int32                              executionCount
+			, EcsactRuntime.CExecutionOptions[]  executionOptionsList
 			)
 		{
 			rt.core.ExecuteSystems(registryId, executionCount, executionOptionsList);
+		}
+
+		public void ExecuteSystems
+			( Int32                    executionCount
+			, Ecsact.ExecutionOptions  executionOptions
+			)
+		{
+			var execArr = 
+				new EcsactRuntime.CExecutionOptions[]{executionOptions.C()};
+			rt.core.ExecuteSystems(
+				registryId,
+				executionCount,
+				execArr
+			);
 		}
 	}
 }

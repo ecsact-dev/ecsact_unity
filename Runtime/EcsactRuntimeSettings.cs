@@ -28,7 +28,6 @@ public class EcsactRuntimeDefaultRegistry {
 		"Ecsact.DefaultFixedRunner script for this registry."
 	)]
 	public RunnerType runner;
-	public EcsactRuntime.ExecutionOptions executionOptions;
 	public Int32 registryId { get; internal set; } = -1;
 }
 

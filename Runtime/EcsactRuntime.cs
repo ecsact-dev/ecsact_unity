@@ -135,7 +135,7 @@ public class EcsactRuntime {
 		public IntPtr actionData;
 	}
 
-	public struct ExecutionOptions {
+	public struct CExecutionOptions {
 		public Int32 addComponentsLength;
 		[MarshalAs(UnmanagedType.LPArray)]
 		public Int32[] addComponentsEntities;
@@ -994,7 +994,7 @@ public class EcsactRuntime {
 		internal delegate ecsact_exec_systems_error ecsact_execute_systems_delegate
 			( Int32                        registryId
 			, Int32                        executionCount
-			, ExecutionOptions[]           executionOptionsList
+			, CExecutionOptions[]          executionOptionsList
 			, in ExecutionEventsCollector  eventsCollector
 			);
 		internal ecsact_execute_systems_delegate? ecsact_execute_systems;
@@ -1453,9 +1453,9 @@ public class EcsactRuntime {
 		}
 
 		public void ExecuteSystems
-			( Int32               registryId
-			, Int32               executionCount
-			, ExecutionOptions[]  executionOptionsList
+			( Int32                registryId
+			, Int32                executionCount
+			, CExecutionOptions[]  executionOptionsList
 			)
 		{
 			if(ecsact_execute_systems == null) {
