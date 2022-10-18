@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using System;
 
 #nullable enable
 
@@ -55,17 +56,13 @@ namespace Ecsact {
 	public class DynamicEntity : MonoBehaviour {
 		public global::System.Int32 entityId { get; private set; } = -1;
 		public List<SerializableEcsactComponent> ecsactComponents = new();
-
-		private EcsactRuntime? runtime;
-		private EcsactRuntimeSettings? settings;
-		private EcsactRuntimeDefaultRegistry? defReg;
-
+		
 		public void AddEcsactCompnent<C>
 			( C component
 			) where C : Ecsact.Component
 		{
 			if(Application.isPlaying) {
-				runtime!.core.AddComponent(defReg!.registryId, entityId, component);
+				Ecsact.Defaults.Registry.AddComponent(entityId, component);
 			}
 
 			ecsactComponents.Add(new SerializableEcsactComponent{
@@ -80,8 +77,7 @@ namespace Ecsact {
 			)
 		{
 			if(Application.isPlaying) {
-				runtime!.core.AddComponent(
-					defReg!.registryId,
+				Ecsact.Defaults.Registry.AddComponent(
 					entityId,
 					componentId,
 					componentData
@@ -96,12 +92,12 @@ namespace Ecsact {
 
 		private void CreateEntityIfNeeded() {
 			if(entityId == -1) {
-				runtime = EcsactRuntime.GetOrLoadDefault();
-				settings = EcsactRuntimeSettings.Get();
-				defReg = settings.defaultRegistries[0];
-				entityId = runtime.core.CreateEntity(defReg.registryId);
-				if(defReg.pool != null) {
-					defReg.pool.SetPreferredEntityGameObject(entityId, gameObject);
+				entityId = Ecsact.Defaults.Registry.CreateEntity();
+				if(Ecsact.Defaults.Pool != null) {
+					Ecsact.Defaults.Pool.SetPreferredEntityGameObject(
+						entityId,
+						gameObject
+					);
 				}
 			}
 		}
@@ -122,8 +118,7 @@ namespace Ecsact {
 			}
 
 			foreach(var ecsactComponent in ecsactComponents) {
-				runtime!.core.AddComponent(
-					defReg!.registryId,
+				Ecsact.Defaults.Registry.AddComponent(
 					entityId,
 					ecsactComponent.id,
 					ecsactComponent.data!
@@ -131,25 +126,29 @@ namespace Ecsact {
 			}
 		}
 
-		void OnEnable() {			
-			CreateEntityIfNeeded();
-			AddInitialEcsactComponents();
+		void OnEnable() {		
+			Ecsact.Defaults.WhenReady(() => {
+				CreateEntityIfNeeded();
+				AddInitialEcsactComponents();
+			});
 		}
 
 		void OnDisable() {
-			foreach(var ecsactComponent in ecsactComponents) {
-				var hasComponent = runtime!.core.HasComponent(
-					defReg!.registryId,
-					entityId,
-					ecsactComponent.id
-				);
-				if(hasComponent) {
-					runtime!.core.RemoveComponent(
-						defReg!.registryId,
+			if(entityId != -1) {
+				foreach(var ecsactComponent in ecsactComponents) {
+					var hasComponent = Ecsact.Defaults.Registry.HasComponent(
 						entityId,
 						ecsactComponent.id
 					);
+					if(hasComponent) {
+						Ecsact.Defaults.Registry.RemoveComponent(
+							entityId,
+							ecsactComponent.id
+						);
+					}
 				}
+			} else {
+				throw new Exception("Uninitialized entityID");
 			}
 		}
 	};

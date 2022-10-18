@@ -7,14 +7,11 @@ using System.Runtime.InteropServices;
 
 #nullable enable
 
+[assembly: InternalsVisibleTo("EcsactRuntimeDefaults")]
+
 namespace Ecsact {
 	[AddComponentMenu("")]
 	public class EcsactRunner : MonoBehaviour {
-		protected EcsactRuntime? runtimeInstance = null;
-
-		protected EcsactRuntimeDefaultRegistry? defReg;
-		protected List<EcsactRuntime.EcsactAction> actionList = new();
-		public Int32 registryId => defReg?.registryId ?? -1;
 
 #if UNITY_EDITOR
 		[NonSerialized]
@@ -23,106 +20,43 @@ namespace Ecsact {
 		public int debugExecutionTimeMs = 0;
 #endif
 
-		public ExecuteOptions executeOptions;
-		public struct ExecuteOptions {
+		public Ecsact.ExecutionOptions executionOptions = new();
 
-			private List<EcsactRuntime.EcsactAction> actions;
-
-			internal ExecuteOptions
-				( EcsactRuntimeDefaultRegistry reg
-				, ref List<EcsactRuntime.EcsactAction> actionList
-				)
-			{
-				actions = actionList;
-			}
-
-			public void PushAction<T>
-				( T action
-				) where T : Ecsact.Action
-			{
-				var actionId = Ecsact.Util.GetActionID<T>();
-				var actionPtr = Marshal.AllocHGlobal(Marshal.SizeOf(action));
-				Marshal.StructureToPtr(action, actionPtr, false);
-				var ecsAction = new EcsactRuntime.EcsactAction {
-					actionId = actionId,
-					actionData = actionPtr
-				};
-				actions.Add(ecsAction);
-			}
-		};
-
-		protected static void OnRuntimeLoad<ComponentT>
-			( EcsactRuntimeDefaultRegistry.RunnerType runnerType
+		internal static EcsactRunner CreateInstance<ComponentT>
+			( EcsactRuntimeDefaultRegistry.RunnerType  runnerType
+			, EcsactRuntimeSettings                    settings
 			, string name
 			) where ComponentT : EcsactRunner
 		{
-			var settings = EcsactRuntimeSettings.Get();
+			var gameObjectName = name;
 
-			foreach(var defReg in settings.defaultRegistries) {
-				if(defReg.runner != runnerType) {
-					continue;
-				}
-
-				defReg.executionOptions = new EcsactRuntime.ExecutionOptions{};
-
-				var gameObjectName = name;
-				if(!string.IsNullOrWhiteSpace(defReg.registryName)) {
-					gameObjectName += " - " + defReg.registryName;
-				}
-
-				var gameObject = new GameObject(gameObjectName);
-				var runner = gameObject.AddComponent(
-					typeof(ComponentT)
-				) as EcsactRunner;
-				if(runner is not null) {
-					runner.defReg = defReg;
-
-					runner.executeOptions = new ExecuteOptions(
-						defReg,
-						ref runner.actionList
-					);
-					DontDestroyOnLoad(gameObject);			
-				} else {
-					throw new Exception("Runner is not valid");
-				}
-
+			var gameObject = new GameObject(gameObjectName);
+			var runner = gameObject.AddComponent(
+				typeof(ComponentT)
+			) as EcsactRunner;
+			if(runner is not null) {
+				runner.executionOptions = new Ecsact.ExecutionOptions();
+				DontDestroyOnLoad(gameObject);
+			} else {
+				throw new Exception("Runner is not valid");
 			}
-		}
 
-		protected void AddActionsToReg() {
-			var actionsArray = actionList.ToArray();
-
-			defReg!.executionOptions.actions = actionsArray;
-			defReg!.executionOptions.actionsLength = actionsArray.Length;
-		}
-
-		protected void FreeActions() {
-			foreach(var ecsAction in actionList) {
-				Marshal.FreeHGlobal(ecsAction.actionData);
-			}
-			actionList.Clear();
+			return runner;
 		}
 
 		protected void Execute() {
-			if(defReg == null) return;
-			UnityEngine.Debug.Assert(defReg.registryId != -1);
 
 #if UNITY_EDITOR
 			var executionTimeWatch = Stopwatch.StartNew();
 #endif
-
-			if(actionList.Count > 0) {
-				AddActionsToReg();
+			if(executionOptions.actionCount() > 0) {
+				executionOptions.AddActions();
 			}
 
 			try {
-				runtimeInstance!.core.ExecuteSystems(
-					registryId: defReg.registryId,
-					executionCount: 1,
-					new EcsactRuntime.ExecutionOptions[]{defReg.executionOptions}
-				);
+				Ecsact.Defaults.Registry.ExecuteSystems(executionOptions);
 			} finally {
-				FreeActions();
+				executionOptions.FreeActions();
 			}
 
 #if UNITY_EDITOR
@@ -131,15 +65,8 @@ namespace Ecsact {
 			debugExecutionCountTotal += 1;
 #endif
 
-			defReg.executionOptions = new EcsactRuntime.ExecutionOptions();
+			executionOptions.executionOptions = new EcsactRuntime.CExecutionOptions();
 		}
 
-		void Awake() {
-			runtimeInstance = EcsactRuntime.GetOrLoadDefault();
-		}
-
-		void Start() {
-			gameObject.name += $" ({defReg!.registryId})";
-		}
 	}
 }

@@ -6,9 +6,7 @@ namespace Ecsact {
 	[AddComponentMenu("")]
 	public class AsyncRunner : MonoBehaviour {
 		private static AsyncRunner? instance = null;
-		private EcsactRuntime? runtimeInstance = null;
 
-		[RuntimeInitializeOnLoadMethod]
 		private static void OnRuntimeLoad() {
 			if(instance != null) {
 				return;
@@ -24,12 +22,8 @@ namespace Ecsact {
 			DontDestroyOnLoad(gameObject);
 		}
 
-		void Awake() {
-			runtimeInstance = EcsactRuntime.GetOrLoadDefault();
-		}
-
 		void Update() {
-			runtimeInstance!.async.FlushEvents();
+			Ecsact.Defaults.Runtime.async.FlushEvents();
 		}
 
 		void OnDestroy() {

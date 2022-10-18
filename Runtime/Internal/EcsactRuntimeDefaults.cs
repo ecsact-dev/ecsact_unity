@@ -1,7 +1,9 @@
 using UnityEngine;
 using System.Runtime.CompilerServices;
 using System.Collections.Generic;
+using System.Collections;
 using Ecsact.UnitySync;
+using System;
 
 [assembly: InternalsVisibleTo("EcsactRuntime")]
 
@@ -28,26 +30,87 @@ internal static class EcsactRuntimeDefaults {
 		}
 	}
 
-	internal static void Setup
-		( EcsactRuntime          runtime
-		, EcsactRuntimeSettings  settings
-		)
-	{
-		foreach(var defReg in settings.defaultRegistries) {
-			defReg.registryId = runtime.core.CreateRegistry(
-				defReg.registryName
+	[RuntimeInitializeOnLoadMethod]
+	internal static void Setup() {
+		var settings = EcsactRuntimeSettings.Get();
+
+		Ecsact.Defaults._Runtime = EcsactRuntime.Load(settings.runtimeLibraryPaths);
+
+		if(Ecsact.Defaults._Runtime == null) {
+#if UNITY_EDITOR
+			UnityEditor.EditorApplication.isPlaying = false;
+			var okQuit = UnityEditor.EditorUtility.DisplayDialog(
+				title: "Failed to load default ecsact runtime",
+				message: "Please check your ecsact runtime settings",
+				ok: "Ok Quit",
+				cancel: "Continue Anyways"
 			);
 
-			if(settings.enableUnitySync) {
-				SetupUnitySync(runtime, defReg);
+			if(okQuit) {
+				UnityEditor.EditorApplication.isPlaying = false;
 			}
+			UnityEngine.Application.Quit(1);
+#else
+			UnityEngine.Debug.LogError("Failed to load default ecsact runtime");
+			UnityEngine.Application.Quit(1);
+#endif
+			throw new Exception("Failed to load default ecsact runtime");
 		}
 
+		settings.defaultRegistry!.registryId = 
+			Ecsact.Defaults.Runtime.core.CreateRegistry(
+				settings.defaultRegistry.registryName
+			);
+
+		SetDefaultsRunner(settings);
+
+		var reg = new Ecsact.Registry(
+			Ecsact.Defaults.Runtime,
+			settings.defaultRegistry.registryId
+		);
+
 		if(settings.enableUnitySync) {
+			SetupUnitySync(Ecsact.Defaults.Runtime, settings.defaultRegistry);
 			if(!unitySyncScriptsRegistered) {
 				RegisterUnitySyncScripts(settings);
 			}
+			EntityGameObjectPool? pool;
+			pool = settings.defaultRegistry.pool;
+			Ecsact.Defaults.Pool = pool;
 		}
+
+		Ecsact.Defaults._Registry = reg;
+		Ecsact.Defaults.NotifyReady();
+	}
+
+	internal static void ClearDefaults() {
+		Ecsact.Defaults.ClearDefaults();
+	}
+
+	private static void SetDefaultsRunner
+		( EcsactRuntimeSettings settings
+		)
+	{
+		var defReg = settings.defaultRegistry;
+
+		if(defReg.runner == EcsactRuntimeDefaultRegistry.RunnerType.FixedUpdate) {
+			Ecsact.Defaults.Runner = EcsactRunner.CreateInstance<DefaultFixedRunner>(
+				EcsactRuntimeDefaultRegistry.RunnerType.FixedUpdate,
+				settings,
+				"Default Fixed Runner"
+			);
+		}
+		if(defReg.runner == EcsactRuntimeDefaultRegistry.RunnerType.None) {
+			Ecsact.Defaults.Runner = null;
+		}
+		if(defReg.runner == EcsactRuntimeDefaultRegistry.RunnerType.Update) {
+				Ecsact.Defaults.Runner = EcsactRunner.CreateInstance<DefaultRunner>(
+				EcsactRuntimeDefaultRegistry.RunnerType.Update,
+				settings,
+				"Default Runner"
+			);
+		}
+
 	}
 
 	private static void SetupUnitySync
@@ -55,6 +118,7 @@ internal static class EcsactRuntimeDefaults {
 		, EcsactRuntimeDefaultRegistry  defReg
 		)
 	{
+		
 		Debug.Assert(
 			defReg.pool == null,
 			"EntityGameObjectPool already created. SetupUnitySync should only be " +

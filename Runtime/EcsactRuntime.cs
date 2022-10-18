@@ -135,7 +135,7 @@ public class EcsactRuntime {
 		public IntPtr actionData;
 	}
 
-	public struct ExecutionOptions {
+	public struct CExecutionOptions {
 		public Int32 addComponentsLength;
 		[MarshalAs(UnmanagedType.LPArray)]
 		public Int32[] addComponentsEntities;
@@ -624,70 +624,16 @@ public class EcsactRuntime {
 		public IntPtr actionCommittedCallbackUserData;
 	}
 
-	private static EcsactRuntime? defaultInstance;
-
 	static EcsactRuntime() {
 #if UNITY_EDITOR
 		EditorApplication.playModeStateChanged += state => {
 			if(state == PlayModeStateChange.ExitingPlayMode) {
 				EditorApplication.delayCall += () => {
-					SetDefault(null);
+					Ecsact.Internal.EcsactRuntimeDefaults.ClearDefaults();
 				};
 			}
 		};
 #endif
-	}
-
-	public static EcsactRuntime GetOrLoadDefault() {
-		if(!UnityEngine.Application.isPlaying) {
-			throw new Exception(
-				"EcsactRuntime.GetOrLoadDefault() may only be used during play mode"
-			);
-		}
-
-		if(defaultInstance == null) {
-			var settings = EcsactRuntimeSettings.Get();
-			defaultInstance = Load(settings.runtimeLibraryPaths);
-
-			if(defaultInstance != null) {
-				Ecsact.Internal.EcsactRuntimeDefaults.Setup(defaultInstance, settings);
-			}
-		}
-
-		if(defaultInstance == null) {
-#if UNITY_EDITOR
-			UnityEditor.EditorApplication.isPlaying = false;
-			var okQuit = UnityEditor.EditorUtility.DisplayDialog(
-				title: "Failed to load default ecsact runtime",
-				message: "Please check your ecsact runtime settings",
-				ok: "Ok Quit",
-				cancel: "Continue Anyways"
-			);
-
-			if(okQuit) {
-				UnityEditor.EditorApplication.isPlaying = false;
-			}
-			UnityEngine.Application.Quit(1);
-#else
-			UnityEngine.Debug.LogError("Failed to load default ecsact runtime");
-			UnityEngine.Application.Quit(1);
-#endif
-			throw new Exception("Failed to load default ecsact runtime");
-		}
-
-		return defaultInstance;
-	}
-
-
-
-	public static void SetDefault
-		( EcsactRuntime? runtime
-		)
-	{
-		if(defaultInstance != null) {
-			Free(defaultInstance);
-		}
-		defaultInstance = runtime;
 	}
 
 	private IntPtr[]? _libs;
@@ -1048,7 +994,7 @@ public class EcsactRuntime {
 		internal delegate ecsact_exec_systems_error ecsact_execute_systems_delegate
 			( Int32                        registryId
 			, Int32                        executionCount
-			, ExecutionOptions[]           executionOptionsList
+			, CExecutionOptions[]          executionOptionsList
 			, in ExecutionEventsCollector  eventsCollector
 			);
 		internal ecsact_execute_systems_delegate? ecsact_execute_systems;
@@ -1507,9 +1453,9 @@ public class EcsactRuntime {
 		}
 
 		public void ExecuteSystems
-			( Int32               registryId
-			, Int32               executionCount
-			, ExecutionOptions[]  executionOptionsList
+			( Int32                registryId
+			, Int32                executionCount
+			, CExecutionOptions[]  executionOptionsList
 			)
 		{
 			if(ecsact_execute_systems == null) {

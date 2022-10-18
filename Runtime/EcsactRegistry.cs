@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 namespace Ecsact {
-	public class Registry : MonoBehaviour {
+	public class Registry {
 		
 		private EcsactRuntime rt;
 		private int registryId;
@@ -12,19 +12,15 @@ namespace Ecsact {
 		public Registry
 			( EcsactRuntime runtime
 			, int regId
-			) 
+			)
 		{
+			UnityEngine.Debug.Assert(regId > -1, "Invalid registry ID");
 			rt = runtime;
 			registryId = regId;
 		}
 
-		public Registry
-			( EcsactRuntime runtime
-			, string registryName
-			)
-		{
-			rt = runtime;
-			registryId = rt.core.CreateRegistry(registryName);
+		public void ClearRegistry() {
+			rt.core.ClearRegistry(registryId);
 		}
 
 		public Int32 CreateEntity() {
@@ -75,8 +71,8 @@ namespace Ecsact {
 		}
 
 		public void AddComponent<C>
-			( int entityId
-			, C component
+			( int  entityId
+			, C    component
 			) where C : Ecsact.Component
 		{
 			rt.core.AddComponent<C>(
@@ -133,7 +129,7 @@ namespace Ecsact {
 		}
 
 		public Dictionary<Int32, object> GetComponents
-			( Int32  entityId
+			( Int32 entityId
 			)
 		{
 			return rt.core.GetComponents(registryId, entityId);
@@ -172,11 +168,20 @@ namespace Ecsact {
 		}
 
 		public void ExecuteSystems
-			( Int32                             executionCount
-			, EcsactRuntime.ExecutionOptions[]  executionOptionsList
+			( Int32                              executionCount
+			, EcsactRuntime.CExecutionOptions[]  executionOptionsList
 			)
 		{
 			rt.core.ExecuteSystems(registryId, executionCount, executionOptionsList);
+		}
+
+		public void ExecuteSystems
+			( Ecsact.ExecutionOptions  executionOptions
+			)
+		{
+			var execArr = 
+				new EcsactRuntime.CExecutionOptions[]{executionOptions.C()};
+			rt.core.ExecuteSystems(registryId, 1, execArr);
 		}
 	}
 }
