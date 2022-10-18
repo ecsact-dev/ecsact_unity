@@ -72,6 +72,10 @@ public class EcsactRuntimeSettings : ScriptableObject {
 		public string assemblyQualifiedName;
 		public string implMethodName;
 	}
+
+	[HideInInspector]
+	public Ecsact.SystemImplSource systemImplSource;
+
 	[HideInInspector]
 	public string defaultCsharpSystemImplsAssemblyName = "";
 

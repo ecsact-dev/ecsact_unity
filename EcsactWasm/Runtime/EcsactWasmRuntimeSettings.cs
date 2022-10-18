@@ -24,7 +24,6 @@ public class EcsactWasmRuntimeSettings : ScriptableObject {
 	public const string resourcePath = "Settings/EcsactWasmRuntimeSettings";
 	public const string assetPath = "Assets/Resources/" + resourcePath + ".asset";
 
-	public bool useDefaultLoader = true;
 	public bool autoFindSystemImpls = true;
 	public List<SystemMapEntry> wasmSystemEntries = new();
 

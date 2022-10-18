@@ -5,13 +5,22 @@ using UnityEngine;
 
 namespace Ecsact {
 	public static class EcsactWasmRuntimeLoader {
+		public static bool Enabled() {
+			var settings = EcsactRuntimeSettings.Get();
+			if(settings.systemImplSource != Ecsact.SystemImplSource.WebAssembly) {
+				return false;
+			}
+
+			return true;
+		}
+
 		[RuntimeInitializeOnLoadMethod]
 		public static void OnLoad() {
-			var settings = EcsactWasmRuntimeSettings.Get();
-			if(!settings.useDefaultLoader) {
+			if(!Enabled()) {
 				return;
 			}
 
+			var settings = EcsactWasmRuntimeSettings.Get();
 			var defaultRuntime = EcsactRuntime.GetOrLoadDefault();
 
 			foreach(var entry in settings.wasmSystemEntries) {

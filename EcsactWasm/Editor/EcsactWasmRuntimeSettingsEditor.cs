@@ -98,11 +98,9 @@ public class EcsactWasmRuntimeSettingsEditor : Editor {
 	private Dictionary<Int32, WasmInfo?> wasmInfos = new();
 	private bool allWasmInfoLoaded = false;
 
-	SerializedProperty? useDefaultLoader;
 	SerializedProperty? autoFindSystemImpls;
 
 	void OnEnable() {
-		useDefaultLoader = serializedObject.FindProperty("useDefaultLoader");
 		autoFindSystemImpls =
 			serializedObject.FindProperty("autoFindSystemImpls");
 	}
@@ -127,7 +125,6 @@ public class EcsactWasmRuntimeSettingsEditor : Editor {
 			systemLikeTypes = Ecsact.Util.GetAllSystemLikeTypes().ToList();
 		}
 
-		EditorGUILayout.PropertyField(useDefaultLoader);
 		EditorGUI.BeginChangeCheck();
 		EditorGUILayout.PropertyField(autoFindSystemImpls);
 		if(EditorGUI.EndChangeCheck()) {

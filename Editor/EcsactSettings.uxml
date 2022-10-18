@@ -31,7 +31,7 @@
         </ui:GroupBox>
         <ui:GroupBox>
             <ui:Label text="System Implementations" display-tooltip-when-elided="true" style="font-size: 16px; -unity-font-style: bold;" />
-            <ui:DropdownField label="Source" index="0" choices="C#,Wasm" name="system-impls-source-dropdown" style="margin-left: 0;" />
+            <ui:DropdownField label="Source" index="0" choices="C#,WebAssembly" name="system-impls-source-dropdown" style="margin-left: 0;" />
             <ui:IMGUIContainer name="csharp-system-impl-settings-container" />
             <ui:IMGUIContainer name="wasm-runtime-settings-container" />
         </ui:GroupBox>
