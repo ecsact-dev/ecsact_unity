@@ -23,7 +23,7 @@ namespace Ecsact {
 		}
 
 		void Update() {
-			Ecsact.Defaults._Runtime.async.FlushEvents();
+			Ecsact.Defaults.Runtime.async.FlushEvents();
 		}
 
 		void OnDestroy() {

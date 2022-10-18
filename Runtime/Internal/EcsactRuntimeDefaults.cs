@@ -34,31 +34,6 @@ internal static class EcsactRuntimeDefaults {
 	internal static void Setup() {
 		var settings = EcsactRuntimeSettings.Get();
 
-		Ecsact.Defaults._Runtime = EcsactRuntime.Load(settings.runtimeLibraryPaths);
-		
-
-		settings.defaultRegistry!.registryId = 
-			Ecsact.Defaults._Runtime.core.CreateRegistry(
-				settings.defaultRegistry.registryName
-			);
-
-
-		// Ecsact.Defaults.Runner set here
-		SetRunner(settings);
-
-		var reg = new Ecsact.Registry(
-			Ecsact.Defaults.Runtime,
-			settings.defaultRegistry.registryId
-		);
-
-		EntityGameObjectPool? pool;
-
-		if(!UnityEngine.Application.isPlaying) {
-			throw new Exception(
-				"EcsactRuntime Setup may only be used during play mode"
-			);
-		}
-
 		if(Ecsact.Defaults._Runtime == null) {
 #if UNITY_EDITOR
 			UnityEditor.EditorApplication.isPlaying = false;
@@ -80,8 +55,31 @@ internal static class EcsactRuntimeDefaults {
 			throw new Exception("Failed to load default ecsact runtime");
 		}
 
+		Ecsact.Defaults.Runtime = EcsactRuntime.Load(settings.runtimeLibraryPaths);
+
+		settings.defaultRegistry!.registryId = 
+			Ecsact.Defaults.Runtime.core.CreateRegistry(
+				settings.defaultRegistry.registryName
+			);
+
+		// Ecsact.Defaults.Runner set here
+		SetRunner(settings);
+
+		var reg = new Ecsact.Registry(
+			Ecsact.Defaults.Runtime,
+			settings.defaultRegistry.registryId
+		);
+
+		EntityGameObjectPool? pool;
+
+		if(!UnityEngine.Application.isPlaying) {
+			throw new Exception(
+				"EcsactRuntime Setup may only be used during play mode"
+			);
+		}
+
 		if(settings.enableUnitySync) {
-			SetupUnitySync(Ecsact.Defaults._Runtime, settings.defaultRegistry);
+			SetupUnitySync(Ecsact.Defaults.Runtime, settings.defaultRegistry);
 			if(!unitySyncScriptsRegistered) {
 				RegisterUnitySyncScripts(settings);
 			}

@@ -22,7 +22,7 @@ namespace Ecsact.VisualScripting {
 			controlOutput = ControlOutput("controlOutput");
 			controlInput = ControlInput("controlInput", flow => {
 				var connectUri = flow.GetValue<string>(connectionStringInput);
-				Ecsact.Defaults._Runtime.async.Connect(connectUri);
+				Ecsact.Defaults.Runtime.async.Connect(connectUri);
 				return controlOutput;
 			});
 
