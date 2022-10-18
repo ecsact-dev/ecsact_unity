@@ -20,7 +20,7 @@ namespace Ecsact {
 		public int debugExecutionTimeMs = 0;
 #endif
 
-		public Ecsact.ExecutionOptions executionOptions;
+		public Ecsact.ExecutionOptions executionOptions = new();
 
 		internal static EcsactRunner CreateInstance<ComponentT>
 			( EcsactRuntimeDefaultRegistry.RunnerType  runnerType

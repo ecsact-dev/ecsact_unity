@@ -9,6 +9,7 @@ namespace Ecsact {
 
 		internal ExecutionOptions() {
 			actions = new();
+			executionOptions = new();
 		}
 
 		public void AddActions() {

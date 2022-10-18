@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using System;
 
 #nullable enable
 
@@ -147,7 +148,7 @@ namespace Ecsact {
 					}
 				}
 			} else {
-				Debug.LogError("NOT READY");
+				throw new Exception("Uninitialized entityID");
 			}
 		}
 	};

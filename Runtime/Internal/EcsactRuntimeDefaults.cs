@@ -34,6 +34,8 @@ internal static class EcsactRuntimeDefaults {
 	internal static void Setup() {
 		var settings = EcsactRuntimeSettings.Get();
 
+		Ecsact.Defaults._Runtime = EcsactRuntime.Load(settings.runtimeLibraryPaths);
+
 		if(Ecsact.Defaults._Runtime == null) {
 #if UNITY_EDITOR
 			UnityEditor.EditorApplication.isPlaying = false;
@@ -54,8 +56,6 @@ internal static class EcsactRuntimeDefaults {
 #endif
 			throw new Exception("Failed to load default ecsact runtime");
 		}
-
-		Ecsact.Defaults.Runtime = EcsactRuntime.Load(settings.runtimeLibraryPaths);
 
 		settings.defaultRegistry!.registryId = 
 			Ecsact.Defaults.Runtime.core.CreateRegistry(
