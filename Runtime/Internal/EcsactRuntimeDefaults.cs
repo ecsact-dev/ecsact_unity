@@ -69,7 +69,6 @@ internal static class EcsactRuntimeDefaults {
 			settings.defaultRegistry.registryId
 		);
 
-
 		if(settings.enableUnitySync) {
 			SetupUnitySync(Ecsact.Defaults.Runtime, settings.defaultRegistry);
 			if(!unitySyncScriptsRegistered) {
