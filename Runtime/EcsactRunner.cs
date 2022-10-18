@@ -54,10 +54,7 @@ namespace Ecsact {
 			}
 
 			try {
-				Ecsact.Defaults.Registry.ExecuteSystems(
-					executionCount: 1,
-					executionOptions
-				);
+				Ecsact.Defaults.Registry.ExecuteSystems(executionOptions);
 			} finally {
 				executionOptions.FreeActions();
 			}

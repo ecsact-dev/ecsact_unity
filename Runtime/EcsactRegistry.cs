@@ -176,17 +176,12 @@ namespace Ecsact {
 		}
 
 		public void ExecuteSystems
-			( Int32                    executionCount
-			, Ecsact.ExecutionOptions  executionOptions
+			( Ecsact.ExecutionOptions  executionOptions
 			)
 		{
 			var execArr = 
 				new EcsactRuntime.CExecutionOptions[]{executionOptions.C()};
-			rt.core.ExecuteSystems(
-				registryId,
-				executionCount,
-				execArr
-			);
+			rt.core.ExecuteSystems(registryId, 1, execArr);
 		}
 	}
 }
