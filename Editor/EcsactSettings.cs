@@ -11,7 +11,7 @@ using Ecsact.Editor.Internal;
 [System.Serializable]
 class EcsactSettings : ScriptableObject {
 	public const string assetPath = "Assets/Editor/EcsactSettings.asset";
-	public const string path = "Project/EcsactProjectSettings";
+	public const string path = "Project/Ecsact";
 	public const SettingsScope scope = SettingsScope.Project;
 
 	public string runtimeBuilderOutputPath = "Assets/Plugins/EcsactRuntime";
@@ -70,7 +70,29 @@ class EcsactMethodUIBindings : ScriptableObject {
 	public bool methodLoaded = false;
 }
 
-static class EcsactSettingsUIElementsRegister {
+class EcsactSettingsSettingsProvider : SettingsProvider {
+	Editor? runtimeSettingsEditor = null;
+	Editor? wasmRuntimeSettingsEditor = null;
+	Editor? csharpSystemImplSettingsEditor = null;
+	IMGUIContainer? runtimeSettingsContainer = null;
+	IMGUIContainer? csharpSystemImplSettingsContainer = null;
+	DropdownField? sysImplSrcDropdown = null;
+
+	public EcsactSettingsSettingsProvider()
+		: base(
+			path: EcsactSettings.path,
+			scopes: EcsactSettings.scope,
+			keywords: new HashSet<string>(new[] {
+				"Ecsact",
+				"ECS",
+				"ECS Plugin",
+				"Plugin",
+				"Runtime",
+				"Library",
+			})
+		)
+	{
+	}
 
 	internal static void SetupMethodsUI
 		( TemplateContainer    ui
@@ -166,93 +188,96 @@ static class EcsactSettingsUIElementsRegister {
 		}
 	}
 
+	Ecsact.SystemImplSource SysImplSrcDropdownValue() {
+		return (Ecsact.SystemImplSource)sysImplSrcDropdown!.index;
+	}
+
+	public override void OnInspectorUpdate() {
+		if(runtimeSettingsEditor != null) {
+			if(runtimeSettingsEditor.RequiresConstantRepaint()) {
+				if(runtimeSettingsContainer != null) {
+					runtimeSettingsContainer.MarkDirtyRepaint();
+				}
+			}
+		}
+
+		if(csharpSystemImplSettingsEditor != null) {
+			if(csharpSystemImplSettingsEditor.RequiresConstantRepaint()) {
+				if(csharpSystemImplSettingsContainer != null) {
+					csharpSystemImplSettingsContainer.MarkDirtyRepaint();
+				}
+			}
+		}
+	}
+
+	public override void OnActivate
+		( string         searchContext
+		, VisualElement  rootElement
+		)
+	{
+		var settings = EcsactSettings.GetSerializedSettings();
+		var template = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(
+			"Packages/dev.ecsact.unity/Editor/EcsactSettings.uxml"
+		);
+		var ui = template.Instantiate();
+		BindingExtensions.Bind(ui, settings);
+		rootElement.Add(ui);
+
+		var runtimeSettings = EcsactRuntimeSettings.Get();
+		DrawMethodsUI(ui, runtimeSettings);
+
+		runtimeSettingsContainer =
+			ui.Q<IMGUIContainer>("runtime-settings-container");
+
+		runtimeSettingsEditor = Editor.CreateEditor(runtimeSettings);
+
+		runtimeSettingsContainer.onGUIHandler = () => {
+			runtimeSettingsEditor.OnInspectorGUI();
+		};
+
+		sysImplSrcDropdown = 
+			ui.Q<DropdownField>("system-impls-source-dropdown");
+		sysImplSrcDropdown.index = (int)runtimeSettings.systemImplSource;
+
+		sysImplSrcDropdown.RegisterValueChangedCallback(ev => {
+			runtimeSettings.systemImplSource = SysImplSrcDropdownValue();
+			EditorUtility.SetDirty(runtimeSettings);
+		});
+
+		var wasmRuntimeSettingsContainer =
+			ui.Q<IMGUIContainer>("wasm-runtime-settings-container");
+		wasmRuntimeSettingsEditor =
+			EcsactWasmEditorInternalUtil.GetEcsactWasmRuntimeSettingsEditor();
+		wasmRuntimeSettingsContainer.onGUIHandler = () => {
+			if(SysImplSrcDropdownValue() == Ecsact.SystemImplSource.WebAssembly) {
+				wasmRuntimeSettingsEditor.OnInspectorGUI();
+			}
+		};
+
+		var csharpSystemImplSettings =
+			Ecsact.Editor.CsharpSystemImplSettings.Get();
+		csharpSystemImplSettingsContainer =
+			ui.Q<IMGUIContainer>("csharp-system-impl-settings-container");
+		csharpSystemImplSettingsEditor =
+			Editor.CreateEditor(csharpSystemImplSettings);
+		csharpSystemImplSettingsContainer.onGUIHandler = () => {
+			if(SysImplSrcDropdownValue() == Ecsact.SystemImplSource.Csharp) {
+				csharpSystemImplSettingsEditor.OnInspectorGUI();
+			}
+		};
+	}
+
+	public override void OnDeactivate() {
+		if(runtimeSettingsEditor != null) {
+			Editor.DestroyImmediate(runtimeSettingsEditor);
+			runtimeSettingsEditor = null;
+		}
+	}
+}
+
+static class EcsactSettingsUIElementsRegister {
 	[SettingsProvider]
 	public static SettingsProvider CreateEcsactSettingsProvider() {
-		Editor? runtimeSettingsEditor = null;
-		Editor? wasmRuntimeSettingsEditor = null;
-		Editor? csharpSystemImplSettingsEditor = null;
-		IMGUIContainer? runtimeSettingsContainer = null;
-		IMGUIContainer? csharpSystemImplSettingsContainer = null;
-
-		return new SettingsProvider(EcsactSettings.path, EcsactSettings.scope) {
-			label = "Ecsact",
-			inspectorUpdateHandler = () => {
-				if(runtimeSettingsEditor != null) {
-					if(runtimeSettingsEditor.RequiresConstantRepaint()) {
-						if(runtimeSettingsContainer != null) {
-							runtimeSettingsContainer.MarkDirtyRepaint();
-						}
-					}
-				}
-
-				if(csharpSystemImplSettingsEditor != null) {
-					if(csharpSystemImplSettingsEditor.RequiresConstantRepaint()) {
-						if(csharpSystemImplSettingsContainer != null) {
-							csharpSystemImplSettingsContainer.MarkDirtyRepaint();
-						}
-					}
-				}
-			},
-			activateHandler = (searchContext, rootElement) => {
-				var settings = EcsactSettings.GetSerializedSettings();
-				var template = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(
-					"Packages/dev.ecsact.unity/Editor/EcsactSettings.uxml"
-				);
-				var ui = template.Instantiate();
-				BindingExtensions.Bind(ui, settings);
-				rootElement.Add(ui);
-
-				var runtimeSettings = EcsactRuntimeSettings.Get();
-				DrawMethodsUI(ui, runtimeSettings);
-
-				runtimeSettingsContainer =
-					ui.Q<IMGUIContainer>("runtime-settings-container");
-
-				runtimeSettingsEditor = Editor.CreateEditor(runtimeSettings);
-
-				runtimeSettingsContainer.onGUIHandler = () => {
-					runtimeSettingsEditor.OnInspectorGUI();
-				};
-
-				var systemImplsSourceDropdown = 
-					ui.Q<DropdownField>("system-impls-source-dropdown");
-
-				var wasmRuntimeSettingsContainer =
-					ui.Q<IMGUIContainer>("wasm-runtime-settings-container");
-				wasmRuntimeSettingsEditor =
-					EcsactWasmEditorInternalUtil.GetEcsactWasmRuntimeSettingsEditor();
-				wasmRuntimeSettingsContainer.onGUIHandler = () => {
-					if(systemImplsSourceDropdown.index == 1) {
-						wasmRuntimeSettingsEditor.OnInspectorGUI();
-					}
-				};
-
-				var csharpSystemImplSettings =
-					Ecsact.Editor.CsharpSystemImplSettings.Get();
-				csharpSystemImplSettingsContainer =
-					ui.Q<IMGUIContainer>("csharp-system-impl-settings-container");
-				csharpSystemImplSettingsEditor =
-					Editor.CreateEditor(csharpSystemImplSettings);
-				csharpSystemImplSettingsContainer.onGUIHandler = () => {
-					if(systemImplsSourceDropdown.index == 0) {
-						csharpSystemImplSettingsEditor.OnInspectorGUI();
-					}
-				};
-			},
-			deactivateHandler = () => {
-				if(runtimeSettingsEditor != null) {
-					Editor.DestroyImmediate(runtimeSettingsEditor);
-					runtimeSettingsEditor = null;
-				}
-			},
-			keywords = new HashSet<string>(new[] {
-				"Ecsact",
-				"ECS",
-				"ECS Plugin",
-				"Plugin",
-				"Runtime",
-				"Library",
-			}),
-		};
+		return new EcsactSettingsSettingsProvider();
 	}
 }

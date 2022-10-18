@@ -42,8 +42,17 @@ namespace EcsactInternal {
 		}
 #endif // UNITY_EDITOR
 
+		public static bool Enabled() {
+			var systemImplSource = EcsactRuntimeSettings.Get().systemImplSource;
+			return systemImplSource == Ecsact.SystemImplSource.Csharp;
+		}
+
 		[RuntimeInitializeOnLoadMethod]
 		internal static void Load() {
+			if(!Enabled()) {
+				return;
+			}
+
 			var runtimeSettings = EcsactRuntimeSettings.Get();
 			var runtime = EcsactRuntime.GetOrLoadDefault();
 			var implsAssembly = Assembly.Load(
