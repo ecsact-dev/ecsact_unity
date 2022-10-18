@@ -62,27 +62,20 @@ internal static class EcsactRuntimeDefaults {
 				settings.defaultRegistry.registryName
 			);
 
-		// Ecsact.Defaults.Runner set here
-		SetRunner(settings);
+		SetDefaultsRunner(settings);
 
 		var reg = new Ecsact.Registry(
 			Ecsact.Defaults.Runtime,
 			settings.defaultRegistry.registryId
 		);
 
-		EntityGameObjectPool? pool;
-
-		if(!UnityEngine.Application.isPlaying) {
-			throw new Exception(
-				"EcsactRuntime Setup may only be used during play mode"
-			);
-		}
 
 		if(settings.enableUnitySync) {
 			SetupUnitySync(Ecsact.Defaults.Runtime, settings.defaultRegistry);
 			if(!unitySyncScriptsRegistered) {
 				RegisterUnitySyncScripts(settings);
 			}
+			EntityGameObjectPool? pool;
 			pool = settings.defaultRegistry.pool;
 			Ecsact.Defaults.Pool = pool;
 		}
@@ -95,7 +88,7 @@ internal static class EcsactRuntimeDefaults {
 		Ecsact.Defaults.ClearDefaults();
 	}
 
-	private static void SetRunner
+	private static void SetDefaultsRunner
 		( EcsactRuntimeSettings settings
 		)
 	{

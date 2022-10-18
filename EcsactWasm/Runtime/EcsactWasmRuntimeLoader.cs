@@ -20,9 +20,7 @@ namespace Ecsact {
 				return;
 			}
 
-			Ecsact.Defaults.WhenReady(() => {
-				Load();
-			});
+			Ecsact.Defaults.WhenReady(Load());
 		}
 
 		private static void Load() {
