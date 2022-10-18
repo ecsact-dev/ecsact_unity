@@ -48,10 +48,13 @@ namespace Ecsact {
 		}
 
 		internal static void ClearDefaults() {
-			Runner = null;
-			_Runtime = null;
-			_Registry = null;
-			Pool = null;
+			if(_Runtime != null) {
+				EcsactRuntime.Free(_Runtime);
+				Runner = null;
+				_Runtime = null;
+				_Registry = null;
+				Pool = null;
+			}
 		}
 	}
 
