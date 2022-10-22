@@ -2378,7 +2378,7 @@ public class EcsactRuntime {
 	public delegate void InitComponentCallback<ComponentT>(
 		Int32      entityId,
 		ComponentT component
-	) /* where ComponentT : Ecsact.Component */;
+	) /* where ComponentT : Ecsact.Component */; // crashes clang-format
 
 	/// <summary>Adds a callback for when component init event is fired.</summary>
 	/// <returns>Action that clears callback upon invocation.</returns>
@@ -2419,7 +2419,7 @@ public class EcsactRuntime {
 	public delegate void UpdateComponentCallback<ComponentT>(
 		Int32      entityId,
 		ComponentT component
-	) /* where ComponentT : Ecsact.Component */;
+	) /* where ComponentT : Ecsact.Component */; // crashes clang-format
 
 	public Action OnUpdateComponent<ComponentT>(
 		UpdateComponentCallback<ComponentT> callback
@@ -2458,7 +2458,7 @@ public class EcsactRuntime {
 	public delegate void RemoveComponentCallback<ComponentT>(
 		Int32      entityId,
 		ComponentT component
-	) /* where ComponentT : Ecsact.Component */;
+	) /* where ComponentT : Ecsact.Component */; // crashes clang-format
 
 	public Action OnRemoveComponent<ComponentT>(
 		RemoveComponentCallback<ComponentT> callback
