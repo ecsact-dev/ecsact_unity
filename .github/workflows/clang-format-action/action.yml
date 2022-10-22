@@ -1,0 +1,48 @@
+name: "clang-format Check"
+description: "Use clang-format to see if your C/C++/Protobuf code is formatted according to project guidelines."
+
+branding:
+  icon: "check-circle"
+  color: "blue"
+
+inputs:
+  clang-format-version:
+    description: 'The version of clang-format that you want to use.'
+    required: false
+    default: '13'
+  check-path:
+    description: 'The path to the directory you want to check for correct C/C++/Protobuf formatting. Default is the full repository.'
+    required: false
+    default: '.'
+  exclude-regex:
+    description: 'A regex to exclude files or directories that should not be checked. Default is empty.'
+    required: false
+    default: ''
+  fallback-style:
+    description: 'The fallback style for clang-format if no .clang-format file exists in your repository.'
+    required: false
+    default: 'llvm'
+
+runs:
+  using: "composite"
+  steps:
+    - run: |
+        "${{ github.action_path }}/check.sh" "${{ inputs.clang-format-version }}" "${{ inputs.check-path }}" "${{ inputs.fallback-style }}" "${{ inputs.exclude-regex }}"
+      shell: bash
+    - name: Save PR head commit SHA
+      if: failure() && github.event_name == 'pull_request'
+      shell: bash
+      run: |
+        SHA="${{ github.event.pull_request.head.sha }}"
+        echo "SHA=$SHA" >> $GITHUB_ENV
+    - name: Save latest commit SHA if not PR
+      if: failure() && github.event_name != 'pull_request'
+      shell: bash
+      run: echo "SHA=${{ github.sha }}" >> $GITHUB_ENV
+
+    - name: Report failure in job summary
+      if: failure()
+      run: |
+        DEEPLINK="https://github.com/${{ github.repository }}/commit/${{ env.SHA }}"
+        echo -e "Format check failed on commit [${GITHUB_SHA:0:8}]($DEEPLINK) with files:\n$(<$GITHUB_WORKSPACE/failing-files.txt)" >> $GITHUB_STEP_SUMMARY
+      shell: bash
