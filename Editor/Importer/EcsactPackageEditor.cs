@@ -8,7 +8,7 @@ using UnityEditor;
 [CanEditMultipleObjects]
 public class EcsactPackageEditor : Editor {
 	private static Dictionary<string, bool> pkgFoldouts = new();
-	private static bool componentsFoldout = true;
+	private static bool                     componentsFoldout = true;
 
 	public override void OnInspectorGUI() {
 		List<EcsactPackage> pkgList = new List<EcsactPackage>();
@@ -34,7 +34,7 @@ public class EcsactPackageEditor : Editor {
 				pkg.imports.Count == 0 ? "(none)" : pkg.imports[0]
 			);
 
-			for(int i=1; pkg.imports.Count > i; ++i) {
+			for(int i = 1; pkg.imports.Count > i; ++i) {
 				EditorGUILayout.LabelField(" ", pkg.imports[i]);
 			}
 

@@ -16,21 +16,17 @@ public class EcsactRuntimeSettingsEditor : UnityEditor.Editor {
 	private static bool loadingUnitySyncTypes = false;
 	// Only for the sake of displaying whats happening in editor
 	private static Assembly? currentCheckingAssembly;
-	private static List<global::System.Type> potentialUnitySyncTypes = new();
+	private static List<global::System.Type>      potentialUnitySyncTypes = new();
 	private static Dictionary<string, MonoScript> cachedMonoScriptLookups = new();
 
 	static EcsactRuntimeSettingsEditor() {
-		UnityEditor.EditorApplication.delayCall += () => {
-			DelayedStaticInit();
-		};
+		UnityEditor.EditorApplication.delayCall += () => { DelayedStaticInit(); };
 	}
 
 	private static void DelayedStaticInit() {
 		var settings = EcsactRuntimeSettings.Get();
 
-		EditorCoroutineUtility.StartCoroutineOwnerless(
-			LoadAssemblies(settings)
-		);
+		EditorCoroutineUtility.StartCoroutineOwnerless(LoadAssemblies(settings));
 	}
 
 	public override bool RequiresConstantRepaint() {
@@ -40,19 +36,14 @@ public class EcsactRuntimeSettingsEditor : UnityEditor.Editor {
 	public void OnEnable() {
 		if(potentialUnitySyncTypes.Count == 0) {
 			var settings = EcsactRuntimeSettings.Get();
-			EditorCoroutineUtility.StartCoroutine(
-				LoadAssemblies(settings),
-				this
-			);
+			EditorCoroutineUtility.StartCoroutine(LoadAssemblies(settings), this);
 		}
 	}
 
-	private static global::System.Collections.IEnumerator LoadAssemblies
-		( EcsactRuntimeSettings settings
-		)
-	{
+	private static global::System.Collections
+		.IEnumerator LoadAssemblies(EcsactRuntimeSettings settings) {
 		if(loadingUnitySyncTypes) yield break;
-		
+
 		var progressId = -1;
 		if(settings.enableUnitySync) {
 			progressId = Progress.Start(
@@ -75,7 +66,7 @@ public class EcsactRuntimeSettingsEditor : UnityEditor.Editor {
 				}
 				var types = assembly.GetTypes();
 				yield return new WaitForSecondsRealtime(delay);
-				int i=0;
+				int i = 0;
 				foreach(var type in types) {
 					if((i % 100) == 0) {
 						yield return new WaitForSecondsRealtime(delay);
@@ -110,11 +101,10 @@ public class EcsactRuntimeSettingsEditor : UnityEditor.Editor {
 		}
 	}
 
-	private static bool RemoveUnknownUnitySyncScripts
-		( List<EcsactRuntimeSettings.UnitySyncScriptInfo>  unitySyncScripts
-		, UnityEngine.Object?                              context = null
-		)
-	{
+	private static bool RemoveUnknownUnitySyncScripts(
+		List<EcsactRuntimeSettings.UnitySyncScriptInfo> unitySyncScripts,
+		UnityEngine.Object? context = null
+	) {
 		var removeAmount = unitySyncScripts.RemoveAll(info => {
 			var index = potentialUnitySyncTypes.FindIndex(
 				type => info.scriptAssemblyQualifiedName == type.AssemblyQualifiedName
@@ -125,7 +115,7 @@ public class EcsactRuntimeSettingsEditor : UnityEditor.Editor {
 					info.scriptAssemblyQualifiedName.Split(",", count: 2)[0];
 				Debug.Log(
 					$"<color=grey>Removing old Ecsact Unity Sync script:</color> " +
-					$"<color=orange>{shortName}</color>",
+						$"<color=orange>{shortName}</color>",
 					context
 				);
 			}
@@ -136,12 +126,11 @@ public class EcsactRuntimeSettingsEditor : UnityEditor.Editor {
 		return removeAmount > 0;
 	}
 
-	private static bool EnsureNewUnitySyncScriptExists
-		( List<EcsactRuntimeSettings.UnitySyncScriptInfo>  unitySyncScripts
-		, global::System.Type                              type
-		, UnityEngine.Object?                              context = null
-		)
-	{
+	private static bool EnsureNewUnitySyncScriptExists(
+		List<EcsactRuntimeSettings.UnitySyncScriptInfo> unitySyncScripts,
+		global::System.Type                             type,
+		UnityEngine.Object? context = null
+	) {
 		var index = unitySyncScripts.FindIndex(
 			info => info.scriptAssemblyQualifiedName == type.AssemblyQualifiedName
 		);
@@ -149,16 +138,14 @@ public class EcsactRuntimeSettingsEditor : UnityEditor.Editor {
 		if(index == -1) {
 			Debug.Log(
 				$"<color=grey>Adding new Ecsact Unity Sync script:</color> " +
-				$"<color=lightblue>{type.FullName}</color>",
+					$"<color=lightblue>{type.FullName}</color>",
 				context
 			);
 
-			unitySyncScripts.Add(
-				new EcsactRuntimeSettings.UnitySyncScriptInfo{
-					scriptEnabled = true,
-					scriptAssemblyQualifiedName = type.AssemblyQualifiedName,
-				}
-			);
+			unitySyncScripts.Add(new EcsactRuntimeSettings.UnitySyncScriptInfo {
+				scriptEnabled = true,
+				scriptAssemblyQualifiedName = type.AssemblyQualifiedName,
+			});
 
 			return true;
 		}
@@ -166,11 +153,10 @@ public class EcsactRuntimeSettingsEditor : UnityEditor.Editor {
 		return false;
 	}
 
-	private static bool AddNewUnitySyncScripts
-		( List<EcsactRuntimeSettings.UnitySyncScriptInfo>  unitySyncScripts
-		, UnityEngine.Object?                              context = null
-		)
-	{
+	private static bool AddNewUnitySyncScripts(
+		List<EcsactRuntimeSettings.UnitySyncScriptInfo> unitySyncScripts,
+		UnityEngine.Object? context = null
+	) {
 		var addCount = 0;
 
 		foreach(var type in potentialUnitySyncTypes) {
@@ -182,26 +168,17 @@ public class EcsactRuntimeSettingsEditor : UnityEditor.Editor {
 		return addCount > 1;
 	}
 
-	private static bool EnsureUnitySyncScripts
-		( List<EcsactRuntimeSettings.UnitySyncScriptInfo>  unitySyncScripts
-		, UnityEngine.Object?                              context = null
-		)
-	{
-		var removedScripts = RemoveUnknownUnitySyncScripts(
-			unitySyncScripts,
-			context
-		);
-		var addedScripts = AddNewUnitySyncScripts(
-			unitySyncScripts,
-			context
-		);
+	private static bool EnsureUnitySyncScripts(
+		List<EcsactRuntimeSettings.UnitySyncScriptInfo> unitySyncScripts,
+		UnityEngine.Object? context = null
+	) {
+		var removedScripts =
+			RemoveUnknownUnitySyncScripts(unitySyncScripts, context);
+		var addedScripts = AddNewUnitySyncScripts(unitySyncScripts, context);
 		return removedScripts || addedScripts;
 	}
 
-	private MonoScript? FindMonoScript
-		( string scriptAssemblyQualifiedName
-		)
-	{
+	private MonoScript? FindMonoScript(string scriptAssemblyQualifiedName) {
 		if(cachedMonoScriptLookups.ContainsKey(scriptAssemblyQualifiedName)) {
 			return cachedMonoScriptLookups[scriptAssemblyQualifiedName];
 		}
@@ -225,10 +202,8 @@ public class EcsactRuntimeSettingsEditor : UnityEditor.Editor {
 		DrawDefaultInspector();
 
 		var oldEnableUnitySync = settings.enableUnitySync;
-		settings.enableUnitySync = EditorGUILayout.Toggle(
-			"Enable Unity Sync",
-			settings.enableUnitySync
-		);
+		settings.enableUnitySync =
+			EditorGUILayout.Toggle("Enable Unity Sync", settings.enableUnitySync);
 		if(oldEnableUnitySync != settings.enableUnitySync) {
 			if(settings.enableUnitySync) {
 				EnsureUnitySyncScripts(settings.unitySyncScripts, settings);
@@ -252,21 +227,15 @@ public class EcsactRuntimeSettingsEditor : UnityEditor.Editor {
 		serializedObject.ApplyModifiedProperties();
 	}
 
-	private void DrawUnitySyncScriptsGUI
-		( EcsactRuntimeSettings settings
-		)
-	{
-		for(int i=0; settings.unitySyncScripts!.Count > i; ++i) {
+	private void DrawUnitySyncScriptsGUI(EcsactRuntimeSettings settings) {
+		for(int i = 0; settings.unitySyncScripts!.Count > i; ++i) {
 			var scriptInfo = settings.unitySyncScripts[i];
 			EditorGUILayout.BeginHorizontal();
-			var type = global::System.Type.GetType(
-				scriptInfo.scriptAssemblyQualifiedName
-			);
+			var type =
+				global::System.Type.GetType(scriptInfo.scriptAssemblyQualifiedName);
 
-			scriptInfo.scriptEnabled = EditorGUILayout.ToggleLeft(
-				type.FullName,
-				scriptInfo.scriptEnabled
-			);
+			scriptInfo.scriptEnabled =
+				EditorGUILayout.ToggleLeft(type.FullName, scriptInfo.scriptEnabled);
 
 			EditorGUI.BeginDisabledGroup(true);
 			EditorGUILayout.ObjectField(
@@ -290,9 +259,9 @@ public class EcsactRuntimeSettingsEditor : UnityEditor.Editor {
 		} else if(potentialUnitySyncTypes.Count == 0) {
 			EditorGUILayout.HelpBox(
 				"No ecsact unity sync scripts found in project. Create a " +
-				"MonoBehaviour with one or more of the Ecsact.UnitySync interfaces - " +
-				"IRequired<>, IOnInitComponent<>, IOnUpdateComponent<>, or " +
-				"IOnRemoveComponent<>.",
+					"MonoBehaviour with one or more of the Ecsact.UnitySync interfaces - " +
+					"IRequired<>, IOnInitComponent<>, IOnUpdateComponent<>, or " +
+					"IOnRemoveComponent<>.",
 				type: MessageType.Warning
 			);
 		}

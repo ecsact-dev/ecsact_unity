@@ -10,14 +10,14 @@ using Ecsact.Editor.Internal;
 
 [System.Serializable]
 class EcsactSettings : ScriptableObject {
-	public const string assetPath = "Assets/Editor/EcsactSettings.asset";
-	public const string path = "Project/Ecsact";
+	public const string        assetPath = "Assets/Editor/EcsactSettings.asset";
+	public const string        path = "Project/Ecsact";
 	public const SettingsScope scope = SettingsScope.Project;
 
 	public string runtimeBuilderOutputPath = "Assets/Plugins/EcsactRuntime";
-	public bool runtimeBuilderDebugBuild = false;
-	public bool runtimeBuilderPrintSubcommandStdout = false;
-	public bool runtimeBuilderPrintSubcommandStderr = false;
+	public bool   runtimeBuilderDebugBuild = false;
+	public bool   runtimeBuilderPrintSubcommandStdout = false;
+	public bool   runtimeBuilderPrintSubcommandStderr = false;
 
 	public string runtimeBuilderCompilerPath = "";
 
@@ -53,6 +53,7 @@ class EcsactSettings : ScriptableObject {
 			rtSettings.runtimeLibraryPaths[0] = outputPath;
 		}
 	}
+
 	void OnValidate() {
 		var rtSettings = EcsactRuntimeSettings.Get();
 		if(rtSettings.runtimeLibraryPaths.Count == 0) {
@@ -67,7 +68,7 @@ class EcsactSettings : ScriptableObject {
 [System.Serializable]
 class EcsactMethodUIBindings : ScriptableObject {
 	public string methodName = "";
-	public bool methodLoaded = false;
+	public bool   methodLoaded = false;
 }
 
 class EcsactSettingsSettingsProvider : SettingsProvider {
@@ -80,35 +81,31 @@ class EcsactSettingsSettingsProvider : SettingsProvider {
 
 	public EcsactSettingsSettingsProvider()
 		: base(
-			path: EcsactSettings.path,
-			scopes: EcsactSettings.scope,
-			keywords: new HashSet<string>(new[] {
-				"Ecsact",
-				"ECS",
-				"ECS Plugin",
-				"Plugin",
-				"Runtime",
-				"Library",
-			})
-		)
-	{
+				path: EcsactSettings.path,
+				scopes: EcsactSettings.scope,
+				keywords: new HashSet<string>(new[] {
+					"Ecsact",
+					"ECS",
+					"ECS Plugin",
+					"Plugin",
+					"Runtime",
+					"Library",
+				})
+			) {
 	}
 
-	internal static void SetupMethodsUI
-		( TemplateContainer    ui
-		, string               moduleName
-		, IEnumerable<string>  methods
-		, IEnumerable<string>  availableMethods
-		)
-	{
-		var coreMethodTemplate = ui.Q<TemplateContainer>(
-			$"{moduleName}-method-template"
-		);
+	internal static void SetupMethodsUI(
+		TemplateContainer   ui,
+		string              moduleName,
+		IEnumerable<string> methods,
+		IEnumerable<string> availableMethods
+	) {
+		var coreMethodTemplate =
+			ui.Q<TemplateContainer>($"{moduleName}-method-template");
 
 		foreach(var method in methods) {
 			var clone = coreMethodTemplate.templateSource.CloneTree();
-			var bindings =
-				ScriptableObject.CreateInstance<EcsactMethodUIBindings>();
+			var bindings = ScriptableObject.CreateInstance<EcsactMethodUIBindings>();
 			bindings.methodName = method;
 			bindings.methodLoaded = availableMethods.Contains(method);
 			BindingExtensions.Bind(clone, new SerializedObject(bindings));
@@ -127,11 +124,10 @@ class EcsactSettingsSettingsProvider : SettingsProvider {
 		coreMethodTemplate.contentContainer.style.display = DisplayStyle.None;
 	}
 
-	private static void DrawMethodsUI
-		( TemplateContainer      ui
-		, EcsactRuntimeSettings  settings
-		)
-	{
+	private static void DrawMethodsUI(
+		TemplateContainer     ui,
+		EcsactRuntimeSettings settings
+	) {
 		var testDefaultRuntime = EcsactRuntime.Load(settings.runtimeLibraryPaths);
 		try {
 			SetupMethodsUI(
@@ -210,11 +206,10 @@ class EcsactSettingsSettingsProvider : SettingsProvider {
 		}
 	}
 
-	public override void OnActivate
-		( string         searchContext
-		, VisualElement  rootElement
-		)
-	{
+	public override void OnActivate(
+		string        searchContext,
+		VisualElement rootElement
+	) {
 		var settings = EcsactSettings.GetSerializedSettings();
 		var template = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(
 			"Packages/dev.ecsact.unity/Editor/EcsactSettings.uxml"
@@ -231,12 +226,10 @@ class EcsactSettingsSettingsProvider : SettingsProvider {
 
 		runtimeSettingsEditor = Editor.CreateEditor(runtimeSettings);
 
-		runtimeSettingsContainer.onGUIHandler = () => {
-			runtimeSettingsEditor.OnInspectorGUI();
-		};
+		runtimeSettingsContainer.onGUIHandler =
+			() => { runtimeSettingsEditor.OnInspectorGUI(); };
 
-		sysImplSrcDropdown = 
-			ui.Q<DropdownField>("system-impls-source-dropdown");
+		sysImplSrcDropdown = ui.Q<DropdownField>("system-impls-source-dropdown");
 		sysImplSrcDropdown.index = (int)runtimeSettings.systemImplSource;
 
 		sysImplSrcDropdown.RegisterValueChangedCallback(ev => {
@@ -254,8 +247,7 @@ class EcsactSettingsSettingsProvider : SettingsProvider {
 			}
 		};
 
-		var csharpSystemImplSettings =
-			Ecsact.Editor.CsharpSystemImplSettings.Get();
+		var csharpSystemImplSettings = Ecsact.Editor.CsharpSystemImplSettings.Get();
 		csharpSystemImplSettingsContainer =
 			ui.Q<IMGUIContainer>("csharp-system-impl-settings-container");
 		csharpSystemImplSettingsEditor =

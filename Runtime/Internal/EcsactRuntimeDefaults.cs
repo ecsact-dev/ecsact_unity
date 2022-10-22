@@ -5,21 +5,21 @@ using System.Collections;
 using Ecsact.UnitySync;
 using System;
 
-[assembly: InternalsVisibleTo("EcsactRuntime")]
+[assembly:InternalsVisibleTo("EcsactRuntime")]
 
 #nullable enable
 
 namespace Ecsact.Internal {
 
 internal static class EcsactRuntimeDefaults {
-	private static bool unitySyncScriptsRegistered = false;
+	private static bool                        unitySyncScriptsRegistered = false;
 	private static List<global::System.Action> cleanupFns = new();
 
 	[RuntimeInitializeOnLoadMethod]
 	private static void RuntimeInit() {
 		UnityEngine.Application.quitting += OnQuit;
 	}
-	
+
 	private static void OnQuit() {
 		try {
 			foreach(var fn in cleanupFns) {
@@ -57,7 +57,7 @@ internal static class EcsactRuntimeDefaults {
 			throw new Exception("Failed to load default ecsact runtime");
 		}
 
-		settings.defaultRegistry!.registryId = 
+		settings.defaultRegistry!.registryId =
 			Ecsact.Defaults.Runtime.core.CreateRegistry(
 				settings.defaultRegistry.registryName
 			);
@@ -74,7 +74,7 @@ internal static class EcsactRuntimeDefaults {
 			if(!unitySyncScriptsRegistered) {
 				RegisterUnitySyncScripts(settings);
 			}
-			EntityGameObjectPool? pool;
+			EntityGameObjectPool ? pool;
 			pool = settings.defaultRegistry.pool;
 			Ecsact.Defaults.Pool = pool;
 		}
@@ -87,10 +87,7 @@ internal static class EcsactRuntimeDefaults {
 		Ecsact.Defaults.ClearDefaults();
 	}
 
-	private static void SetDefaultsRunner
-		( EcsactRuntimeSettings settings
-		)
-	{
+	private static void SetDefaultsRunner(EcsactRuntimeSettings settings) {
 		var defReg = settings.defaultRegistry;
 
 		if(defReg.runner == EcsactRuntimeDefaultRegistry.RunnerType.FixedUpdate) {
@@ -104,31 +101,28 @@ internal static class EcsactRuntimeDefaults {
 			Ecsact.Defaults.Runner = null;
 		}
 		if(defReg.runner == EcsactRuntimeDefaultRegistry.RunnerType.Update) {
-				Ecsact.Defaults.Runner = EcsactRunner.CreateInstance<DefaultRunner>(
+			Ecsact.Defaults.Runner = EcsactRunner.CreateInstance<DefaultRunner>(
 				EcsactRuntimeDefaultRegistry.RunnerType.Update,
 				settings,
 				"Default Runner"
 			);
 		}
-
 	}
 
-	private static void SetupUnitySync
-		( EcsactRuntime                 runtime
-		, EcsactRuntimeDefaultRegistry  defReg
-		)
-	{
-		
+	private static void SetupUnitySync(
+		EcsactRuntime                runtime,
+		EcsactRuntimeDefaultRegistry defReg
+	) {
 		Debug.Assert(
 			defReg.pool == null,
 			"EntityGameObjectPool already created. SetupUnitySync should only be " +
-			"called once."
+				"called once."
 		);
 		defReg.pool = EntityGameObjectPool.CreateInstance(
 			new RegistryEntitySource(defReg.registryId, runtime)
 		);
 
-		cleanupFns.AddRange(new List<global::System.Action>{
+		cleanupFns.AddRange(new List<global::System.Action> {
 			runtime.OnInitComponent((entity, compId, compData) => {
 				defReg.pool.InitComponent(entity, compId, in compData);
 			}),
@@ -141,10 +135,7 @@ internal static class EcsactRuntimeDefaults {
 		});
 	}
 
-	private static void RegisterUnitySyncScripts
-		( EcsactRuntimeSettings  settings
-		)
-	{
+	private static void RegisterUnitySyncScripts(EcsactRuntimeSettings settings) {
 		foreach(var scriptInfo in settings.unitySyncScripts!) {
 			if(!scriptInfo.scriptEnabled) continue;
 
@@ -154,9 +145,7 @@ internal static class EcsactRuntimeDefaults {
 				Debug.LogError($"Unity Sync: MonoBehaviour {monoStr} not found.");
 			} else {
 				if(UnitySyncMonoBehaviours.RegisterMonoBehaviourType(type)) {
-					Debug.Log(
-						$"Registered unity sync mono behaviour: {type.FullName}"
-					);
+					Debug.Log($"Registered unity sync mono behaviour: {type.FullName}");
 				} else {
 					Debug.LogError(
 						$"Failed to register unity sync mono behaviour: {type.FullName}"

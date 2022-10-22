@@ -6,11 +6,12 @@ using System.Runtime.CompilerServices;
 #nullable enable
 
 namespace Ecsact {
-	[AddComponentMenu("")]
-	public class DefaultFixedRunner : EcsactRunner {
 
-		void FixedUpdate() {
-			Execute();
-		}
+[AddComponentMenu("")]
+public class DefaultFixedRunner : EcsactRunner {
+	void FixedUpdate() {
+		Execute();
 	}
 }
+
+} // namespace Ecsact

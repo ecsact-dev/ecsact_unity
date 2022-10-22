@@ -1,6 +1,8 @@
 namespace Ecsact {
-	public enum SystemImplSource {
-		Csharp,
-		WebAssembly,
-	}
+
+public enum SystemImplSource {
+	Csharp,
+	WebAssembly,
 }
+
+} // namespace Ecsact

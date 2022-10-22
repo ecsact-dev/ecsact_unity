@@ -24,7 +24,7 @@ public class EcsactWasmRuntimeSettings : ScriptableObject {
 	public const string resourcePath = "Settings/EcsactWasmRuntimeSettings";
 	public const string assetPath = "Assets/Resources/" + resourcePath + ".asset";
 
-	public bool autoFindSystemImpls = true;
+	public bool                 autoFindSystemImpls = true;
 	public List<SystemMapEntry> wasmSystemEntries = new();
 
 	public static EcsactWasmRuntimeSettings Get() {
@@ -32,19 +32,18 @@ public class EcsactWasmRuntimeSettings : ScriptableObject {
 			return _instance;
 		}
 
-#if UNITY_EDITOR
-		_instance = AssetDatabase.LoadAssetAtPath<EcsactWasmRuntimeSettings>(
-			assetPath
-		);
+#	if UNITY_EDITOR
+		_instance =
+			AssetDatabase.LoadAssetAtPath<EcsactWasmRuntimeSettings>(assetPath);
 		if(_instance == null) {
 			_instance = ScriptableObject.CreateInstance<EcsactWasmRuntimeSettings>();
 			Directory.CreateDirectory(Path.GetDirectoryName(assetPath));
 			AssetDatabase.CreateAsset(_instance, assetPath);
 			AssetDatabase.SaveAssetIfDirty(_instance);
 		}
-#else
+#	else
 		_instance = Resources.Load(resourcePath) as EcsactWasmRuntimeSettings;
-#endif
+#	endif
 
 		if(_instance == null) {
 			throw new Exception("Failed to load ecsact wasm runtime settings");

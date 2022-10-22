@@ -19,9 +19,8 @@ public class CsharpSystemImplSettings : ScriptableObject {
 			return _instance;
 		}
 
-		_instance = AssetDatabase.LoadAssetAtPath<CsharpSystemImplSettings>(
-			assetPath
-		);
+		_instance =
+			AssetDatabase.LoadAssetAtPath<CsharpSystemImplSettings>(assetPath);
 		if(_instance == null) {
 			_instance = ScriptableObject.CreateInstance<CsharpSystemImplSettings>();
 			Directory.CreateDirectory(Path.GetDirectoryName(assetPath));
@@ -37,7 +36,6 @@ public class CsharpSystemImplSettings : ScriptableObject {
 
 		return _instance;
 	}
-
 }
 
 } // namespace Ecsact.Editor

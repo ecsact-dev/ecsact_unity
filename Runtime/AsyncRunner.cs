@@ -3,33 +3,35 @@ using UnityEngine;
 #nullable enable
 
 namespace Ecsact {
-	[AddComponentMenu("")]
-	public class AsyncRunner : MonoBehaviour {
-		private static AsyncRunner? instance = null;
 
-		private static void OnRuntimeLoad() {
-			if(instance != null) {
-				return;
-			}
+[AddComponentMenu("")]
+public class AsyncRunner : MonoBehaviour {
+	private static AsyncRunner? instance = null;
 
-			var settings = EcsactRuntimeSettings.Get();
-			if(!settings.useAsyncRunner) {
-				return;
-			}
-
-			var gameObject = new GameObject("Ecsact Async Runner");
-			instance = gameObject.AddComponent<AsyncRunner>();
-			DontDestroyOnLoad(gameObject);
+	private static void OnRuntimeLoad() {
+		if(instance != null) {
+			return;
 		}
 
-		void Update() {
-			Ecsact.Defaults.Runtime.async.FlushEvents();
+		var settings = EcsactRuntimeSettings.Get();
+		if(!settings.useAsyncRunner) {
+			return;
 		}
 
-		void OnDestroy() {
-			if(this.Equals(instance)) {
-				instance = null;
-			}
+		var gameObject = new GameObject("Ecsact Async Runner");
+		instance = gameObject.AddComponent<AsyncRunner>();
+		DontDestroyOnLoad(gameObject);
+	}
+
+	void Update() {
+		Ecsact.Defaults.Runtime.async.FlushEvents();
+	}
+
+	void OnDestroy() {
+		if(this.Equals(instance)) {
+			instance = null;
 		}
 	}
 }
+
+} // namespace Ecsact

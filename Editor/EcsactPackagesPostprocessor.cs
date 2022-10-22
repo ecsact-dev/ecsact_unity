@@ -7,7 +7,6 @@ using System.Linq;
 using Ecsact.Editor;
 
 public class EcsactPackagesPostprocessor : AssetPostprocessor {
-
 	private struct MovedPkg {
 		public string to;
 		public string from;
@@ -15,22 +14,21 @@ public class EcsactPackagesPostprocessor : AssetPostprocessor {
 
 	static IEnumerable<(EcsactPackage, string)> FindEcsactPackages() {
 		var guids = AssetDatabase.FindAssets($"t:{typeof(EcsactPackage)}");
-		foreach (var t in guids) {
+		foreach(var t in guids) {
 			var assetPath = AssetDatabase.GUIDToAssetPath(t);
 			var asset = AssetDatabase.LoadAssetAtPath<EcsactPackage>(assetPath);
-			if (asset != null) {
+			if(asset != null) {
 				yield return (asset, assetPath);
 			}
 		}
 	}
 
-	static void OnPostprocessAllAssets
-		( string[]  importedAssets
-		, string[]  deletedAssets
-		, string[]  movedAssets
-		, string[]  movedFromAssetPaths
-		)
-	{
+	static void OnPostprocessAllAssets(
+		string[] importedAssets,
+		string[] deletedAssets,
+		string[] movedAssets,
+		string[] movedFromAssetPaths
+	) {
 		var importedPkgs = new List<string>();
 		var deletedPkgs = new List<string>();
 		var movedPkgs = new List<MovedPkg>();
@@ -47,9 +45,9 @@ public class EcsactPackagesPostprocessor : AssetPostprocessor {
 			}
 		}
 
-		for (int i=0; movedAssets.Length > i; ++i) {
+		for(int i = 0; movedAssets.Length > i; ++i) {
 			if(Path.GetExtension(movedAssets[i]) == ".ecsact") {
-				movedPkgs.Add(new MovedPkg{
+				movedPkgs.Add(new MovedPkg {
 					to = movedAssets[i],
 					from = movedFromAssetPaths[i],
 				});
@@ -61,10 +59,7 @@ public class EcsactPackagesPostprocessor : AssetPostprocessor {
 		}
 	}
 
-	static void TryImportAssets
-		( List<string> assets
-		)
-	{
+	static void TryImportAssets(List<string> assets) {
 		EditorApplication.delayCall += () => {
 			if(!Progress.running) {
 				try {
@@ -81,18 +76,14 @@ public class EcsactPackagesPostprocessor : AssetPostprocessor {
 		};
 	}
 
-	static void RefreshEcsactCodegen
-		( List<string>    importedPkgs
-		, List<string>    deletedPkgs
-		, List<MovedPkg>  movedPkgs
-		)
-	{
+	static void RefreshEcsactCodegen(
+		List<string>   importedPkgs,
+		List<string>   deletedPkgs,
+		List<MovedPkg> movedPkgs
+	) {
 		string ecsactExecutable = EcsactSdk.FindExecutable("ecsact");
 
-		var progressId = Progress.Start(
-			"Ecsact Codegen",
-			"Generating C# files..."
-		);
+		var progressId = Progress.Start("Ecsact Codegen", "Generating C# files...");
 
 		foreach(var movedPkg in movedPkgs) {
 			AssetDatabase.MoveAsset(movedPkg.from + ".cs", movedPkg.to + ".cs");
@@ -132,7 +123,7 @@ public class EcsactPackagesPostprocessor : AssetPostprocessor {
 		Progress.Report(progressId, 0.1f);
 		codegen.Start();
 
-		EcsactRuntimeBuilder.Build(new EcsactRuntimeBuilder.Options{
+		EcsactRuntimeBuilder.Build(new EcsactRuntimeBuilder.Options {
 			ecsactFiles = packages.Select(item => item.Item2).ToList(),
 		});
 	}
