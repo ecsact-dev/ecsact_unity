@@ -44,5 +44,5 @@ runs:
       if: failure()
       run: |
         DEEPLINK="https://github.com/${{ github.repository }}/commit/${{ env.SHA }}"
-        echo -e "Format check failed on commit [${GITHUB_SHA:0:8}]($DEEPLINK) with files:\n$(<$GITHUB_WORKSPACE/failing-files.txt)" >> $GITHUB_STEP_SUMMARY
+        echo -e "Format check failed on commit [${GITHUB_SHA:0:8}]($DEEPLINK) with files:\n$(<$GITHUB_WORKSPACE/.github/workflows/clang-format-action/failing-files.txt)" >> $GITHUB_STEP_SUMMARY
       shell: bash

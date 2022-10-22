@@ -31,7 +31,7 @@ format_diff() {
 	if [[ ${format_status} -ne 0 ]]; then
 		# Append Markdown-bulleted monospaced filepath of failing file to
 		# summary file.
-		echo "* \`$filepath\`" >>failing-files.txt
+		echo "* \`$filepath\`" >>.github/workflows/clang-format-action/failing-files.txt
 
 		echo "Failed on file: $filepath" >&2
 		echo "$local_format" >&2
