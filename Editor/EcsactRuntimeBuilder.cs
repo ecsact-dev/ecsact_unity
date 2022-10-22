@@ -16,26 +16,26 @@ struct MessageBase {
 [System.Serializable]
 struct AlertMessage {
 	public const string type = "alert";
-	public string content;
+	public string       content;
 }
 
 [System.Serializable]
 struct InfoMessage {
 	public const string type = "info";
-	public string content;
+	public string       content;
 }
 
 [System.Serializable]
 struct ErrorMessage {
 	public const string type = "error";
-	public string content;
+	public string       content;
 }
 
 [System.Serializable]
 struct EcsactErrorMessage {
-	public const string type = "ecsact_error";
-	public string ecsact_source_path;
-	public string message;
+	public const string         type = "ecsact_error";
+	public string               ecsact_source_path;
+	public string               message;
 	public global::System.Int32 line;
 	public global::System.Int32 character;
 }
@@ -43,13 +43,13 @@ struct EcsactErrorMessage {
 [System.Serializable]
 struct WarningMessage {
 	public const string type = "warning";
-	public string content;
+	public string       content;
 }
 
 [System.Serializable]
 struct SuccessMessage {
 	public const string type = "success";
-	public string content;
+	public string       content;
 }
 
 [System.Serializable]
@@ -57,52 +57,52 @@ struct ModuleMethodsMessage {
 	[System.Serializable]
 	public struct MethodInfo {
 		public string method_name;
-		public bool available;
+		public bool   available;
 	}
 
-	public const string type = "module_methods";
-	public string module_name;
+	public const string     type = "module_methods";
+	public string           module_name;
 	public List<MethodInfo> methods;
 }
 
 [System.Serializable]
 struct SubcommandStartMessage {
 	public const string type = "subcommand_start";
-	public long id;
-	public string executable;
+	public long         id;
+	public string       executable;
 	public List<string> arguments;
 }
 
 [System.Serializable]
 struct SubcommandProgressMessage {
 	public const string type = "subcommand_progress";
-	public long id;
-	public string description;
+	public long         id;
+	public string       description;
 }
 
 [System.Serializable]
 struct SubcommandStdoutMessage {
 	public const string type = "subcommand_stdout";
-	public long id;
-	public string line;
+	public long         id;
+	public string       line;
 }
 
 [System.Serializable]
 struct SubcommandStderrMessage {
 	public const string type = "subcommand_stderr";
-	public long id;
-	public string line;
+	public long         id;
+	public string       line;
 }
 
 [System.Serializable]
 struct SubcommandEndMessage {
 	public const string type = "subcommand_end";
-	public long id;
-	public int exit_code;
+	public long         id;
+	public int          exit_code;
 }
 
 public static class EcsactRuntimeBuilder {
-	private static Dictionary<long, int> _subcommandProgressIds = new();
+	private static Dictionary<long, int>    _subcommandProgressIds = new();
 	private static Dictionary<long, string> _subcommandProgressNames = new();
 	private static EcsactSettings? _settings;
 	private static EcsactRuntimeSettings? _rtSettings;
@@ -111,10 +111,7 @@ public static class EcsactRuntimeBuilder {
 		public List<string> ecsactFiles;
 	}
 
-	public static void Build
-		( Options options
-		)
-	{
+	public static void Build(Options options) {
 		if(options.ecsactFiles.Count == 0) {
 			UnityEngine.Debug.LogError(
 				"Cannot build ecsact runtime without any ecsact files"
@@ -272,9 +269,8 @@ public static class EcsactRuntimeBuilder {
 		}
 
 		proc.StartInfo.Arguments += "--output=\"";
-		proc.StartInfo.Arguments += Path.GetFullPath(
-			_settings.runtimeBuilderOutputPath
-		);
+		proc.StartInfo.Arguments +=
+			Path.GetFullPath(_settings.runtimeBuilderOutputPath);
 #if UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
 		proc.StartInfo.Arguments += ".dll";
 #elif UNITY_EDITOR_LINUX || UNITY_STANDALONE_LINUX
@@ -288,16 +284,14 @@ public static class EcsactRuntimeBuilder {
 
 		if(!string.IsNullOrWhiteSpace(_settings.runtimeBuilderCompilerPath)) {
 			proc.StartInfo.Arguments += "--compiler_path=\"";
-			proc.StartInfo.Arguments += Path.GetFullPath(
-				_settings.runtimeBuilderCompilerPath
-			);
+			proc.StartInfo.Arguments +=
+				Path.GetFullPath(_settings.runtimeBuilderCompilerPath);
 			proc.StartInfo.Arguments += "\" ";
 		}
 
 		proc.StartInfo.Arguments += "--temp_dir=";
-		proc.StartInfo.Arguments += Path.GetFullPath(
-			FileUtil.GetUniqueTempPathInProject()
-		);
+		proc.StartInfo.Arguments +=
+			Path.GetFullPath(FileUtil.GetUniqueTempPathInProject());
 
 		Progress.Report(progressId, 0.1f);
 		proc.Start();
@@ -305,11 +299,7 @@ public static class EcsactRuntimeBuilder {
 		proc.BeginErrorReadLine();
 	}
 
-	private static void ReceiveMessage
-		( int           progressId
-		, AlertMessage  message
-		)
-	{
+	private static void ReceiveMessage(int progressId, AlertMessage message) {
 		EditorUtility.DisplayDialog(
 			title: "Ecsact Runtime Builder",
 			message: message.content,
@@ -317,29 +307,20 @@ public static class EcsactRuntimeBuilder {
 		);
 	}
 
-	private static void ReceiveMessage
-		( int          progressId
-		, InfoMessage  message
-		)
-	{
+	private static void ReceiveMessage(int progressId, InfoMessage message) {
 		Progress.SetDescription(progressId, message.content);
 		UnityEngine.Debug.Log(message.content);
 	}
 
-	private static void ReceiveMessage
-		( int           progressId
-		, ErrorMessage  message
-		)
-	{
+	private static void ReceiveMessage(int progressId, ErrorMessage message) {
 		Progress.SetDescription(progressId, message.content);
 		UnityEngine.Debug.LogError(message.content);
 	}
 
-	private static void ReceiveMessage
-		( int                 progressId
-		, EcsactErrorMessage  message
-		)
-	{
+	private static void ReceiveMessage(
+		int                progressId,
+		EcsactErrorMessage message
+	) {
 		Progress.SetDescription(progressId, message.message);
 		UnityEditor.EditorApplication.delayCall += () => {
 			var ecsactAsset = UnityEditor.AssetDatabase.LoadAssetAtPath<Object>(
@@ -354,39 +335,29 @@ public static class EcsactRuntimeBuilder {
 		};
 	}
 
-	private static void ReceiveMessage
-		( int             progressId
-		, WarningMessage  message
-		)
-	{
+	private static void ReceiveMessage(int progressId, WarningMessage message) {
 		Progress.SetDescription(progressId, message.content);
 		UnityEngine.Debug.LogWarning(message.content);
 	}
 
-	private static void ReceiveMessage
-		( int             progressId
-		, SuccessMessage  message
-		)
-	{
+	private static void ReceiveMessage(int progressId, SuccessMessage message) {
 		Progress.SetDescription(progressId, message.content);
 		UnityEngine.Debug.Log(message.content);
 	}
 
-	private static void CheckMethods
-		( IEnumerable<string>   methods
-		, ModuleMethodsMessage  message
-		)
-	{
+	private static void CheckMethods(
+		IEnumerable<string>  methods,
+		ModuleMethodsMessage message
+	) {
 		var methodsList = methods.ToList();
 
 		foreach(var methodName in methods) {
-			var methodInfoIndex = message.methods.FindIndex(
-				v => v.method_name == methodName
-			);
+			var methodInfoIndex =
+				message.methods.FindIndex(v => v.method_name == methodName);
 			if(methodInfoIndex == -1) {
 				UnityEngine.Debug.LogWarning(
 					$"Old method '{methodName}' should be <color=red>removed</color> " +
-					$"from module <b>{message.module_name}</b>. It no longer exists. " + 
+					$"from module <b>{message.module_name}</b>. It no longer exists. " +
 					"(reported by ecsact_rtb)"
 				);
 			}
@@ -403,11 +374,10 @@ public static class EcsactRuntimeBuilder {
 		}
 	}
 
-	private static void ReceiveMessage
-		( int                   progressId
-		, ModuleMethodsMessage  message
-		)
-	{
+	private static void ReceiveMessage(
+		int                  progressId,
+		ModuleMethodsMessage message
+	) {
 		switch(message.module_name) {
 			case "core":
 				CheckMethods(EcsactRuntime.Core.methods, message);
@@ -427,11 +397,10 @@ public static class EcsactRuntimeBuilder {
 		}
 	}
 
-	private static void ReceiveMessage
-		( int                     progressId
-		, SubcommandStartMessage  message
-		)
-	{
+	private static void ReceiveMessage(
+		int                    progressId,
+		SubcommandStartMessage message
+	) {
 		var subcommandName = System.IO.Path.GetFileName(message.executable);
 		var subcommandProgressId = Progress.Start(
 			name: subcommandName,
@@ -442,36 +411,31 @@ public static class EcsactRuntimeBuilder {
 		_subcommandProgressNames.Add(message.id, subcommandName);
 	}
 
-	private static void ReceiveMessage
-		( int                        progressId
-		, SubcommandProgressMessage  message
-		)
-	{
+	private static void ReceiveMessage(
+		int                       progressId,
+		SubcommandProgressMessage message
+	) {
 		var subcommandProgressId = _subcommandProgressIds[message.id];
 		Progress.SetDescription(subcommandProgressId, message.description);
 	}
 
-	private static void ReceiveMessage
-		( int                      progressId
-		, SubcommandStdoutMessage  message
-		)
-	{
+	private static void ReceiveMessage(
+		int                     progressId,
+		SubcommandStdoutMessage message
+	) {
 		if(_settings!.runtimeBuilderPrintSubcommandStdout) {
 			string name = "unknown";
 			if(_subcommandProgressNames.ContainsKey(message.id)) {
 				name = _subcommandProgressNames[message.id];
 			}
-			UnityEngine.Debug.Log(
-				$"[{name} subcommand stdout] {message.line}"
-			);
+			UnityEngine.Debug.Log($"[{name} subcommand stdout] {message.line}");
 		}
 	}
 
-	private static void ReceiveMessage
-		( int                      progressId
-		, SubcommandStderrMessage  message
-		)
-	{
+	private static void ReceiveMessage(
+		int                     progressId,
+		SubcommandStderrMessage message
+	) {
 		if(_settings!.runtimeBuilderPrintSubcommandStderr) {
 			string name = "unknown";
 			if(_subcommandProgressNames.ContainsKey(message.id)) {
@@ -483,11 +447,10 @@ public static class EcsactRuntimeBuilder {
 		}
 	}
 
-	private static void ReceiveMessage
-		( int                   progressId
-		, SubcommandEndMessage  message
-		)
-	{
+	private static void ReceiveMessage(
+		int                  progressId,
+		SubcommandEndMessage message
+	) {
 		var subcommandProgressId = _subcommandProgressIds[message.id];
 		if(message.exit_code == 0) {
 			Progress.Finish(subcommandProgressId, Progress.Status.Succeeded);

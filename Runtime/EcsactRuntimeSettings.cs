@@ -28,7 +28,7 @@ public class EcsactRuntimeDefaultRegistry {
 		"Ecsact.DefaultFixedRunner script for this registry."
 	)]
 	public RunnerType runner;
-	public Int32 registryId { get; internal set; } = -1;
+	public Int32      registryId { get; internal set; } = -1;
 }
 
 [System.Serializable]
@@ -52,15 +52,15 @@ public class EcsactRuntimeSettings : ScriptableObject {
 		"the game loads."
 	)]
 
-	public EcsactRuntimeDefaultRegistry defaultRegistry 
-		= new EcsactRuntimeDefaultRegistry{
-				registryName = "Default Registry",
-				runner = EcsactRuntimeDefaultRegistry.RunnerType.FixedUpdate,
-			};
+	public EcsactRuntimeDefaultRegistry defaultRegistry =
+		new EcsactRuntimeDefaultRegistry {
+			registryName = "Default Registry",
+			runner = EcsactRuntimeDefaultRegistry.RunnerType.FixedUpdate,
+		};
 
 	[System.Serializable]
 	public struct UnitySyncScriptInfo {
-		public bool scriptEnabled;
+		public bool   scriptEnabled;
 		public string scriptAssemblyQualifiedName;
 	}
 
@@ -72,7 +72,7 @@ public class EcsactRuntimeSettings : ScriptableObject {
 
 	[System.Serializable]
 	public struct CsharpSystemImplInfo {
-		public bool enabled;
+		public bool   enabled;
 		public string assemblyQualifiedName;
 		public string implMethodName;
 	}

@@ -9,7 +9,7 @@ namespace Ecsact {
 
 public class RegistryEntitySource : EntityGameObjectPool.EntitySource {
 	EcsactRuntime runtime;
-	private int registryId;
+	private int   registryId;
 
 	internal RegistryEntitySource(int registryId, EcsactRuntime runtime) {
 		this.runtime = runtime;
@@ -17,19 +17,11 @@ public class RegistryEntitySource : EntityGameObjectPool.EntitySource {
 	}
 
 	public override object GetComponent(int entityId, int componentId) {
-		return runtime.core.GetComponent(
-			registryId,
-			entityId,
-			componentId
-		);
+		return runtime.core.GetComponent(registryId, entityId, componentId);
 	}
 
 	public override bool HasComponent(int entityId, int componentId) {
-		return runtime.core.HasComponent(
-			registryId,
-			entityId,
-			componentId
-		);
+		return runtime.core.HasComponent(registryId, entityId, componentId);
 	}
 }
 

@@ -3,49 +3,46 @@ using UnityEngine;
 using System;
 
 namespace Ecsact.VisualScripting {
-	[Serializable]
-	public class AsyncErrorEventData {
-		public Ecsact.AsyncError error;
-		public Int32 requestId;
+
+[Serializable]
+public class AsyncErrorEventData {
+	public Ecsact.AsyncError error;
+	public Int32             requestId;
+}
+
+[UnitTitle("On Error")]
+[UnitCategory("Ecsact\\Async")]
+[UnitSurtitle("Ecsact / Async")]
+public class AsyncErrorEvent : EventUnit<AsyncErrorEventData> {
+	public const string eventName = "EcsactAsyncErrorEvent";
+
+	[PortLabel("Error")]
+	[DoNotSerialize]
+	public ValueOutput errorOutput { get; private set; }
+
+	[PortLabel("Request ID")]
+	[DoNotSerialize]
+	public ValueOutput requestIdOutput {
+		get; private set;
 	}
 
-	[UnitTitle("On Error")]
-	[UnitCategory("Ecsact\\Async")]
-	[UnitSurtitle("Ecsact / Async")]
-	public class AsyncErrorEvent : EventUnit<AsyncErrorEventData> {
-		public const string eventName = "EcsactAsyncErrorEvent";
+	protected override bool register => true;
 
-		[PortLabel("Error")]
-		[DoNotSerialize]
-		public ValueOutput errorOutput { get; private set; }
+	public override EventHook GetHook(GraphReference reference) {
+		return new EventHook(eventName);
+	}
 
-		[PortLabel("Request ID")]
-		[DoNotSerialize]
-		public ValueOutput requestIdOutput { get; private set; }
+	protected override void Definition() {
+		base.Definition();
 
-		protected override bool register => true;
+		errorOutput = ValueOutput<Ecsact.AsyncError>(nameof(errorOutput));
+		requestIdOutput = ValueOutput<Int32>(nameof(requestIdOutput));
+	}
 
-		public override EventHook GetHook
-			( GraphReference reference
-			)
-		{
-			return new EventHook(eventName);
-		}
-
-		protected override void Definition() {
-			base.Definition();
-
-			errorOutput = ValueOutput<Ecsact.AsyncError>(nameof(errorOutput));
-			requestIdOutput = ValueOutput<Int32>(nameof(requestIdOutput));
-		}
-
-		protected override void AssignArguments
-			( Flow                 flow
-			, AsyncErrorEventData  data
-			)
-		{
-			flow.SetValue(errorOutput, data.error);
-			flow.SetValue(requestIdOutput, data.requestId);
-		}
+	protected override void AssignArguments(Flow flow, AsyncErrorEventData data) {
+		flow.SetValue(errorOutput, data.error);
+		flow.SetValue(requestIdOutput, data.requestId);
 	}
 }
+
+} // namespace Ecsact.VisualScripting

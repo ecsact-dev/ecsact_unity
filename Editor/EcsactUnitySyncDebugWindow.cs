@@ -16,11 +16,9 @@ using ComponentIdsList = System.Collections.Generic.SortedSet<System.Int32>;
 #nullable enable
 
 class EcsactUnitySyncGameObjectPreview : PreviewSceneStage {
-
 	public static EcsactUnitySyncGameObjectPreview CreateInstance() {
-		return (EcsactUnitySyncGameObjectPreview)PreviewSceneStage.CreateInstance(
-			typeof(EcsactUnitySyncGameObjectPreview)
-		);
+		return (EcsactUnitySyncGameObjectPreview
+		)PreviewSceneStage.CreateInstance(typeof(EcsactUnitySyncGameObjectPreview));
 	}
 
 	public EntityGameObjectPool? pool;
@@ -56,9 +54,9 @@ class EcsactUnitySyncGameObjectPreview : PreviewSceneStage {
 }
 
 public class EcsactUnitySyncDebugWindow : EditorWindow {
-	static bool allMonoBehavioursFoldout = false;
-	static bool refreshing = false;
-	static Vector2 scrollPosition = new Vector2();
+	static bool             allMonoBehavioursFoldout = false;
+	static bool             refreshing = false;
+	static Vector2          scrollPosition = new Vector2();
 	static ComponentIdsList testComponentIds = new ComponentIdsList();
 
 	[MenuItem("Window/Ecsact/Unity Sync Debug")]
@@ -87,10 +85,7 @@ public class EcsactUnitySyncDebugWindow : EditorWindow {
 		}
 	}
 
-	void OnCompilationFinished
-		( object _
-		)
-	{
+	void OnCompilationFinished(object _) {
 		StartRefresh();
 	}
 
@@ -100,7 +95,7 @@ public class EcsactUnitySyncDebugWindow : EditorWindow {
 	}
 
 	IEnumerator<string> Refresh() {
-		int progressId = Progress.Start("Finding Ecsact types");
+		int  progressId = Progress.Start("Finding Ecsact types");
 		bool cancelledRequested = false;
 		bool cancelled = false;
 
@@ -162,8 +157,7 @@ public class EcsactUnitySyncDebugWindow : EditorWindow {
 
 		if(!EditorApplication.isPlaying) {
 			var registerProgress =
-				UnitySyncMonoBehaviours.RegisterMonoBehaviourTypes(
-					allMonoBehaviourTypes
+				UnitySyncMonoBehaviours.RegisterMonoBehaviourTypes(allMonoBehaviourTypes
 				);
 			int registeredTypes = 0;
 			foreach(var type in registerProgress) {
@@ -203,10 +197,7 @@ public class EcsactUnitySyncDebugWindow : EditorWindow {
 		}
 	}
 
-	void PreviewEntityGameObjectPoolAdd
-		( System.Int32 componentId
-		)
-	{
+	void PreviewEntityGameObjectPoolAdd(System.Int32 componentId) {
 		if(previewSceneStage == null || previewSceneStage.pool == null) return;
 		var pool = previewSceneStage.pool;
 
@@ -215,10 +206,7 @@ public class EcsactUnitySyncDebugWindow : EditorWindow {
 		pool.InitComponent(0, componentId, component);
 	}
 
-	void PreviewEntityGameObjectPoolUpdate
-		( System.Int32 componentId
-		)
-	{
+	void PreviewEntityGameObjectPoolUpdate(System.Int32 componentId) {
 		if(previewSceneStage == null || previewSceneStage.pool == null) return;
 		var pool = previewSceneStage.pool;
 		var componentType = Ecsact.Util.GetComponentType(componentId);
@@ -227,10 +215,7 @@ public class EcsactUnitySyncDebugWindow : EditorWindow {
 		pool.UpdateComponent(0, componentId, component);
 	}
 
-	void PreviewEntityGameObjectPoolRemove
-		( System.Int32 componentId
-		)
-	{
+	void PreviewEntityGameObjectPoolRemove(System.Int32 componentId) {
 		if(previewSceneStage == null || previewSceneStage.pool == null) return;
 		var pool = previewSceneStage.pool;
 		var componentType = Ecsact.Util.GetComponentType(componentId);
@@ -261,10 +246,10 @@ public class EcsactUnitySyncDebugWindow : EditorWindow {
 				EditorGUILayout.LabelField("(none)");
 				EditorGUILayout.HelpBox(
 					"Implement one or more Ecsact.UnitySync.IRequired<>, " +
-					"Ecsact.UnitySync.IOnInitComponent<>, " +
-					"Ecsact.UnitySync.IOnUpdateComponent<>, or " +
-					"Ecsact.UnitySync.IOnRemoveComponent<> interfaces for your " +
-					"MonoBehaviour scripts to be considered for Ecsact Unity Sync.",
+						"Ecsact.UnitySync.IOnInitComponent<>, " +
+						"Ecsact.UnitySync.IOnUpdateComponent<>, or " +
+						"Ecsact.UnitySync.IOnRemoveComponent<> interfaces for your " +
+						"MonoBehaviour scripts to be considered for Ecsact Unity Sync.",
 					MessageType.Info
 				);
 			}
@@ -297,14 +282,15 @@ public class EcsactUnitySyncDebugWindow : EditorWindow {
 		}
 
 		EditorGUILayout.Space();
-		
+
 		EditorGUILayout.LabelField("MonoBehaviour Scripts", EditorStyles.boldLabel);
 
 		GUILayout.BeginHorizontal();
 		GUILayout.Space(EditorGUI.indentLevel * 20);
-		var showPreview = GUILayout.Button("Preview", new GUILayoutOption[]{
-			GUILayout.MaxWidth(200)
-		});
+		var showPreview = GUILayout.Button(
+			"Preview",
+			new GUILayoutOption[] { GUILayout.MaxWidth(200) }
+		);
 
 		if(showPreview) {
 			EditorApplication.delayCall += () => OpenPreviewScene();
@@ -320,8 +306,8 @@ public class EcsactUnitySyncDebugWindow : EditorWindow {
 			EditorGUILayout.LabelField("(none)");
 			EditorGUILayout.HelpBox(
 				"No MonoBehaviour scripts will be added to an entity with this " +
-				"combination of components. Try adding/removing components in the " +
-				"'Test Components' section above.",
+					"combination of components. Try adding/removing components in the " +
+					"'Test Components' section above.",
 				MessageType.Info
 			);
 		}

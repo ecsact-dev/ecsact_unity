@@ -10,15 +10,15 @@ using EcsactInternal;
 // https://docs.unity3d.com/Manual/AssemblyDefinitionFileFormat.html
 [System.Serializable]
 struct UnityAssemblyDefinitionFile {
-	public bool allowUnsafeCode;
-	public bool autoReferenced;
-	public bool noEngineReferences;
+	public bool         allowUnsafeCode;
+	public bool         autoReferenced;
+	public bool         noEngineReferences;
 	public List<string> defineConstraints;
 	public List<string> includePlatforms;
 	public List<string> excludePlatforms;
-	public string name;
+	public string       name;
 	public List<string> optionalUnityReferences;
-	public bool overrideReferences;
+	public bool         overrideReferences;
 	public List<string> precompiledReferences;
 	public List<string> references;
 }
@@ -30,16 +30,14 @@ namespace Ecsact.Editor {
 public class CsharpSystemImplSettingsEditor : UnityEditor.Editor {
 	const float maxWidthMethodDetails = 400f;
 	const float minWidthMethodDetails = 300f;
-	private static GUILayoutOption[] methodDetailsLayoutOptions = new[]{
+	private static GUILayoutOption[] methodDetailsLayoutOptions = new[] {
 		GUILayout.MaxWidth(maxWidthMethodDetails),
 		GUILayout.MinWidth(minWidthMethodDetails),
 	};
 	private static List<global::System.Type>? systemLikeTypes;
 
 	static CsharpSystemImplSettingsEditor() {
-		EditorApplication.delayCall += () => {
-			InitializeDelayed();
-		};
+		EditorApplication.delayCall += () => { InitializeDelayed(); };
 	}
 
 	private static void InitializeDelayed() {
@@ -48,19 +46,17 @@ public class CsharpSystemImplSettingsEditor : UnityEditor.Editor {
 		EnsureDefaultCsharpSystemImplsAssemblyName(settings, runtimeSettings);
 	}
 
-	private static void EnsureDefaultCsharpSystemImplsAssemblyName
-		( CsharpSystemImplSettings  settings
-		, EcsactRuntimeSettings     runtimeSettings
-		)
-	{
+	private static void EnsureDefaultCsharpSystemImplsAssemblyName(
+		CsharpSystemImplSettings settings,
+		EcsactRuntimeSettings    runtimeSettings
+	) {
 		var newDefault = "";
 		if(settings.systemImplsAssembly != null) {
 			var asmDefJson = global::System.Text.Encoding.Default.GetString(
 				settings.systemImplsAssembly.bytes
 			);
-			var asmDef = JsonUtility.FromJson<UnityAssemblyDefinitionFile>(
-				asmDefJson
-			);
+			var asmDef =
+				JsonUtility.FromJson<UnityAssemblyDefinitionFile>(asmDefJson);
 
 			newDefault = asmDef.name;
 		} else {
@@ -77,12 +73,14 @@ public class CsharpSystemImplSettingsEditor : UnityEditor.Editor {
 		var settings = (target as CsharpSystemImplSettings)!;
 
 		EditorGUI.BeginChangeCheck();
-		settings.systemImplsAssembly = EditorGUILayout.ObjectField(
-			obj: settings.systemImplsAssembly,
-			objType: typeof(UnityEditorInternal.AssemblyDefinitionAsset),
-			allowSceneObjects: false,
-			label: "Assembly"
-		) as UnityEditorInternal.AssemblyDefinitionAsset;
+		settings.systemImplsAssembly =
+			EditorGUILayout
+				.ObjectField(
+					obj: settings.systemImplsAssembly,
+					objType: typeof(UnityEditorInternal.AssemblyDefinitionAsset),
+					allowSceneObjects: false,
+					label: "Assembly"
+				) as UnityEditorInternal.AssemblyDefinitionAsset;
 
 		if(EditorGUI.EndChangeCheck()) {
 			EnsureDefaultCsharpSystemImplsAssemblyName(
@@ -95,15 +93,14 @@ public class CsharpSystemImplSettingsEditor : UnityEditor.Editor {
 			var asmDefJson = global::System.Text.Encoding.Default.GetString(
 				settings.systemImplsAssembly.bytes
 			);
-			var asmDef = JsonUtility.FromJson<UnityAssemblyDefinitionFile>(
-				asmDefJson
-			);
+			var asmDef =
+				JsonUtility.FromJson<UnityAssemblyDefinitionFile>(asmDefJson);
 
 			if(!asmDef.noEngineReferences) {
 				EditorGUILayout.HelpBox(
 					$"The assembly definition {asmDef.name} has engine references " +
-					"enabled. Ecsact system implementations run on multiple threads " +
-					"and should not use engine apis that are not thread safe.",
+						"enabled. Ecsact system implementations run on multiple threads " +
+						"and should not use engine apis that are not thread safe.",
 					MessageType.Warning,
 					wide: false
 				);
@@ -117,7 +114,7 @@ public class CsharpSystemImplSettingsEditor : UnityEditor.Editor {
 						var defaultSystemImplAttr =
 							method.GetCustomAttribute<Ecsact.DefaultSystemImplAttribute>();
 						if(defaultSystemImplAttr == null) continue;
-						
+
 						var systemLikeId = defaultSystemImplAttr.systemLikeId;
 						if(!implDict.ContainsKey(systemLikeId)) {
 							implDict.Add(systemLikeId, new());
@@ -134,8 +131,8 @@ public class CsharpSystemImplSettingsEditor : UnityEditor.Editor {
 				if(implDict.Count == 0) {
 					EditorGUILayout.HelpBox(
 						$"No system implementations detected in assembly {asmDef.name}. " +
-						"Add the Ecsact.DefaultSystemImpl attribute to a public static " +
-						$"method found in the {asmDef.name} assembly.",
+							"Add the Ecsact.DefaultSystemImpl attribute to a public static " +
+							$"method found in the {asmDef.name} assembly.",
 						MessageType.Info,
 						wide: false
 					);
@@ -157,25 +154,18 @@ public class CsharpSystemImplSettingsEditor : UnityEditor.Editor {
 		}
 	}
 
-	private string GetMethodFullName
-		( MethodInfo methodInfo
-		)
-	{
+	private string GetMethodFullName(MethodInfo methodInfo) {
 		return methodInfo.DeclaringType.FullName + "." + methodInfo.Name;
 	}
 
-	private void DrawSystemImplMethodDetails
-		( MethodInfo methodInfo
-		)
-	{
+	private void DrawSystemImplMethodDetails(MethodInfo methodInfo) {
 		EditorGUILayout.BeginHorizontal(methodDetailsLayoutOptions);
-		
+
 		var style = new GUIStyle(EditorStyles.label);
 		style.richText = true;
 		var label = GetMethodFullName(methodInfo);
-		var errors = DefaultCsharpSystemImplsLoader.ValidateImplMethodInfo(
-			methodInfo
-		);
+		var errors =
+			DefaultCsharpSystemImplsLoader.ValidateImplMethodInfo(methodInfo);
 
 		if(errors.Count > 0) {
 			label = $"<color=red>{label}</color>";
@@ -183,25 +173,22 @@ public class CsharpSystemImplSettingsEditor : UnityEditor.Editor {
 
 		EditorGUILayout.LabelField(
 			label: new GUIContent(label, string.Join("\n", errors)),
-			options: new GUILayoutOption[]{},
+			options: new GUILayoutOption[] {},
 			style: style
 		);
 
 		EditorGUILayout.EndHorizontal();
 	}
 
-	private void DrawSystemImplDetail
-		( global::System.Int32  systemLikeId
-		, global::System.Type   systemLikeType
-		, List<MethodInfo>      methods
-		)
-	{
+	private void DrawSystemImplDetail(
+		global::System.Int32 systemLikeId,
+		global::System.Type  systemLikeType,
+		List<MethodInfo>     methods
+	) {
 		EditorGUILayout.BeginHorizontal();
 		EditorGUILayout.LabelField(
 			systemLikeType.FullName,
-			new GUILayoutOption[]{
-				GUILayout.ExpandWidth(true)
-			}
+			new GUILayoutOption[] { GUILayout.ExpandWidth(true) }
 		);
 
 		if(methods.Count == 0) {

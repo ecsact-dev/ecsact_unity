@@ -4,45 +4,47 @@ using UnityEngine;
 #if HAS_UNITY_WASM_PACKAGE
 
 namespace Ecsact {
-	public static class EcsactWasmRuntimeLoader {
-		public static bool Enabled() {
-			var settings = EcsactRuntimeSettings.Get();
-			if(settings.systemImplSource != Ecsact.SystemImplSource.WebAssembly) {
-				return false;
-			}
 
-			return true;
+public static class EcsactWasmRuntimeLoader {
+	public static bool Enabled() {
+		var settings = EcsactRuntimeSettings.Get();
+		if(settings.systemImplSource != Ecsact.SystemImplSource.WebAssembly) {
+			return false;
 		}
 
-		[RuntimeInitializeOnLoadMethod]
-		public static void OnLoad() {
-			if(!Enabled()) {
-				return;
-			}
+		return true;
+	}
 
-			Ecsact.Defaults.WhenReady(Load());
+	[RuntimeInitializeOnLoadMethod]
+	public static void OnLoad() {
+		if(!Enabled()) {
+			return;
 		}
 
-		private static void Load() {
-			var settings = EcsactWasmRuntimeSettings.Get();
-			foreach(var entry in settings.wasmSystemEntries) {
-				if(string.IsNullOrWhiteSpace(entry.wasmExportName)) continue;
+		Ecsact.Defaults.WhenReady(Load());
+	}
 
-				var loadError = Ecsact.Defaults.Runtime.wasm.Load(
-					entry.wasmAsset.bytes,
-					entry.systemId,
-					entry.wasmExportName
+	private static void Load() {
+		var settings = EcsactWasmRuntimeSettings.Get();
+		foreach(var entry in settings.wasmSystemEntries) {
+			if(string.IsNullOrWhiteSpace(entry.wasmExportName)) continue;
+
+			var loadError = Ecsact.Defaults.Runtime.wasm.Load(
+				entry.wasmAsset.bytes,
+				entry.systemId,
+				entry.wasmExportName
+			);
+
+			if(loadError != EcsactRuntime.Wasm.Error.Ok) {
+				UnityEngine.Debug.LogError(
+					$"Failed to load ecsact Wasm system impl. " +
+					$"ErrorCode={loadError} ExportName={entry.wasmExportName}"
 				);
-
-				if(loadError != EcsactRuntime.Wasm.Error.Ok) {
-					UnityEngine.Debug.LogError(
-						$"Failed to load ecsact Wasm system impl. " +
-						$"ErrorCode={loadError} ExportName={entry.wasmExportName}"
-					);
-				}
 			}
 		}
 	}
 }
+
+} // namespace Ecsact
 
 #endif // HAS_UNITY_WASM_PACKAGE
