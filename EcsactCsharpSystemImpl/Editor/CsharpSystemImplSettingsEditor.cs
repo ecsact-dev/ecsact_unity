@@ -151,6 +151,47 @@ public class CsharpSystemImplSettingsEditor : UnityEditor.Editor {
 					wide: false
 				);
 			}
+		} else {
+			GUILayout.BeginHorizontal();
+			EditorGUILayout.PrefixLabel(" ");
+			var pressed = GUILayout.Button(
+				"Create New Assembly Definition",
+				new[] { GUILayout.MaxWidth(240) }
+			);
+			GUILayout.EndHorizontal();
+			if(pressed) {
+				var newAsmDefPath = EditorUtility.SaveFilePanelInProject(
+					title: "Ecsact System Implementations Assembly Definition",
+					defaultName: "SystemImpls.asmdef",
+					extension: "asmdef",
+					message: "Choose a location where your C# system implementations " +
+						"definition is stored. Make sure to put it in a separate folder."
+				);
+
+				if(!string.IsNullOrEmpty(newAsmDefPath)) {
+					var newAsmDef = new UnityAssemblyDefinitionFile();
+					newAsmDef.name = $"{Application.identifier}.EcsactSystemImpls";
+					newAsmDef.autoReferenced = true;
+					newAsmDef.noEngineReferences = false;
+					newAsmDef.references = new();
+					newAsmDef.references.Add("GUID:2d10fa57d8150f7499b7579b289a41a2");
+					newAsmDef.references.Add("GUID:6e7029456009ab94da19a8f93d5e3523");
+					global::System.IO.File.WriteAllText(
+						path: newAsmDefPath,
+						contents: JsonUtility.ToJson(newAsmDef, true)
+					);
+					AssetDatabase.ImportAsset(
+						newAsmDefPath,
+						ImportAssetOptions.ForceSynchronousImport
+					);
+					settings.systemImplsAssembly =
+						AssetDatabase
+							.LoadAssetAtPath<UnityEditorInternal.AssemblyDefinitionAsset>(
+								newAsmDefPath
+							);
+					AssetDatabase.SaveAssetIfDirty(settings);
+				}
+			}
 		}
 	}
 
