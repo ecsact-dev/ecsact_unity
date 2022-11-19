@@ -1,6 +1,9 @@
 {
   "name": "dev.ecsact.unity",
   "version": "0.7.3",
+  "changelogUrl": "https://github.com/ecsact-dev/ecsact_unity/releases",
+  "documentationUrl": "https://ecsact.dev/docs/unity/defaults",
+  "license": "MIT",
   "description": "Ecsact Integration",
   "displayName": "Ecsact Integration",
   "unity": "2021.2",
