@@ -87,6 +87,8 @@ public class CsharpSystemImplSettingsEditor : UnityEditor.Editor {
 				settings,
 				EcsactRuntimeSettings.Get()
 			);
+			EditorUtility.SetDirty(settings);
+			AssetDatabase.SaveAssetIfDirty(settings);
 		}
 
 		if(settings.systemImplsAssembly != null) {
@@ -189,6 +191,7 @@ public class CsharpSystemImplSettingsEditor : UnityEditor.Editor {
 							.LoadAssetAtPath<UnityEditorInternal.AssemblyDefinitionAsset>(
 								newAsmDefPath
 							);
+					EditorUtility.SetDirty(settings);
 					AssetDatabase.SaveAssetIfDirty(settings);
 				}
 			}
