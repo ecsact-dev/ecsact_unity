@@ -54,15 +54,14 @@ public class EcsactRunner : MonoBehaviour {
 			Ecsact.Defaults.Registry.ExecuteSystems(executionOptions);
 		} finally {
 			executionOptions.FreeActions();
-		}
-
 #if UNITY_EDITOR
-		executionTimeWatch.Stop();
-		debugExecutionTimeMs = (int)executionTimeWatch.ElapsedMilliseconds;
-		debugExecutionCountTotal += 1;
+			executionTimeWatch.Stop();
+			debugExecutionTimeMs = (int)executionTimeWatch.ElapsedMilliseconds;
+			debugExecutionCountTotal += 1;
 #endif
 
-		executionOptions.executionOptions = new EcsactRuntime.CExecutionOptions();
+			executionOptions.executionOptions = new EcsactRuntime.CExecutionOptions();
+		}
 	}
 }
 
