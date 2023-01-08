@@ -42,7 +42,8 @@ public class EcsactWasmRuntimeSettingsEditor : Editor {
 
 			foreach(var systemLikeType in systemLikeTypes) {
 				var systemLikeName = systemLikeType.FullName;
-				var systemImplName = systemLikeName.Replace(".", "__");
+				var systemImplName =
+					systemLikeName.Replace(".", "__").Replace("+", "__");
 				foreach(var exportInfo in wasmInfo.exports) {
 					if(IsValidSystemImplExport(exportInfo)) {
 						if(exportInfo.name == systemImplName) {
