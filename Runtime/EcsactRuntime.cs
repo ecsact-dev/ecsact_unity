@@ -1820,6 +1820,8 @@ public class EcsactRuntime {
 		public static string[] methods => new string[] {
 			"ecsactsi_wasm_load",
 			"ecsactsi_wasm_load_file",
+			"ecsactsi_wasm_reset",
+			"ecsactsi_wasm_unload",
 			"ecsactsi_wasm_set_trap_handler",
 		};
 
@@ -1841,6 +1843,17 @@ public class EcsactRuntime {
 		);
 
 		internal ecsactsi_wasm_load_file_delegate? ecsactsi_wasm_load_file;
+
+		internal delegate void ecsactsi_wasm_unload_delegate(
+			Int32 systemsCount,
+			Int32[] systemIds
+		);
+
+		internal ecsactsi_wasm_unload_delegate? ecsactsi_wasm_unload;
+
+		internal delegate void ecsactsi_wasm_reset_delegate();
+
+		internal ecsactsi_wasm_reset_delegate? ecsactsi_wasm_reset;
 
 		internal delegate void ecsactsi_wasm_trap_handler(Int32 systemId, [
 			MarshalAs(UnmanagedType.LPStr)
@@ -1868,6 +1881,24 @@ public class EcsactRuntime {
 				systemIds,
 				exportNames
 			);
+		}
+
+		void Unload(IEnumerable<Int32> systemIds) {
+			if(ecsactsi_wasm_unload == null) {
+				throw new EcsactRuntimeMissingMethod("ecsactsi_wasm_unload");
+			}
+
+			Int32[] systemIdsArr = systemIds.ToArray();
+
+			ecsactsi_wasm_unload(systemIdsArr.Count(), systemIdsArr);
+		}
+
+		void Reset() {
+			if(ecsactsi_wasm_reset == null) {
+				throw new EcsactRuntimeMissingMethod("ecsactsi_wasm_reset");
+			}
+
+			ecsactsi_wasm_reset();
 		}
 	}
 
@@ -2309,6 +2340,18 @@ public class EcsactRuntime {
 			);
 			LoadDelegate(
 				lib,
+				"ecsactsi_wasm_reset",
+				out runtime._wasm.ecsactsi_wasm_reset,
+				runtime._wasm
+			);
+			LoadDelegate(
+				lib,
+				"ecsactsi_wasm_unload",
+				out runtime._wasm.ecsactsi_wasm_unload,
+				runtime._wasm
+			);
+			LoadDelegate(
+				lib,
 				"ecsactsi_wasm_set_trap_handler",
 				out runtime._wasm.ecsactsi_wasm_set_trap_handler,
 				runtime._wasm
@@ -2323,6 +2366,10 @@ public class EcsactRuntime {
 	}
 
 	public static void Free(EcsactRuntime runtime) {
+		if(runtime._wasm != null && runtime._wasm.ecsactsi_wasm_reset != null) {
+			runtime._wasm.ecsactsi_wasm_reset();
+		}
+
 		if(runtime._libs != null) {
 			foreach(var lib in runtime._libs) {
 				NativeLibrary.Free(lib);
@@ -2330,6 +2377,8 @@ public class EcsactRuntime {
 
 			runtime._libs = null;
 		}
+
+		runtime._wasm = null;
 	}
 
 	/// <summary>Init Component Untyped Callback</summary>
