@@ -1519,6 +1519,17 @@ public class EcsactRuntime {
 			ecsact_set_system_execution_impl(systemId, CExecutionImpl);
 		}
 
+		public void ClearSystemExecutionImpl(Int32 systemId) {
+			if(ecsact_set_system_execution_impl == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_set_system_execution_impl"
+				);
+			}
+
+			_system_impls.Remove(systemId);
+
+			ecsact_set_system_execution_impl(systemId, null!);
+		}
+
 		public void SetSystemExecutionImpl<System>(SystemExecutionImpl executionImpl
 		)
 			where     System : Ecsact.System {
@@ -1560,8 +1571,7 @@ public class EcsactRuntime {
 			rt._dynamic!._system_impls[sysExecCtx.ID()](sysExecCtx);
 		}
 
-		internal Dictionary<Int32, SystemExecutionImpl> _system_impls =
-			new Dictionary<Int32, SystemExecutionImpl>();
+		internal Dictionary<Int32, SystemExecutionImpl> _system_impls = new();
 	}
 
 	public class Meta : ModuleBase {
@@ -2368,6 +2378,18 @@ public class EcsactRuntime {
 	public static void Free(EcsactRuntime runtime) {
 		if(runtime._wasm != null && runtime._wasm.ecsactsi_wasm_reset != null) {
 			runtime._wasm.ecsactsi_wasm_reset();
+		} else {
+			UnityEngine.Debug.LogWarning(
+				"ecsactsi_wasm_reset method unavailable. Unity may become unstable after unloading the Ecsact runtime."
+			);
+		}
+
+		if(runtime._dynamic != null) {
+			var implSysIds = runtime._dynamic._system_impls.Keys.ToArray();
+
+			foreach(var sysId in implSysIds) {
+				runtime._dynamic.ClearSystemExecutionImpl(sysId);
+			}
 		}
 
 		if(runtime._libs != null) {
@@ -2378,6 +2400,12 @@ public class EcsactRuntime {
 			runtime._libs = null;
 		}
 
+		runtime._core = null;
+		runtime._async = null;
+		runtime._dynamic = null;
+		runtime._meta = null;
+		runtime._serialize = null;
+		runtime._static = null;
 		runtime._wasm = null;
 	}
 
