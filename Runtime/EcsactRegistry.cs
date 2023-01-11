@@ -7,36 +7,37 @@ namespace Ecsact {
 
 public class Registry {
 	private EcsactRuntime rt;
-	private int           registryId;
+
+	public int ID { get; private set; }
 
 	public Registry(EcsactRuntime runtime, int regId) {
 		UnityEngine.Debug.Assert(regId > -1, "Invalid registry ID");
+		ID = regId;
 		rt = runtime;
-		registryId = regId;
 	}
 
-	public void ClearRegistry() {
-		rt.core.ClearRegistry(registryId);
+	public void Clear() {
+		rt.core.ClearRegistry(ID);
 	}
 
 	public Int32 CreateEntity() {
-		return rt.core.CreateEntity(registryId);
+		return rt.core.CreateEntity(ID);
 	}
 
 	public void EnsureEntity(Int32 entityId) {
-		rt.core.EnsureEntity(registryId, entityId);
+		rt.core.EnsureEntity(ID, entityId);
 	}
 
 	public bool EntityExists(Int32 entityId) {
-		return rt.core.EntityExists(registryId, entityId);
+		return rt.core.EntityExists(ID, entityId);
 	}
 
 	public void DestroyEntity(Int32 entityId) {
-		rt.core.DestroyEntity(registryId, entityId);
+		rt.core.DestroyEntity(ID, entityId);
 	}
 
 	public Int32 CountEntities() {
-		return rt.core.CountEntities(registryId);
+		return rt.core.CountEntities(ID);
 	}
 
 	public void GetEntities(
@@ -44,21 +45,17 @@ public class Registry {
 		out       Int32[] outEntities,
 		out Int32 outEntitiesCount
 	) {
-		rt.core.GetEntities(
-			registryId,
-			maxEntitiesCount,
-			out outEntities,
-			out outEntitiesCount
-		);
+		rt.core
+			.GetEntities(ID, maxEntitiesCount, out outEntities, out outEntitiesCount);
 	}
 
 	public Int32[] GetEntities() {
-		return rt.core.GetEntities(registryId);
+		return rt.core.GetEntities(ID);
 	}
 
 	public void AddComponent<C>(int entityId, C component)
 		where     C : Ecsact.Component {
-    rt.core.AddComponent<C>(registryId, entityId, component);
+    rt.core.AddComponent<C>(ID, entityId, component);
 	}
 
 	public void AddComponent(
@@ -66,33 +63,33 @@ public class Registry {
 		Int32  componentId,
 		object componentData
 	) {
-		rt.core.AddComponent(registryId, entityId, componentId, componentData);
+		rt.core.AddComponent(ID, entityId, componentId, componentData);
 	}
 
 	public bool HasComponent(Int32 entityId, Int32 componentId) {
-		return rt.core.HasComponent(registryId, entityId, componentId);
+		return rt.core.HasComponent(ID, entityId, componentId);
 	}
 
 	public bool HasComponent<C>(Int32 entityId)
 		where     C : Ecsact.Component {
-    return rt.core.HasComponent<C>(registryId, entityId);
+    return rt.core.HasComponent<C>(ID, entityId);
 	}
 
 	public C GetComponent<C>(Int32 entityId)
 		where  C : Ecsact.Component {
-    return rt.core.GetComponent<C>(registryId, entityId);
+    return rt.core.GetComponent<C>(ID, entityId);
 	}
 
 	public object GetComponent(Int32 entityId, Int32 componentId) {
-		return rt.core.GetComponent(registryId, entityId, componentId);
+		return rt.core.GetComponent(ID, entityId, componentId);
 	}
 
 	public Int32 CountComponents(Int32 entityId) {
-		return rt.core.CountComponents(registryId, entityId);
+		return rt.core.CountComponents(ID, entityId);
 	}
 
 	public Dictionary<Int32, object> GetComponents(Int32 entityId) {
-		return rt.core.GetComponents(registryId, entityId);
+		return rt.core.GetComponents(ID, entityId);
 	}
 
 	public void EachComponent(
@@ -100,34 +97,34 @@ public class Registry {
 		EcsactRuntime.EachComponentCallback callback,
 		IntPtr                              callbackUserData
 	) {
-		rt.core.EachComponent(registryId, entityId, callback, callbackUserData);
+		rt.core.EachComponent(ID, entityId, callback, callbackUserData);
 	}
 
 	public void UpdateComponent<C>(Int32 entityId, C component)
 		where     C : Ecsact.Component {
-    rt.core.UpdateComponent<C>(registryId, entityId, component);
+    rt.core.UpdateComponent<C>(ID, entityId, component);
 	}
 
 	public void RemoveComponent<C>(Int32 entityId)
 		where     C : Ecsact.Component {
-    rt.core.RemoveComponent<C>(registryId, entityId);
+    rt.core.RemoveComponent<C>(ID, entityId);
 	}
 
 	public void RemoveComponent(Int32 entityId, Int32 componentId) {
-		rt.core.RemoveComponent(registryId, entityId, componentId);
+		rt.core.RemoveComponent(ID, entityId, componentId);
 	}
 
 	public void ExecuteSystems(
 		Int32 executionCount,
 		EcsactRuntime.CExecutionOptions[] executionOptionsList
 	) {
-		rt.core.ExecuteSystems(registryId, executionCount, executionOptionsList);
+		rt.core.ExecuteSystems(ID, executionCount, executionOptionsList);
 	}
 
 	public void ExecuteSystems(Ecsact.ExecutionOptions executionOptions) {
 		var execArr =
 			new EcsactRuntime.CExecutionOptions[] { executionOptions.C() };
-		rt.core.ExecuteSystems(registryId, 1, execArr);
+		rt.core.ExecuteSystems(ID, 1, execArr);
 	}
 }
 

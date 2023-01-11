@@ -53,12 +53,30 @@ static public class Defaults {
 
 	internal static void ClearDefaults() {
 		if(_Runtime != null) {
+			if(Pool != null) {
+				Pool.Clear();
+				UnityEngine.ScriptableObject.Destroy(Pool);
+				Pool = null;
+			}
+
+			if(Runner != null) {
+				UnityEngine.Object.Destroy(Runner);
+				Runner = null;
+			}
+
+			if(_Registry != null) {
+				_Registry.Clear();
+				_Runtime.core.DestroyRegistry(_Registry.ID);
+				_Registry = null;
+			}
+
 			EcsactRuntime.Free(_Runtime);
-			Runner = null;
 			_Runtime = null;
-			_Registry = null;
-			Pool = null;
 		}
+
+		UnityEngine.Debug.Assert(_Runtime == null);
+		UnityEngine.Debug.Assert(_Registry == null);
+		UnityEngine.Debug.Assert(Pool == null);
 	}
 }
 

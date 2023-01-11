@@ -21,6 +21,10 @@ internal static class EcsactRuntimeDefaults {
 	}
 
 	private static void OnQuit() {
+		Cleanup();
+	}
+
+	private static void Cleanup() {
 		try {
 			foreach(var fn in cleanupFns) {
 				fn();
@@ -84,6 +88,7 @@ internal static class EcsactRuntimeDefaults {
 	}
 
 	internal static void ClearDefaults() {
+		Cleanup();
 		Ecsact.Defaults.ClearDefaults();
 	}
 

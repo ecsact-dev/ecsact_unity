@@ -2376,12 +2376,27 @@ public class EcsactRuntime {
 	}
 
 	public static void Free(EcsactRuntime runtime) {
-		if(runtime._wasm != null && runtime._wasm.ecsactsi_wasm_reset != null) {
-			runtime._wasm.ecsactsi_wasm_reset();
-		} else {
-			UnityEngine.Debug.LogWarning(
-				"ecsactsi_wasm_reset method unavailable. Unity may become unstable after unloading the Ecsact runtime."
+		if(runtime._core == null &&
+		runtime._async == null &&
+		runtime._dynamic == null &&
+		runtime._meta == null &&
+		runtime._serialize == null &&
+		runtime._static == null &&
+		runtime._wasm == null) {
+			UnityEngine.Debug.LogError(
+				"Ecsact Runtime attempted to be freed multiple times."
 			);
+			return;
+		}
+
+		if(runtime._wasm != null) {
+			if(runtime._wasm.ecsactsi_wasm_reset != null) {
+				runtime._wasm.ecsactsi_wasm_reset();
+			} else {
+				UnityEngine.Debug.LogWarning(
+					"ecsactsi_wasm_reset method unavailable. Unity may become unstable after unloading the Ecsact runtime."
+				);
+			}
 		}
 
 		if(runtime._dynamic != null) {
