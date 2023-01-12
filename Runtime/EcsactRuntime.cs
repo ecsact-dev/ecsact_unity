@@ -36,7 +36,7 @@ development. This is a workaround due to instability when calling FreeLibrary.
 This copy only happens during developing in editor. This does NOT happen in a
 standalone build.
 
-TODO(zaucy): Insert github tracking issue
+SEE: https://github.com/ecsact-dev/ecsact_unity/issues/59
 ";
 
 	private static Dictionary<IntPtr, string> libraryPaths = new();
@@ -113,7 +113,7 @@ TODO(zaucy): Insert github tracking issue
 #	if UNITY_EDITOR
 		// NOTE: In unity editor we purposely don't free the library. Unfortunately
 		// calling FreeLibrary causes unity to be unstable. There is a tracking
-		// issue for this here: TODO(zaucy): Insert github tracking issue
+		// issue for this here: https://github.com/ecsact-dev/ecsact_unity/issues/59
 #	else
 		var freeResult = FreeLibrary(handle);
 		if(freeResult == 0 /* WIN32 FALSE */) {
