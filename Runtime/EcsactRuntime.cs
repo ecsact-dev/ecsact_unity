@@ -191,24 +191,33 @@ public class EcsactRuntime {
 		public IntPtr actionData;
 	}
 
+	public struct EcsactComponent {
+		public Int32  componentId;
+		public IntPtr componentData;
+	}
+
+	public struct EcsactComponentId {
+		public Int32 componentId;
+	}
+
 	public struct CExecutionOptions {
 		public Int32 addComponentsLength;
 		[MarshalAs(UnmanagedType.LPArray)]
 		public Int32[] addComponentsEntities;
 		[MarshalAs(UnmanagedType.LPArray)]
-		public IntPtr[] addComponents;
+		public EcsactComponent[] addComponents;
 
 		public Int32 updateComponentsLength;
 		[MarshalAs(UnmanagedType.LPArray)]
 		public Int32[] updateComponentsEntities;
 		[MarshalAs(UnmanagedType.LPArray)]
-		public IntPtr[] updateComponents;
+		public EcsactComponent[] updateComponents;
 
 		public Int32 removeComponentsLength;
 		[MarshalAs(UnmanagedType.LPArray)]
 		public Int32[] removeComponentsEntities;
 		[MarshalAs(UnmanagedType.LPArray)]
-		public Int32[] removeComponents;
+		public EcsactComponentId[] removeComponents;
 
 		public Int32 actionsLength;
 		[MarshalAs(UnmanagedType.LPArray)]
@@ -700,24 +709,16 @@ public class EcsactRuntime {
 		public static string[] methods => new string[] {
 			"ecsact_async_connect",
 			"ecsact_async_disconnect",
-			"ecsact_async_execute_action_at",
-			"ecsact_async_execute_action",
+			"ecsact_async_enqueue_execution_options",
 			"ecsact_async_flush_events",
+			"ecsact_async_create_entity",
 		};
 
-		internal delegate void ecsact_async_execute_action_delegate(
-			Int32  actionId,
-			IntPtr actionData
-		);
-		internal ecsact_async_execute_action_delegate? ecsact_async_execute_action;
-
-		internal delegate void ecsact_async_execute_action_at_delegate(
-			Int32  actionId,
-			IntPtr actionData,
-			Int32  tick
+		internal delegate void ecsact_async_enqueue_execute_options_delegate(
+			CExecutionOptions executionOptions
 		);
 		internal
-			ecsact_async_execute_action_at_delegate? ecsact_async_execute_action_at;
+			ecsact_async_enqueue_execute_options_delegate? ecsact_async_enqueue_execution_options;
 
 		internal delegate void ecsact_async_flush_events_delegate(
 			in ExecutionEventsCollector executionEventsCollector,
@@ -732,6 +733,9 @@ public class EcsactRuntime {
 
 		internal delegate void ecsact_async_disconnect_delegate();
 		internal ecsact_async_disconnect_delegate? ecsact_async_disconnect;
+
+		internal delegate int ecsact_async_create_entity_delegate();
+		internal ecsact_async_create_entity_delegate? ecsact_async_create_entity;
 
 		public delegate void ErrorCallback(Ecsact.AsyncError err, Int32 requestId);
 
@@ -811,7 +815,30 @@ public class EcsactRuntime {
 			ecsact_async_connect(connectionString);
 		}
 
-		public void FlushEvents() {
+		public void Disconnect() {
+			if(ecsact_async_disconnect == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_async_disconnect");
+			}
+			ecsact_async_disconnect();
+		}
+
+		public int CreateEntity() {
+			if(ecsact_async_create_entity == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_async_create_entity");
+			}
+			return ecsact_async_create_entity();
+		}
+
+		public void EnqueueExecutionOptions(CExecutionOptions executionOptions) {
+			if(ecsact_async_enqueue_execution_options == null) {
+				throw new EcsactRuntimeMissingMethod(
+					"ecsact_async_enqueue_execution_options"
+				);
+			}
+			ecsact_async_enqueue_execution_options(executionOptions);
+		}
+
+		public void Flush() {
 			if(ecsact_async_flush_events == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_async_flush_events");
 			}
@@ -905,8 +932,6 @@ public class EcsactRuntime {
 			CONSTRAINT_BROKEN = 2
 		}
 
-		;
-
 		internal delegate ecsact_add_error ecsact_add_component_delegate(
 			Int32  registryId,
 			Int32  entityId,
@@ -988,8 +1013,6 @@ public class EcsactRuntime {
 			CONSTRAINT_BROKEN = 2
 		}
 
-		;
-
 		internal delegate ecsact_exec_systems_error ecsact_execute_systems_delegate(
 			Int32 registryId,
 			Int32 executionCount,
@@ -1006,7 +1029,7 @@ public class EcsactRuntime {
 
 		// NOTE(Kelwan): Currently internal to keep the registry count to 1
 		// Addressed in issue: https://github.com/ecsact-dev/ecsact_unity/issues/28
-		internal Int32 CreateRegistry(string registryName) {
+		public Int32 CreateRegistry(string registryName) {
 			AssertPlayMode();
 			if(ecsact_create_registry == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_create_registry");
@@ -1416,7 +1439,9 @@ public class EcsactRuntime {
 					in _owner._execEvs
 				);
 				if(error == ecsact_exec_systems_error.ENTITY_INVALID) {
-					throw new Exception("System execution happening on invalid entity");
+					throw new Exception(
+						"An Entity assocation was given with an invalid ID"
+					);
 				}
 				if(error == ecsact_exec_systems_error.CONSTRAINT_BROKEN) {
 					throw new Exception("System execution constraint broken");
@@ -2261,20 +2286,20 @@ public class EcsactRuntime {
 			// Load async methods
 			LoadDelegate(
 				lib,
-				"ecsact_async_execute_action",
-				out runtime._async.ecsact_async_execute_action,
-				runtime._async
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_async_execute_action_at",
-				out runtime._async.ecsact_async_execute_action_at,
+				"ecsact_async_enqueue_execution_options",
+				out runtime._async.ecsact_async_enqueue_execution_options,
 				runtime._async
 			);
 			LoadDelegate(
 				lib,
 				"ecsact_async_flush_events",
 				out runtime._async.ecsact_async_flush_events,
+				runtime._async
+			);
+			LoadDelegate(
+				lib,
+				"ecsact_async_create_entity",
+				out runtime._async.ecsact_async_create_entity,
 				runtime._async
 			);
 			LoadDelegate(

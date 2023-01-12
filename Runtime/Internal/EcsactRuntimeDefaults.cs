@@ -95,19 +95,19 @@ internal static class EcsactRuntimeDefaults {
 	private static void SetDefaultsRunner(EcsactRuntimeSettings settings) {
 		var defReg = settings.defaultRegistry;
 
-		if(defReg.runner == EcsactRuntimeDefaultRegistry.RunnerType.FixedUpdate) {
+		if(defReg.tickRate == EcsactRuntimeDefaultRegistry.TickRate.FixedUpdate) {
 			Ecsact.Defaults.Runner = EcsactRunner.CreateInstance<DefaultFixedRunner>(
-				EcsactRuntimeDefaultRegistry.RunnerType.FixedUpdate,
+				EcsactRuntimeDefaultRegistry.TickRate.FixedUpdate,
 				settings,
 				"Default Fixed Runner"
 			);
 		}
-		if(defReg.runner == EcsactRuntimeDefaultRegistry.RunnerType.None) {
+		if(defReg.tickRate == EcsactRuntimeDefaultRegistry.TickRate.None) {
 			Ecsact.Defaults.Runner = null;
 		}
-		if(defReg.runner == EcsactRuntimeDefaultRegistry.RunnerType.Update) {
+		if(defReg.tickRate == EcsactRuntimeDefaultRegistry.TickRate.Update) {
 			Ecsact.Defaults.Runner = EcsactRunner.CreateInstance<DefaultRunner>(
-				EcsactRuntimeDefaultRegistry.RunnerType.Update,
+				EcsactRuntimeDefaultRegistry.TickRate.Update,
 				settings,
 				"Default Runner"
 			);
@@ -126,6 +126,9 @@ internal static class EcsactRuntimeDefaults {
 		defReg.pool = EntityGameObjectPool.CreateInstance(
 			new RegistryEntitySource(defReg.registryId, runtime)
 		);
+
+		// IF async enabled
+		var async_ref = runtime.core.CreateRegistry("async_reg");
 
 		cleanupFns.AddRange(new List<global::System.Action> {
 			runtime.OnInitComponent((entity, compId, compData) => {
