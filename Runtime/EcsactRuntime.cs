@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Collections.Generic;
@@ -28,7 +29,19 @@ public enum AsyncError : Int32 {
 
 #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
 internal static class NativeLibrary {
+	const string TEMP_DIR_README =
+		@"
+Copied escact runtime shared libraries are placed here when loading during
+development. This is a workaround due to instability when calling FreeLibrary.
+This copy only happens during developing in editor. This does NOT happen in a
+standalone build.
+
+SEE: https://github.com/ecsact-dev/ecsact_unity/issues/59
+";
+
 	private static Dictionary<IntPtr, string> libraryPaths = new();
+	private static string                     tempDir =
+		UnityEditor.FileUtil.GetUniqueTempPathInProject();
 
 	[DllImport(
 		"Kernel32.dll",
@@ -44,7 +57,7 @@ internal static class NativeLibrary {
 		EntryPoint = "FreeLibrary",
 		CallingConvention = CallingConvention.Winapi
 	)]
-	private static extern bool FreeLibrary(IntPtr hLibModule);
+	private static extern int FreeLibrary(IntPtr hLibModule);
 
 	[DllImport(
 		"Kernel32.dll",
@@ -56,8 +69,36 @@ internal static class NativeLibrary {
 		MarshalAs(UnmanagedType.LPStr)
 	] string procName);
 
+	private static void EnsureTempDir() {
+		if(!Directory.Exists(tempDir)) {
+			Directory.CreateDirectory(tempDir);
+			File.WriteAllText(tempDir + "/README.md", TEMP_DIR_README);
+		}
+	}
+
+	private static int NowInSeconds() {
+		var now = DateTime.Now.ToUniversalTime();
+		return (int)(now - new DateTime(1970, 1, 1)).TotalSeconds;
+	}
+
 	public static IntPtr Load(string libraryPath) {
-		UnityEngine.Debug.Log($"Loading Ecsact Runtime: {libraryPath}");
+#	if UNITY_EDITOR
+		var originalLibraryPath = libraryPath + "";
+		var timestamp = NowInSeconds();
+		EnsureTempDir();
+		libraryPath = tempDir + $"/{libraryPath}-{timestamp}";
+		Directory.CreateDirectory(Path.GetDirectoryName(libraryPath));
+		File.Copy(originalLibraryPath + ".dll", libraryPath + ".dll");
+		if(File.Exists(originalLibraryPath + ".pdb")) {
+			File.Copy(originalLibraryPath + ".pdb", libraryPath + ".pdb");
+		}
+		if(File.Exists(originalLibraryPath + ".lib")) {
+			File.Copy(originalLibraryPath + ".lib", libraryPath + ".lib");
+		}
+#	endif
+		if(UnityEngine.Application.isPlaying) {
+			UnityEngine.Debug.Log($"Loading Ecsact Runtime: {libraryPath}");
+		}
 		var libIntPtr = LoadLibrary(libraryPath);
 		libraryPaths.Add(libIntPtr, libraryPath);
 		return libIntPtr;
@@ -65,8 +106,23 @@ internal static class NativeLibrary {
 
 	public static void Free(IntPtr handle) {
 		var libraryPath = libraryPaths[handle];
-		UnityEngine.Debug.Log($"Unloading Ecsact Runtime: {libraryPath}");
-		FreeLibrary(handle);
+		if(UnityEngine.Application.isPlaying) {
+			UnityEngine.Debug.Log($"Unloading Ecsact Runtime: {libraryPath}");
+		}
+
+#	if UNITY_EDITOR
+		// NOTE: In unity editor we purposely don't free the library. Unfortunately
+		// calling FreeLibrary causes unity to be unstable. There is a tracking
+		// issue for this here: https://github.com/ecsact-dev/ecsact_unity/issues/59
+#	else
+		var freeResult = FreeLibrary(handle);
+		if(freeResult == 0 /* WIN32 FALSE */) {
+			int error = Marshal.GetLastWin32Error();
+			UnityEngine.Debug.LogError(
+				$"Failed to free Ecsact Runtime (error={error}): {libraryPath}"
+			);
+		}
+#	endif
 		libraryPaths.Remove(handle);
 	}
 
@@ -90,11 +146,21 @@ public class EcsactRuntimeMissingMethod : Exception {
 	}
 }
 
+public class EcsactRuntimeUsedInEditor : Exception {}
+
 public class EcsactRuntime {
 	public static class VisualScriptingEventNames {
 		public const string AsyncError = "EcsactAsyncErrorEvent";
 		public const string AsyncConnectStateChange =
 			"EcsactAsyncConnectStateChange";
+	}
+
+	private static void AssertPlayMode() {
+#if UNITY_EDITOR
+		if(!UnityEngine.Application.isPlaying) {
+			throw new EcsactRuntimeUsedInEditor();
+		}
+#endif
 	}
 
 	public enum EcsactEvent : Int32 {
@@ -590,8 +656,7 @@ public class EcsactRuntime {
 #if UNITY_EDITOR
 		EditorApplication.playModeStateChanged += state => {
 			if(state == PlayModeStateChange.ExitingPlayMode) {
-				EditorApplication.delayCall +=
-					() => { Ecsact.Internal.EcsactRuntimeDefaults.ClearDefaults(); };
+				Ecsact.Internal.EcsactRuntimeDefaults.ClearDefaults();
 			}
 		};
 #endif
@@ -888,10 +953,8 @@ public class EcsactRuntime {
 		internal enum ecsact_update_error {
 			OK = 0,
 			ENTITY_INVALID = 1,
-			CONSTRAINT_BROKEN = 2
+			CONSTRAINT_BROKEN = 2,
 		}
-
-		;
 
 		internal delegate ecsact_update_error ecsact_update_component_delegate(
 			Int32  registryId,
@@ -941,6 +1004,7 @@ public class EcsactRuntime {
 		// NOTE(Kelwan): Currently internal to keep the registry count to 1
 		// Addressed in issue: https://github.com/ecsact-dev/ecsact_unity/issues/28
 		internal Int32 CreateRegistry(string registryName) {
+			AssertPlayMode();
 			if(ecsact_create_registry == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_create_registry");
 			}
@@ -949,6 +1013,7 @@ public class EcsactRuntime {
 		}
 
 		public void DestroyRegistry(Int32 registryId) {
+			AssertPlayMode();
 			if(ecsact_destroy_registry == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_destroy_registry");
 			}
@@ -957,6 +1022,7 @@ public class EcsactRuntime {
 		}
 
 		public void ClearRegistry(Int32 registryId) {
+			AssertPlayMode();
 			if(ecsact_clear_registry == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_clear_registry");
 			}
@@ -965,6 +1031,7 @@ public class EcsactRuntime {
 		}
 
 		public Int32 CreateEntity(Int32 registryId) {
+			AssertPlayMode();
 			if(ecsact_create_entity == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_create_entity");
 			}
@@ -973,6 +1040,7 @@ public class EcsactRuntime {
 		}
 
 		public void EnsureEntity(Int32 registryId, Int32 entityId) {
+			AssertPlayMode();
 			if(ecsact_ensure_entity == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_ensure_entity");
 			}
@@ -981,6 +1049,7 @@ public class EcsactRuntime {
 		}
 
 		public bool EntityExists(Int32 registryId, Int32 entityId) {
+			AssertPlayMode();
 			if(ecsact_entity_exists == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_entity_exists");
 			}
@@ -989,6 +1058,7 @@ public class EcsactRuntime {
 		}
 
 		public void DestroyEntity(Int32 registryId, Int32 entityId) {
+			AssertPlayMode();
 			if(ecsact_destroy_entity == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_destroy_entity");
 			}
@@ -997,6 +1067,7 @@ public class EcsactRuntime {
 		}
 
 		public Int32 CountEntities(Int32 registryId) {
+			AssertPlayMode();
 			if(ecsact_count_entities == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_count_entities");
 			}
@@ -1010,6 +1081,7 @@ public class EcsactRuntime {
 			out       Int32[] outEntities,
 			out Int32 outEntitiesCount
 		) {
+			AssertPlayMode();
 			if(ecsact_get_entities == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_get_entities");
 			}
@@ -1023,6 +1095,7 @@ public class EcsactRuntime {
 		}
 
 		public Int32[] GetEntities(Int32 registryId) {
+			AssertPlayMode();
 			var entitiesCount = CountEntities(registryId);
 			var entities = new Int32[entitiesCount];
 
@@ -1033,6 +1106,7 @@ public class EcsactRuntime {
 
 		public void AddComponent<C>(Int32 registryId, Int32 entityId, C component)
 			where     C : Ecsact.Component {
+      AssertPlayMode();
       if(ecsact_add_component == null) {
         throw new EcsactRuntimeMissingMethod("ecsact_add_component");
       }
@@ -1070,6 +1144,7 @@ public class EcsactRuntime {
 			Int32  componentId,
 			object componentData
 		) {
+			AssertPlayMode();
 			if(ecsact_add_component == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_add_component");
 			}
@@ -1104,6 +1179,7 @@ public class EcsactRuntime {
 			Int32 entityId,
 			Int32 componentId
 		) {
+			AssertPlayMode();
 			if(ecsact_has_component == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_has_component");
 			}
@@ -1113,6 +1189,7 @@ public class EcsactRuntime {
 
 		public bool HasComponent<C>(Int32 registryId, Int32 entityId)
 			where     C : Ecsact.Component {
+      AssertPlayMode();
       if(ecsact_has_component == null) {
         throw new EcsactRuntimeMissingMethod("ecsact_has_component");
       }
@@ -1124,6 +1201,7 @@ public class EcsactRuntime {
 
 		public C GetComponent<C>(Int32 registryId, Int32 entityId)
 			where  C : Ecsact.Component {
+      AssertPlayMode();
       if(ecsact_get_component == null) {
         throw new EcsactRuntimeMissingMethod("ecsact_get_component");
       }
@@ -1149,6 +1227,7 @@ public class EcsactRuntime {
 			Int32 entityId,
 			Int32 componentId
 		) {
+			AssertPlayMode();
 			if(ecsact_get_component == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_get_component");
 			}
@@ -1165,6 +1244,7 @@ public class EcsactRuntime {
 		}
 
 		public Int32 CountComponents(Int32 registryId, Int32 entityId) {
+			AssertPlayMode();
 			if(ecsact_count_components == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_count_components");
 			}
@@ -1176,6 +1256,7 @@ public class EcsactRuntime {
 			Int32 registryId,
 			Int32 entityId
 		) {
+			AssertPlayMode();
 			if(ecsact_get_components == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_get_components");
 			}
@@ -1215,6 +1296,7 @@ public class EcsactRuntime {
 			EachComponentCallback callback,
 			IntPtr                callbackUserData
 		) {
+			AssertPlayMode();
 			if(ecsact_each_component == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_each_component");
 			}
@@ -1228,6 +1310,7 @@ public class EcsactRuntime {
 			C     component
 		)
 			where C : Ecsact.Component {
+			AssertPlayMode();
 			if(ecsact_update_component == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_update_component");
 			}
@@ -1264,6 +1347,7 @@ public class EcsactRuntime {
 
 		public void RemoveComponent<C>(Int32 registryId, Int32 entityId)
 			where     C : Ecsact.Component {
+      AssertPlayMode();
       if(ecsact_remove_component == null) {
         throw new EcsactRuntimeMissingMethod("ecsact_remove_component");
       }
@@ -1286,6 +1370,7 @@ public class EcsactRuntime {
 			Int32 entityId,
 			Int32 componentId
 		) {
+			AssertPlayMode();
 			if(ecsact_remove_component == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_remove_component");
 			}
@@ -1307,6 +1392,7 @@ public class EcsactRuntime {
 			Int32 executionCount,
 			CExecutionOptions[] executionOptionsList
 		) {
+			AssertPlayMode();
 			if(ecsact_execute_systems == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_execute_systems");
 			}
@@ -1509,6 +1595,7 @@ public class EcsactRuntime {
 			Int32               systemId,
 			SystemExecutionImpl executionImpl
 		) {
+			AssertPlayMode();
 			if(ecsact_set_system_execution_impl == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_set_system_execution_impl"
 				);
@@ -1519,9 +1606,22 @@ public class EcsactRuntime {
 			ecsact_set_system_execution_impl(systemId, CExecutionImpl);
 		}
 
+		public void ClearSystemExecutionImpl(Int32 systemId) {
+			AssertPlayMode();
+			if(ecsact_set_system_execution_impl == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_set_system_execution_impl"
+				);
+			}
+
+			_system_impls.Remove(systemId);
+
+			ecsact_set_system_execution_impl(systemId, null!);
+		}
+
 		public void SetSystemExecutionImpl<System>(SystemExecutionImpl executionImpl
 		)
 			where     System : Ecsact.System {
+      AssertPlayMode();
       if(ecsact_set_system_execution_impl == null) {
         throw new EcsactRuntimeMissingMethod("ecsact_set_system_execution_impl"
         );
@@ -1536,6 +1636,7 @@ public class EcsactRuntime {
 		public void SetActionExecutionImpl<Action>(SystemExecutionImpl executionImpl
 		)
 			where     Action : Ecsact.Action {
+      AssertPlayMode();
       if(ecsact_set_system_execution_impl == null) {
         throw new EcsactRuntimeMissingMethod("ecsact_set_system_execution_impl"
         );
@@ -1560,8 +1661,7 @@ public class EcsactRuntime {
 			rt._dynamic!._system_impls[sysExecCtx.ID()](sysExecCtx);
 		}
 
-		internal Dictionary<Int32, SystemExecutionImpl> _system_impls =
-			new Dictionary<Int32, SystemExecutionImpl>();
+		internal Dictionary<Int32, SystemExecutionImpl> _system_impls = new();
 	}
 
 	public class Meta : ModuleBase {
@@ -1702,6 +1802,7 @@ public class EcsactRuntime {
 			IntPtr inBytes,
 			IntPtr outActionData
 		) {
+			AssertPlayMode();
 			if(ecsact_deserialize_action == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_deserialize_action");
 			}
@@ -1714,6 +1815,7 @@ public class EcsactRuntime {
 			IntPtr     inBytes,
 			out object outComponentData
 		) {
+			AssertPlayMode();
 			if(ecsact_deserialize_component == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_deserialize_component");
 			}
@@ -1722,6 +1824,7 @@ public class EcsactRuntime {
 		}
 
 		public void SerializeActionSize(Int32 actionId) {
+			AssertPlayMode();
 			if(ecsact_serialize_action_size == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_serialize_action_size");
 			}
@@ -1734,6 +1837,7 @@ public class EcsactRuntime {
 			IntPtr actionData,
 			IntPtr outBytes
 		) {
+			AssertPlayMode();
 			if(ecsact_serialize_action == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_serialize_action");
 			}
@@ -1742,6 +1846,7 @@ public class EcsactRuntime {
 		}
 
 		public void SerializeComponentSize(Int32 componentId) {
+			AssertPlayMode();
 			if(ecsact_serialize_component_size == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_serialize_component_size");
 			}
@@ -1754,6 +1859,7 @@ public class EcsactRuntime {
 			object inComponentData,
 			IntPtr outBytes
 		) {
+			AssertPlayMode();
 			if(ecsact_serialize_component == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_serialize_component");
 			}
@@ -1820,6 +1926,8 @@ public class EcsactRuntime {
 		public static string[] methods => new string[] {
 			"ecsactsi_wasm_load",
 			"ecsactsi_wasm_load_file",
+			"ecsactsi_wasm_reset",
+			"ecsactsi_wasm_unload",
 			"ecsactsi_wasm_set_trap_handler",
 		};
 
@@ -1842,6 +1950,17 @@ public class EcsactRuntime {
 
 		internal ecsactsi_wasm_load_file_delegate? ecsactsi_wasm_load_file;
 
+		internal delegate void ecsactsi_wasm_unload_delegate(
+			Int32 systemsCount,
+			Int32[] systemIds
+		);
+
+		internal ecsactsi_wasm_unload_delegate? ecsactsi_wasm_unload;
+
+		internal delegate void ecsactsi_wasm_reset_delegate();
+
+		internal ecsactsi_wasm_reset_delegate? ecsactsi_wasm_reset;
+
 		internal delegate void ecsactsi_wasm_trap_handler(Int32 systemId, [
 			MarshalAs(UnmanagedType.LPStr)
 		] string trapMessage);
@@ -1854,6 +1973,7 @@ public class EcsactRuntime {
 			ecsactsi_wasm_set_trap_handler_delegate? ecsactsi_wasm_set_trap_handler;
 
 		public Error Load(byte[] wasmData, Int32 systemId, string exportName) {
+			AssertPlayMode();
 			if(ecsactsi_wasm_load == null) {
 				throw new EcsactRuntimeMissingMethod("ecsactsi_wasm_load");
 			}
@@ -1868,6 +1988,26 @@ public class EcsactRuntime {
 				systemIds,
 				exportNames
 			);
+		}
+
+		void Unload(IEnumerable<Int32> systemIds) {
+			AssertPlayMode();
+			if(ecsactsi_wasm_unload == null) {
+				throw new EcsactRuntimeMissingMethod("ecsactsi_wasm_unload");
+			}
+
+			Int32[] systemIdsArr = systemIds.ToArray();
+
+			ecsactsi_wasm_unload(systemIdsArr.Count(), systemIdsArr);
+		}
+
+		void Reset() {
+			AssertPlayMode();
+			if(ecsactsi_wasm_reset == null) {
+				throw new EcsactRuntimeMissingMethod("ecsactsi_wasm_reset");
+			}
+
+			ecsactsi_wasm_reset();
 		}
 	}
 
@@ -2309,6 +2449,18 @@ public class EcsactRuntime {
 			);
 			LoadDelegate(
 				lib,
+				"ecsactsi_wasm_reset",
+				out runtime._wasm.ecsactsi_wasm_reset,
+				runtime._wasm
+			);
+			LoadDelegate(
+				lib,
+				"ecsactsi_wasm_unload",
+				out runtime._wasm.ecsactsi_wasm_unload,
+				runtime._wasm
+			);
+			LoadDelegate(
+				lib,
 				"ecsactsi_wasm_set_trap_handler",
 				out runtime._wasm.ecsactsi_wasm_set_trap_handler,
 				runtime._wasm
@@ -2323,6 +2475,116 @@ public class EcsactRuntime {
 	}
 
 	public static void Free(EcsactRuntime runtime) {
+		if(runtime._core == null &&
+		runtime._async == null &&
+		runtime._dynamic == null &&
+		runtime._meta == null &&
+		runtime._serialize == null &&
+		runtime._static == null &&
+		runtime._wasm == null) {
+			UnityEngine.Debug.LogError(
+				"Ecsact Runtime attempted to be freed multiple times."
+			);
+			return;
+		}
+
+		if(runtime._async != null) {
+			runtime._async.ecsact_async_execute_action = null;
+			runtime._async.ecsact_async_execute_action_at = null;
+			runtime._async.ecsact_async_flush_events = null;
+			runtime._async.ecsact_async_connect = null;
+			runtime._async.ecsact_async_disconnect = null;
+		}
+
+		if(runtime._core != null) {
+			runtime._core.ecsact_create_registry = null;
+			runtime._core.ecsact_destroy_registry = null;
+			runtime._core.ecsact_clear_registry = null;
+			runtime._core.ecsact_create_entity = null;
+			runtime._core.ecsact_ensure_entity = null;
+			runtime._core.ecsact_entity_exists = null;
+			runtime._core.ecsact_destroy_entity = null;
+			runtime._core.ecsact_count_entities = null;
+			runtime._core.ecsact_get_entities = null;
+			runtime._core.ecsact_add_component = null;
+			runtime._core.ecsact_has_component = null;
+			runtime._core.ecsact_get_component = null;
+			runtime._core.ecsact_each_component = null;
+			runtime._core.ecsact_count_components = null;
+			runtime._core.ecsact_get_components = null;
+			runtime._core.ecsact_update_component = null;
+			runtime._core.ecsact_remove_component = null;
+			runtime._core.ecsact_execute_systems = null;
+		}
+
+		if(runtime._wasm != null) {
+			if(runtime._wasm.ecsactsi_wasm_reset != null) {
+				runtime._wasm.ecsactsi_wasm_reset();
+			} else {
+				UnityEngine.Debug.LogWarning(
+					"ecsactsi_wasm_reset method unavailable. Unity may become unstable after unloading the Ecsact runtime."
+				);
+			}
+
+			runtime._wasm.ecsactsi_wasm_load = null;
+			runtime._wasm.ecsactsi_wasm_load_file = null;
+			runtime._wasm.ecsactsi_wasm_reset = null;
+			runtime._wasm.ecsactsi_wasm_unload = null;
+			runtime._wasm.ecsactsi_wasm_set_trap_handler = null;
+		}
+
+		if(runtime._dynamic != null) {
+			var implSysIds = runtime._dynamic._system_impls.Keys.ToArray();
+
+			foreach(var sysId in implSysIds) {
+				runtime._dynamic.ClearSystemExecutionImpl(sysId);
+			}
+
+			runtime._dynamic.ecsact_system_execution_context_action = null;
+			runtime._dynamic.ecsact_system_execution_context_add = null;
+			runtime._dynamic.ecsact_system_execution_context_remove = null;
+			runtime._dynamic.ecsact_system_execution_context_update = null;
+			runtime._dynamic.ecsact_system_execution_context_get = null;
+			runtime._dynamic.ecsact_system_execution_context_has = null;
+			runtime._dynamic.ecsact_system_execution_context_generate = null;
+			runtime._dynamic.ecsact_system_execution_context_parent = null;
+			runtime._dynamic.ecsact_system_execution_context_same = null;
+			runtime._dynamic.ecsact_system_execution_context_entity = null;
+			runtime._dynamic.ecsact_create_system = null;
+			runtime._dynamic.ecsact_set_system_execution_impl = null;
+			runtime._dynamic.ecsact_create_action = null;
+			runtime._dynamic.ecsact_create_component = null;
+			runtime._dynamic.ecsact_destroy_component = null;
+			runtime._dynamic.ecsact_system_execution_context_id = null;
+			runtime._dynamic.ecsact_system_execution_context_other = null;
+		}
+
+		if(runtime._meta != null) {
+			runtime._meta.ecsact_meta_registry_name = null;
+			runtime._meta.ecsact_meta_component_name = null;
+			runtime._meta.ecsact_meta_action_name = null;
+			runtime._meta.ecsact_meta_system_name = null;
+			runtime._meta.ecsact_meta_system_capabilities_count = null;
+			runtime._meta.ecsact_meta_system_capabilities = null;
+		}
+
+		if(runtime._serialize != null) {
+			runtime._serialize.ecsact_serialize_action_size = null;
+			runtime._serialize.ecsact_serialize_component_size = null;
+			runtime._serialize.ecsact_serialize_action = null;
+			runtime._serialize.ecsact_serialize_component = null;
+			runtime._serialize.ecsact_deserialize_action = null;
+			runtime._serialize.ecsact_deserialize_component = null;
+		}
+
+		if(runtime._static != null) {
+			runtime._static.ecsact_static_components = null;
+			runtime._static.ecsact_static_systems = null;
+			runtime._static.ecsact_static_actions = null;
+			runtime._static.ecsact_static_on_reload = null;
+			runtime._static.ecsact_static_off_reload = null;
+		}
+
 		if(runtime._libs != null) {
 			foreach(var lib in runtime._libs) {
 				NativeLibrary.Free(lib);
@@ -2330,6 +2592,14 @@ public class EcsactRuntime {
 
 			runtime._libs = null;
 		}
+
+		runtime._core = null;
+		runtime._async = null;
+		runtime._dynamic = null;
+		runtime._meta = null;
+		runtime._serialize = null;
+		runtime._static = null;
+		runtime._wasm = null;
 	}
 
 	/// <summary>Init Component Untyped Callback</summary>
@@ -2360,10 +2630,6 @@ public class EcsactRuntime {
 		};
 	}
 
-	~EcsactRuntime() {
-		Free(this);
-	}
-
 	public delegate void InitComponentCallback(
 		Int32  entityId,
 		Int32  componentId,
@@ -2371,6 +2637,7 @@ public class EcsactRuntime {
 	);
 
 	public Action OnInitComponent(InitComponentCallback callback) {
+		AssertPlayMode();
 		_initAnyCompCbs.Add(callback);
 		return () => { _initAnyCompCbs.Remove(callback); };
 	}
@@ -2386,6 +2653,7 @@ public class EcsactRuntime {
 		InitComponentCallback<ComponentT> callback
 	)
 		where ComponentT : Ecsact.Component {
+		AssertPlayMode();
 		var compId = Ecsact.Util.GetComponentID<ComponentT>()!;
 
 		if(!_initCompCbs.TryGetValue(compId, out var callbacks)) {
@@ -2393,8 +2661,10 @@ public class EcsactRuntime {
 			_initCompCbs.Add(compId, callbacks);
 		}
 
-		InitCompUtCb cb =
-			(entityId, comp) => { callback(entityId, (ComponentT)comp); };
+		InitCompUtCb cb = (entityId, comp) => {
+			AssertPlayMode();
+			callback(entityId, (ComponentT)comp);
+		};
 
 		callbacks.Add(cb);
 
@@ -2412,6 +2682,7 @@ public class EcsactRuntime {
 	);
 
 	public Action OnUpdateComponent(UpdateComponentCallback callback) {
+		AssertPlayMode();
 		_updateAnyCompCbs.Add(callback);
 		return () => { _updateAnyCompCbs.Remove(callback); };
 	}
@@ -2425,6 +2696,7 @@ public class EcsactRuntime {
 		UpdateComponentCallback<ComponentT> callback
 	)
 		where ComponentT : Ecsact.Component {
+		AssertPlayMode();
 		var compId = Ecsact.Util.GetComponentID<ComponentT>()!;
 
 		if(!_updateCompCbs.TryGetValue(compId, out var callbacks)) {
@@ -2432,8 +2704,10 @@ public class EcsactRuntime {
 			_updateCompCbs.Add(compId, callbacks);
 		}
 
-		UpCompUtCb cb =
-			(entityId, comp) => { callback(entityId, (ComponentT)comp); };
+		UpCompUtCb cb = (entityId, comp) => {
+			AssertPlayMode();
+			callback(entityId, (ComponentT)comp);
+		};
 
 		callbacks.Add(cb);
 
@@ -2464,6 +2738,7 @@ public class EcsactRuntime {
 		RemoveComponentCallback<ComponentT> callback
 	)
 		where ComponentT : Ecsact.Component {
+		AssertPlayMode();
 		var compId = Ecsact.Util.GetComponentID<ComponentT>()!;
 
 		if(!_removeCompCbs.TryGetValue(compId, out var callbacks)) {
@@ -2471,8 +2746,10 @@ public class EcsactRuntime {
 			_removeCompCbs.Add(compId, callbacks);
 		}
 
-		RmvCompUtCb cb =
-			(entityId, comp) => { callback(entityId, (ComponentT)comp); };
+		RmvCompUtCb cb = (entityId, comp) => {
+			AssertPlayMode();
+			callback(entityId, (ComponentT)comp);
+		};
 
 		callbacks.Add(cb);
 
@@ -2488,6 +2765,7 @@ public class EcsactRuntime {
 		Int32  componentId,
 		object componentData
 	) {
+		AssertPlayMode();
 		if(_initCompCbs.TryGetValue(componentId, out var cbs)) {
 			foreach(var cb in cbs) {
 				cb(entityId, componentData);
@@ -2504,6 +2782,7 @@ public class EcsactRuntime {
 		Int32  componentId,
 		object componentData
 	) {
+		AssertPlayMode();
 		if(_updateCompCbs.TryGetValue(componentId, out var cbs)) {
 			foreach(var cb in cbs) {
 				cb(entityId, componentData);
@@ -2520,6 +2799,7 @@ public class EcsactRuntime {
 		Int32  componentId,
 		object componentData
 	) {
+		AssertPlayMode();
 		if(_removeCompCbs.TryGetValue(componentId, out var cbs)) {
 			foreach(var cb in cbs) {
 				cb(entityId, componentData);
@@ -2539,6 +2819,7 @@ public class EcsactRuntime {
 		IntPtr      componentData,
 		IntPtr      callbackUserData
 	) {
+		AssertPlayMode();
 		UnityEngine.Debug.Assert(ev == EcsactEvent.InitComponent);
 
 		var self = (GCHandle.FromIntPtr(callbackUserData).Target as EcsactRuntime)!;
@@ -2556,6 +2837,7 @@ public class EcsactRuntime {
 		IntPtr      componentData,
 		IntPtr      callbackUserData
 	) {
+		AssertPlayMode();
 		UnityEngine.Debug.Assert(ev == EcsactEvent.UpdateComponent);
 
 		var self = (GCHandle.FromIntPtr(callbackUserData).Target as EcsactRuntime)!;
@@ -2573,6 +2855,7 @@ public class EcsactRuntime {
 		IntPtr      componentData,
 		IntPtr      callbackUserData
 	) {
+		AssertPlayMode();
 		UnityEngine.Debug.Assert(ev == EcsactEvent.RemoveComponent);
 
 		var self = (GCHandle.FromIntPtr(callbackUserData).Target as EcsactRuntime)!;
