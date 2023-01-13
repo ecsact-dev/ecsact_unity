@@ -7,9 +7,6 @@ using UnityEngine;
 
 namespace Ecsact {
 
-#	if UNITY_EDITOR
-
-#	endif
 public static class EcsactWasmRuntimeLoader {
 	public static bool Enabled() {
 		var settings = EcsactRuntimeSettings.Get();
