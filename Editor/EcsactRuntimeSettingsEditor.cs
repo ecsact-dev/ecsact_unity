@@ -45,21 +45,35 @@ public class EcsactRuntimeSettingsEditor : UnityEditor.Editor {
 		if(loadingUnitySyncTypes) yield break;
 
 		var progressId = -1;
+		var cancelled = false;
 		if(settings.enableUnitySync) {
 			progressId = Progress.Start(
 				"Ecsact Unity Sync Lookup",
 				options: Progress.Options.Managed
 			);
+
+			Progress.RegisterCancelCallback(progressId, () => {
+				cancelled = true;
+				Progress.Remove(progressId);
+				progressId = -1;
+				return true;
+			});
 		}
 
 		loadingUnitySyncTypes = true;
 		var delay = 0.001f;
 
 		try {
-			yield return new WaitForSecondsRealtime(delay);
+			if(!cancelled) {
+				yield return new WaitForSecondsRealtime(delay);
+			}
 			var assemblies = global::System.AppDomain.CurrentDomain.GetAssemblies();
-			yield return new WaitForSecondsRealtime(delay);
+			if(!cancelled) {
+				yield return new WaitForSecondsRealtime(delay);
+			}
 			foreach(var assembly in assemblies) {
+				if(cancelled) break;
+
 				currentCheckingAssembly = assembly;
 				if(progressId != -1) {
 					Progress.SetDescription(progressId, assembly.FullName);
@@ -68,6 +82,8 @@ public class EcsactRuntimeSettingsEditor : UnityEditor.Editor {
 				yield return new WaitForSecondsRealtime(delay);
 				int i = 0;
 				foreach(var type in types) {
+					if(cancelled) break;
+
 					if((i % 100) == 0) {
 						yield return new WaitForSecondsRealtime(delay);
 					}
