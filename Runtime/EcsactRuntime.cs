@@ -1972,6 +1972,21 @@ public class EcsactRuntime {
 		internal
 			ecsactsi_wasm_set_trap_handler_delegate? ecsactsi_wasm_set_trap_handler;
 
+		public Error LoadFile(
+			string wasmFilePath,
+			Int32  systemId,
+			string exportName
+		) {
+			if(ecsactsi_wasm_load_file == null) {
+				throw new EcsactRuntimeMissingMethod("ecsactsi_wasm_load_file");
+			}
+
+			var systemIds = new Int32[] { systemId };
+			var exportNames = new string[] { exportName };
+
+			return ecsactsi_wasm_load_file(wasmFilePath, 1, systemIds, exportNames);
+		}
+
 		public Error Load(byte[] wasmData, Int32 systemId, string exportName) {
 			AssertPlayMode();
 			if(ecsactsi_wasm_load == null) {
