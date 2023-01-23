@@ -21,10 +21,6 @@ internal static class EcsactRuntimeDefaults {
 	}
 
 	private static void OnQuit() {
-		Cleanup();
-	}
-
-	private static void Cleanup() {
 		try {
 			foreach(var fn in cleanupFns) {
 				fn();
@@ -66,7 +62,7 @@ internal static class EcsactRuntimeDefaults {
 				settings.defaultRegistry.registryName
 			);
 
-		SetDefaultsRunner(settings);
+		SetRunner(settings);
 
 		var reg = new Ecsact.Registry(
 			Ecsact.Defaults.Runtime,
@@ -88,29 +84,27 @@ internal static class EcsactRuntimeDefaults {
 	}
 
 	internal static void ClearDefaults() {
-		Cleanup();
 		Ecsact.Defaults.ClearDefaults();
 	}
 
-	private static void SetDefaultsRunner(EcsactRuntimeSettings settings) {
+	private static void SetRunner(EcsactRuntimeSettings settings) {
 		var defReg = settings.defaultRegistry;
 
-		if(defReg.tickRate == EcsactRuntimeDefaultRegistry.TickRate.FixedUpdate) {
-			Ecsact.Defaults.Runner = EcsactRunner.CreateInstance<DefaultFixedRunner>(
-				EcsactRuntimeDefaultRegistry.TickRate.FixedUpdate,
-				settings,
-				"Default Fixed Runner"
-			);
+		if(settings.runner == EcsactRuntimeSettings.RunnerType.DefaultRunner) {
+			if(defReg.updateMethod == EcsactRuntimeDefaultRegistry.UpdateMethod.None) {
+				Ecsact.Defaults.Runner = null;
+			} else {
+				Ecsact.Defaults.Runner =
+					EcsactRunner.CreateInstance<DefaultFixedRunner>(
+						settings,
+						"Default Runner"
+					);
+			}
 		}
-		if(defReg.tickRate == EcsactRuntimeDefaultRegistry.TickRate.None) {
-			Ecsact.Defaults.Runner = null;
-		}
-		if(defReg.tickRate == EcsactRuntimeDefaultRegistry.TickRate.Update) {
-			Ecsact.Defaults.Runner = EcsactRunner.CreateInstance<DefaultRunner>(
-				EcsactRuntimeDefaultRegistry.TickRate.Update,
-				settings,
-				"Default Runner"
-			);
+
+		if(settings.runner == EcsactRuntimeSettings.RunnerType.AsyncRunner) {
+			Ecsact.Defaults.Runner =
+				EcsactRunner.CreateInstance<AsyncRunner>(settings, "Async Runner");
 		}
 	}
 

@@ -24,31 +24,39 @@ public class ExecutionOptions {
 	}
 
 	public void Alloc() {
-		var actionsArray = actions.ToArray();
+		if(actions.Count > 0) {
+			var actionsArray = actions.ToArray();
 
-		executionOptions.actions = actionsArray;
-		executionOptions.actionsLength = actionsArray.Length;
+			executionOptions.actions = actionsArray;
+			executionOptions.actionsLength = actionsArray.Length;
+		}
 
-		var addsArray = adds.ToArray();
-		var addsEntitiesArray = adds_entities.ToArray();
+		if(adds.Count > 0) {
+			var addsArray = adds.ToArray();
+			var addsEntitiesArray = adds_entities.ToArray();
 
-		executionOptions.addComponents = addsArray;
-		executionOptions.addComponentsLength = addsArray.Length;
-		executionOptions.addComponentsEntities = addsEntitiesArray;
+			executionOptions.addComponents = addsArray;
+			executionOptions.addComponentsLength = addsArray.Length;
+			executionOptions.addComponentsEntities = addsEntitiesArray;
+		}
 
-		var updatesArray = updates.ToArray();
-		var updatesEntitiesArray = updates_entities.ToArray();
+		if(updates.Count > 0) {
+			var updatesArray = updates.ToArray();
+			var updatesEntitiesArray = updates_entities.ToArray();
 
-		executionOptions.updateComponents = updatesArray;
-		executionOptions.updateComponentsLength = updatesArray.Length;
-		executionOptions.updateComponentsEntities = updatesEntitiesArray;
+			executionOptions.updateComponents = updatesArray;
+			executionOptions.updateComponentsLength = updatesArray.Length;
+			executionOptions.updateComponentsEntities = updatesEntitiesArray;
+		}
 
-		var removesArray = removes.ToArray();
-		var removesEntitiesArray = removes_entities.ToArray();
+		if(removes.Count > 0) {
+			var removesArray = removes.ToArray();
+			var removesEntitiesArray = removes_entities.ToArray();
 
-		executionOptions.removeComponents = removesArray;
-		executionOptions.removeComponentsLength = removesArray.Length;
-		executionOptions.removeComponentsEntities = removesEntitiesArray;
+			executionOptions.removeComponents = removesArray;
+			executionOptions.removeComponentsLength = removesArray.Length;
+			executionOptions.removeComponentsEntities = removesEntitiesArray;
+		}
 	}
 
 	public void PushAction<T>(T action)
@@ -63,7 +71,7 @@ public class ExecutionOptions {
     actions.Add(ecsAction);
 	}
 
-	public void AddComponent<T>(T component, Int32 entityId)
+	public void AddComponent<T>(Int32 entityId, T component)
 		where     T : Ecsact.Component {
     var componentId = Ecsact.Util.GetComponentID<T>();
     var componentPtr = Marshal.AllocHGlobal(Marshal.SizeOf(component));
@@ -77,7 +85,7 @@ public class ExecutionOptions {
     adds_entities.Add(entityId);
 	}
 
-	public void UpdateComponent<T>(T component, Int32 entityId)
+	public void UpdateComponent<T>(Int32 entityId, T component)
 		where     T : Ecsact.Component {
     var componentId = Ecsact.Util.GetComponentID<T>();
     var componentPtr = Marshal.AllocHGlobal(Marshal.SizeOf(component));
@@ -91,7 +99,7 @@ public class ExecutionOptions {
     updates_entities.Add(entityId);
 	}
 
-	public void RemoveComponent(Int32 componentId, Int32 entityId) {
+	public void RemoveComponent(Int32 entityId, Int32 componentId) {
 		var ecsComponent =
 			new EcsactRuntime.EcsactComponentId { componentId = componentId };
 		removes.Add(ecsComponent);

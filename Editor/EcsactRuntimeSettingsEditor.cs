@@ -217,6 +217,21 @@ public class EcsactRuntimeSettingsEditor : UnityEditor.Editor {
 
 		DrawDefaultInspector();
 
+		if(settings.runner == EcsactRuntimeSettings.RunnerType.DefaultRunner) {
+			settings.defaultRegistry.registryName =
+				EditorGUILayout.TextField("Registry Name", "Default Registry");
+			settings.defaultRegistry.updateMethod =
+				(EcsactRuntimeDefaultRegistry.UpdateMethod)EditorGUILayout.EnumPopup(
+					"Update Method",
+					settings.defaultRegistry.updateMethod
+				);
+		}
+
+		if(settings.runner == EcsactRuntimeSettings.RunnerType.AsyncRunner) {
+			settings.tickRate =
+				EditorGUILayout.IntField("Tick Rate", settings.tickRate);
+		}
+
 		var oldEnableUnitySync = settings.enableUnitySync;
 		settings.enableUnitySync =
 			EditorGUILayout.Toggle("Enable Unity Sync", settings.enableUnitySync);

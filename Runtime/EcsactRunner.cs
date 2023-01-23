@@ -23,15 +23,17 @@ public class EcsactRunner : MonoBehaviour {
 	public Ecsact.ExecutionOptions executionOptions = new();
 
 	internal static EcsactRunner CreateInstance<ComponentT>(
-		EcsactRuntimeDefaultRegistry.TickRate tickRate,
-		EcsactRuntimeSettings                 settings,
-		string                                name
+		EcsactRuntimeSettings settings,
+		string                name
 	)
 		where ComponentT : EcsactRunner {
 		var gameObjectName = name;
 
 		var gameObject = new GameObject(gameObjectName);
 		var runner = gameObject.AddComponent(typeof(ComponentT)) as EcsactRunner;
+
+		//
+
 		if(runner is not null) {
 			runner.executionOptions = new Ecsact.ExecutionOptions();
 			DontDestroyOnLoad(gameObject);
@@ -61,12 +63,6 @@ public class EcsactRunner : MonoBehaviour {
 		}
 
 		Ecsact.Defaults.Runtime.wasm.PrintAndConsumeLogs();
-	}
-
-	protected void Flush() {
-	}
-
-	protected void EnqueueExecutionOptions() {
 	}
 }
 

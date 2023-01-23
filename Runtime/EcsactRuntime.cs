@@ -17,12 +17,16 @@ class CurrentSystemExecutionState {
 namespace Ecsact {
 
 public enum AsyncError : Int32 {
-	ConnectionClosed,
-	ConnectFail,
-	SocketFail,
-	StateFail,
-	StartFail,
+	PermissionDenied,
 	InvalidConnectionString,
+	ConnectionClosed,
+	ExecutionMergeFailure,
+}
+
+public enum ecsact_exec_systems_error {
+	OK = 0,
+	ENTITY_INVALID = 1,
+	CONSTRAINT_BROKEN = 2
 }
 
 } // namespace Ecsact
@@ -637,31 +641,29 @@ public class EcsactRuntime {
 
 	public delegate void AsyncErrorCallback(
 		Ecsact.AsyncError err,
+		Int32             requestIdsLength,
 		Int32             requestId,
 		IntPtr            callbackUserData
 	);
 
-	public delegate void AsyncConnectCallback(
-		[MarshalAs(UnmanagedType.LPStr)] string connectAddress,
-		Int32                                   connectPort,
-		IntPtr                                  callbackUserData
-	);
-
-	public delegate void AsyncActionCommittedCallback(
-		Int32  actionId,
-		object actionData,
-		Int32  committedTick,
+	public delegate void AsyncEntityCallback(
+		Int32  entityId,
 		Int32  requestId,
 		IntPtr callbackUserData
+	);
+
+	public delegate void AsyncExecSystemErrorCallback(
+		Ecsact.ecsact_exec_systems_error systemError,
+		IntPtr                           callbackUserData
 	);
 
 	public struct AsyncEventsCollector {
 		public AsyncErrorCallback           errorCallback;
 		public IntPtr                       errorCallbackUserData;
-		public AsyncConnectCallback         connectCallback;
-		public IntPtr                       connectCallbackUserData;
-		public AsyncActionCommittedCallback actionCommittedCallback;
-		public IntPtr                       actionCommittedCallbackUserData;
+		public AsyncEntityCallback          entityCallback;
+		public IntPtr                       entityCallbackUserData;
+		public AsyncExecSystemErrorCallback asyncExecErrorCallback;
+		public IntPtr                       asyncExecErrorCallbackUserData;
 	}
 
 	static EcsactRuntime() {
@@ -737,6 +739,10 @@ public class EcsactRuntime {
 		internal delegate int ecsact_async_create_entity_delegate();
 		internal ecsact_async_create_entity_delegate? ecsact_async_create_entity;
 
+		internal delegate int ecsact_async_get_current_tick_delegate();
+		internal
+			ecsact_async_get_current_tick_delegate? ecsact_async_get_current_tick;
+
 		public delegate void ErrorCallback(Ecsact.AsyncError err, Int32 requestId);
 
 		public delegate void ConnectCallback(
@@ -744,37 +750,69 @@ public class EcsactRuntime {
 			Int32  connectPort
 		);
 
-		private AsyncEventsCollector  _asyncEvs;
-		private List<ErrorCallback>   _errCallbacks = new();
-		private List<ConnectCallback> _connectCallbacks = new();
-		private EcsactRuntime         _owner;
+		private event global::System.Action? onReady;
+
+		public void Ready(global::System.Action callback) {
+			if(!UnityEngine.Application.isPlaying) {
+				throw new Exception("AsyncReady may only be used during play mode");
+			}
+			if(_owner != null) {
+				callback();
+			} else {
+				onReady += callback;
+			}
+		}
+
+		internal delegate void EntityCallback(Int32 entityId);
+
+		private AsyncEventsCollector _asyncEvs;
+		private List<ErrorCallback>  _errCallbacks = new();
+		private EcsactRuntime        _owner;
+
+		private Dictionary<Int32, EntityCallback> entity_callbacks = new();
 
 		internal Async(EcsactRuntime owner) {
 			_owner = owner;
+
 			_asyncEvs = new AsyncEventsCollector {
-				actionCommittedCallback = OnActionCommittedHandler,
-				actionCommittedCallbackUserData = IntPtr.Zero,
-				errorCallback = OnErrorHandler,
+				errorCallback = OnAsyncErrorHandler,
 				errorCallbackUserData = IntPtr.Zero,
-				connectCallback = OnConnectHandler,
-				connectCallbackUserData = IntPtr.Zero,
+				entityCallback = OnEntityCreatedHandler,
+				entityCallbackUserData = IntPtr.Zero,
+				asyncExecErrorCallback = OnAsyncExecutionErrorHandler,
+				asyncExecErrorCallbackUserData = IntPtr.Zero,
 			};
 		}
 
-		[AOT.MonoPInvokeCallback(typeof(AsyncActionCommittedCallback))]
-		private static void OnActionCommittedHandler(
-			Int32  actionId,
-			object actionData,
-			Int32  committedTick,
+		[AOT.MonoPInvokeCallback(typeof(AsyncEntityCallback))]
+		private static void OnEntityCreatedHandler(
+			Int32  entityId,
 			Int32  requestId,
 			IntPtr callbackUserData
+		) {
+			var self = (GCHandle.FromIntPtr(callbackUserData).Target as Async)!;
+
+			EntityCallback ? callback;
+			self.entity_callbacks.TryGetValue(requestId, out callback);
+
+			if(callback != null) {
+				callback(entityId);
+				self.entity_callbacks.Remove(requestId);
+			}
+		}
+
+		[AOT.MonoPInvokeCallback(typeof(AsyncExecSystemErrorCallback))]
+		private static void OnAsyncExecutionErrorHandler(
+			Ecsact.ecsact_exec_systems_error systemError,
+			IntPtr                           callbackUserData
 		) {
 			var self = (GCHandle.FromIntPtr(callbackUserData).Target as Async)!;
 		}
 
 		[AOT.MonoPInvokeCallback(typeof(AsyncErrorCallback))]
-		private static void OnErrorHandler(
+		private static void OnAsyncErrorHandler(
 			Ecsact.AsyncError err,
+			Int32             requestIdsLength,
 			Int32             requestId,
 			IntPtr            callbackUserData
 		) {
@@ -784,30 +822,13 @@ public class EcsactRuntime {
 			}
 		}
 
-		[AOT.MonoPInvokeCallback(typeof(AsyncConnectCallback))]
-		private static void OnConnectHandler(
-			[MarshalAs(UnmanagedType.LPStr)] string connectAddress,
-			Int32                                   connectPort,
-			IntPtr                                  callbackUserData
-		) {
-			var self = (GCHandle.FromIntPtr(callbackUserData).Target as Async)!;
-			foreach(var cb in self._connectCallbacks) {
-				cb(connectAddress, connectPort);
-			}
-		}
-
 		public Action OnError(ErrorCallback callback) {
 			_errCallbacks.Add(callback);
 
 			return () => { _errCallbacks.Remove(callback); };
 		}
 
-		public Action OnConnect(ConnectCallback callback) {
-			_connectCallbacks.Add(callback);
-
-			return () => { _connectCallbacks.Remove(callback); };
-		}
-
+		// NOTE: Connect using god?tick_rate=whatever#youchoose
 		public void Connect(string connectionString) {
 			if(ecsact_async_connect == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_async_connect");
@@ -822,11 +843,21 @@ public class EcsactRuntime {
 			ecsact_async_disconnect();
 		}
 
-		public int CreateEntity() {
+		public Int32 CreateEntity() {
 			if(ecsact_async_create_entity == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_async_create_entity");
 			}
 			return ecsact_async_create_entity();
+			// The player passes in a function callback
+			// Store the callback in a dictionary associated with the request id
+			// When the request ID associated with the request returns, invoke it!
+		}
+
+		public Int32 GetCurrentTick() {
+			if(ecsact_async_get_current_tick == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_async_get_current_tick");
+			}
+			return ecsact_async_get_current_tick();
 		}
 
 		public void EnqueueExecutionOptions(CExecutionOptions executionOptions) {
@@ -851,9 +882,9 @@ public class EcsactRuntime {
 				_owner._execEvs.initCallbackUserData = ownerIntPtr;
 				_owner._execEvs.updateCallbackUserData = ownerIntPtr;
 				_owner._execEvs.removeCallbackUserData = ownerIntPtr;
+				_asyncEvs.asyncExecErrorCallbackUserData = selfIntPtr;
 				_asyncEvs.errorCallbackUserData = selfIntPtr;
-				_asyncEvs.connectCallbackUserData = selfIntPtr;
-				_asyncEvs.actionCommittedCallbackUserData = selfIntPtr;
+				_asyncEvs.entityCallbackUserData = selfIntPtr;
 				ecsact_async_flush_events(in _owner._execEvs, in _asyncEvs);
 			} finally {
 				selfPinned.Free();
@@ -1007,18 +1038,13 @@ public class EcsactRuntime {
 			IntPtr      callbackUserData
 		);
 
-		internal enum ecsact_exec_systems_error {
-			OK = 0,
-			ENTITY_INVALID = 1,
-			CONSTRAINT_BROKEN = 2
-		}
-
-		internal delegate ecsact_exec_systems_error ecsact_execute_systems_delegate(
-			Int32 registryId,
-			Int32 executionCount,
-			CExecutionOptions[] executionOptionsList,
-			in ExecutionEventsCollector eventsCollector
-		);
+		internal delegate
+			Ecsact.ecsact_exec_systems_error ecsact_execute_systems_delegate(
+				Int32 registryId,
+				Int32 executionCount,
+				CExecutionOptions[] executionOptionsList,
+				in ExecutionEventsCollector eventsCollector
+			);
 		internal ecsact_execute_systems_delegate? ecsact_execute_systems;
 
 		private EcsactRuntime _owner;
@@ -1438,12 +1464,12 @@ public class EcsactRuntime {
 					executionOptionsList,
 					in _owner._execEvs
 				);
-				if(error == ecsact_exec_systems_error.ENTITY_INVALID) {
+				if(error == Ecsact.ecsact_exec_systems_error.ENTITY_INVALID) {
 					throw new Exception(
-						"An Entity assocation was given with an invalid ID"
+						"An Entity assocation data field was given an invalid ID"
 					);
 				}
-				if(error == ecsact_exec_systems_error.CONSTRAINT_BROKEN) {
+				if(error == Ecsact.ecsact_exec_systems_error.CONSTRAINT_BROKEN) {
 					throw new Exception("System execution constraint broken");
 				}
 			} finally {
@@ -2314,6 +2340,12 @@ public class EcsactRuntime {
 				out runtime._async.ecsact_async_disconnect,
 				runtime._async
 			);
+			LoadDelegate(
+				lib,
+				"ecsact_async_get_current_tick",
+				out runtime._async.ecsact_async_flush_events,
+				runtime._async
+			);
 
 			// Load core methods
 			LoadDelegate(
@@ -2722,8 +2754,8 @@ public class EcsactRuntime {
 		}
 
 		if(runtime._async != null) {
-			runtime._async.ecsact_async_execute_action = null;
-			runtime._async.ecsact_async_execute_action_at = null;
+			runtime._async.ecsact_async_enqueue_execution_options = null;
+			runtime._async.ecsact_async_create_entity = null;
 			runtime._async.ecsact_async_flush_events = null;
 			runtime._async.ecsact_async_connect = null;
 			runtime._async.ecsact_async_disconnect = null;
