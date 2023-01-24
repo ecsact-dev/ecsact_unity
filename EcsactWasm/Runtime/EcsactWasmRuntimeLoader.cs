@@ -105,7 +105,7 @@ public static class EcsactWasmRuntimeLoader {
 					entry.systemId,
 					entry.wasmExportName
 				);
-				PrintLoadError(loadError, entry.wasmExportName);
+				PrintLoadError(loadError, entry.wasmExportName, entry.wasmAsset);
 			} else {
 				Debug.Log(
 					$"Skipping: {Path.GetFullPath(assetPath)} != {filePath}",
@@ -138,19 +138,24 @@ public static class EcsactWasmRuntimeLoader {
 				entry.wasmExportName
 			);
 
-			PrintLoadError(loadError, entry.wasmExportName);
+			PrintLoadError(loadError, entry.wasmExportName, entry.wasmAsset);
 		}
 	}
 
 	private static void PrintLoadError(
 		EcsactRuntime.Wasm.Error err,
-		string                   exportName
+		string                   exportName,
+		UnityEngine.Object       context = null
 	) {
-		if(err != EcsactRuntime.Wasm.Error.Ok) {
-			UnityEngine.Debug.LogError(
-				$"Failed to load ecsact Wasm system impl. " +
-				$"ErrorCode={err} ExportName={exportName}"
-			);
+		if(err.code != EcsactRuntime.Wasm.ErrorCode.Ok) {
+			var errMessage = $"Failed to load ecsact Wasm system impl. " +
+				$"ErrorCode={err.code} ExportName={exportName}";
+
+			if(err.message.Length > 0) {
+				errMessage += $": {err.message}";
+			}
+
+			UnityEngine.Debug.LogError(errMessage, context);
 		}
 	}
 }

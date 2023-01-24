@@ -1912,7 +1912,7 @@ public class EcsactRuntime {
 	//              maybe in another package
 	// ecsactsi_* fns
 	public class Wasm : ModuleBase {
-		public enum Error {
+		public enum ErrorCode {
 			Ok,
 			OpenFail,
 			ReadFail,
@@ -1923,15 +1923,22 @@ public class EcsactRuntime {
 			GuestImportUnknown,
 		}
 
+		public struct Error {
+			public ErrorCode code;
+			public string    message;
+		}
+
 		public static string[] methods => new string[] {
 			"ecsactsi_wasm_load",
 			"ecsactsi_wasm_load_file",
 			"ecsactsi_wasm_reset",
 			"ecsactsi_wasm_unload",
 			"ecsactsi_wasm_set_trap_handler",
+			"ecsactsi_wasm_last_error_message",
+			"ecsactsi_wasm_last_error_message_length",
 		};
 
-		internal delegate Error ecsactsi_wasm_load_delegate(
+		internal delegate ErrorCode ecsactsi_wasm_load_delegate(
 			sbyte[] wasmData,
 			Int32 wasmDataSize,
 			Int32 systemsCount,
@@ -1941,7 +1948,7 @@ public class EcsactRuntime {
 
 		internal ecsactsi_wasm_load_delegate? ecsactsi_wasm_load;
 
-		internal delegate Error ecsactsi_wasm_load_file_delegate(
+		internal delegate ErrorCode ecsactsi_wasm_load_file_delegate(
 			[MarshalAs(UnmanagedType.LPStr)] string wasmFilePath,
 			Int32                                   systemsCount,
 			Int32[] systmIds,
@@ -1972,6 +1979,40 @@ public class EcsactRuntime {
 		internal
 			ecsactsi_wasm_set_trap_handler_delegate? ecsactsi_wasm_set_trap_handler;
 
+		internal delegate Int32 ecsactsi_wasm_last_error_message_length_delegate();
+		internal
+			ecsactsi_wasm_last_error_message_length_delegate? ecsactsi_wasm_last_error_message_length;
+
+		internal delegate void ecsactsi_wasm_last_error_message_delegate(
+			IntPtr outMessage,
+			Int32  outMessageMaxLength
+		);
+		internal
+			ecsactsi_wasm_last_error_message_delegate? ecsactsi_wasm_last_error_message;
+
+		private string LastErrorMessage() {
+			if(ecsactsi_wasm_last_error_message == null || ecsactsi_wasm_last_error_message_length == null) {
+				return "";
+			}
+
+			var errMessageLength = ecsactsi_wasm_last_error_message_length();
+			if(errMessageLength == 0) {
+				return "";
+			}
+
+			var errMessage = new string(' ', errMessageLength);
+			errMessage += '\0';
+
+			var errMessagePtr = Marshal.StringToHGlobalAnsi(errMessage);
+			try {
+				ecsactsi_wasm_last_error_message(errMessagePtr, errMessageLength);
+				errMessage = Marshal.PtrToStringAnsi(errMessagePtr, errMessageLength);
+			} finally {
+				Marshal.FreeHGlobal(errMessagePtr);
+			}
+			return errMessage;
+		}
+
 		public Error LoadFile(
 			string wasmFilePath,
 			Int32  systemId,
@@ -1984,7 +2025,13 @@ public class EcsactRuntime {
 			var systemIds = new Int32[] { systemId };
 			var exportNames = new string[] { exportName };
 
-			return ecsactsi_wasm_load_file(wasmFilePath, 1, systemIds, exportNames);
+			var errCode =
+				ecsactsi_wasm_load_file(wasmFilePath, 1, systemIds, exportNames);
+
+			return new Error {
+				code = errCode,
+				message = LastErrorMessage(),
+			};
 		}
 
 		public Error Load(byte[] wasmData, Int32 systemId, string exportName) {
@@ -1996,13 +2043,18 @@ public class EcsactRuntime {
 			var systemIds = new Int32[] { systemId };
 			var exportNames = new string[] { exportName };
 
-			return ecsactsi_wasm_load(
+			var errCode = ecsactsi_wasm_load(
 				(sbyte[])(Array)wasmData,
 				wasmData.Length,
 				1,
 				systemIds,
 				exportNames
 			);
+
+			return new Error {
+				code = errCode,
+				message = LastErrorMessage(),
+			};
 		}
 
 		void Unload(IEnumerable<Int32> systemIds) {
@@ -2478,6 +2530,18 @@ public class EcsactRuntime {
 				lib,
 				"ecsactsi_wasm_set_trap_handler",
 				out runtime._wasm.ecsactsi_wasm_set_trap_handler,
+				runtime._wasm
+			);
+			LoadDelegate(
+				lib,
+				"ecsactsi_wasm_last_error_message",
+				out runtime._wasm.ecsactsi_wasm_last_error_message,
+				runtime._wasm
+			);
+			LoadDelegate(
+				lib,
+				"ecsactsi_wasm_last_error_message_length",
+				out runtime._wasm.ecsactsi_wasm_last_error_message_length,
 				runtime._wasm
 			);
 		}
