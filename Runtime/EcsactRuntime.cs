@@ -1936,6 +1936,8 @@ public class EcsactRuntime {
 			"ecsactsi_wasm_set_trap_handler",
 			"ecsactsi_wasm_last_error_message",
 			"ecsactsi_wasm_last_error_message_length",
+			"ecsactsi_wasm_consume_logs",
+			"ecsactsi_wasm_allow_file_read_access",
 		};
 
 		internal delegate ErrorCode ecsactsi_wasm_load_delegate(
@@ -1989,6 +1991,29 @@ public class EcsactRuntime {
 		);
 		internal
 			ecsactsi_wasm_last_error_message_delegate? ecsactsi_wasm_last_error_message;
+
+		internal delegate void ecsactsi_wasm_consume_logs_delegate(
+			LogConsumer consumer,
+			IntPtr      userData
+		);
+		internal ecsactsi_wasm_consume_logs_delegate? ecsactsi_wasm_consume_logs;
+
+		internal delegate void ecsactsi_wasm_allow_file_read_access_delegate();
+		internal
+			ecsactsi_wasm_allow_file_read_access_delegate? ecsactsi_wasm_allow_file_read_access;
+
+		internal enum LogLevel : Int32 {
+			Info = 0,
+			Warning = 1,
+			Error = 2,
+		}
+
+		internal delegate void LogConsumer(
+			LogLevel logLevel,
+			IntPtr   message,
+			Int32    messageLength,
+			IntPtr   userData
+		);
 
 		private string LastErrorMessage() {
 			if(ecsactsi_wasm_last_error_message == null || ecsactsi_wasm_last_error_message_length == null) {
@@ -2075,6 +2100,46 @@ public class EcsactRuntime {
 			}
 
 			ecsactsi_wasm_reset();
+		}
+
+		/// <summary>
+		/// Convenience function to pipe Ecsact Wasm logs to the Unity logger
+		/// </summary>
+		void PrintAndConsumeLogs() {
+			if(ecsactsi_wasm_consume_logs == null) {
+				return;
+			}
+
+			ecsactsi_wasm_consume_logs(EcsactWasmUnityLoggerConsumer, IntPtr.Zero);
+		}
+
+		[AOT.MonoPInvokeCallback(typeof(LogConsumer))]
+		internal static void EcsactWasmUnityLoggerConsumer(
+			LogLevel logLevel,
+			IntPtr   message,
+			Int32    messageLength,
+			IntPtr   userData
+		) {
+			var messageStr = Marshal.PtrToStringAnsi(message, messageLength);
+			var unityLogType = UnityEngine.LogType.Log;
+			switch(logLevel) {
+				case LogLevel.Info:
+					unityLogType = UnityEngine.LogType.Log;
+					break;
+				case LogLevel.Warning:
+					unityLogType = UnityEngine.LogType.Warning;
+					break;
+				case LogLevel.Error:
+					unityLogType = UnityEngine.LogType.Error;
+					break;
+			}
+
+			UnityEngine.Debug.LogFormat(
+				unityLogType,
+				UnityEngine.LogOption.NoStacktrace,
+				null,
+				messageStr
+			);
 		}
 	}
 
@@ -2544,6 +2609,24 @@ public class EcsactRuntime {
 				out runtime._wasm.ecsactsi_wasm_last_error_message_length,
 				runtime._wasm
 			);
+			LoadDelegate(
+				lib,
+				"ecsactsi_wasm_consume_logs",
+				out runtime._wasm.ecsactsi_wasm_consume_logs,
+				runtime._wasm
+			);
+			LoadDelegate(
+				lib,
+				"ecsactsi_wasm_allow_file_read_access",
+				out runtime._wasm.ecsactsi_wasm_allow_file_read_access,
+				runtime._wasm
+			);
+			LoadDelegate(
+				lib,
+				"ecsactsi_wasm_allow_file_read_access",
+				out runtime._wasm.ecsactsi_wasm_allow_file_read_access,
+				runtime._wasm
+			);
 		}
 
 		if(runtime._wasm.ecsactsi_wasm_set_trap_handler != null) {
@@ -2610,6 +2693,10 @@ public class EcsactRuntime {
 			runtime._wasm.ecsactsi_wasm_reset = null;
 			runtime._wasm.ecsactsi_wasm_unload = null;
 			runtime._wasm.ecsactsi_wasm_set_trap_handler = null;
+			runtime._wasm.ecsactsi_wasm_last_error_message_length = null;
+			runtime._wasm.ecsactsi_wasm_last_error_message = null;
+			runtime._wasm.ecsactsi_wasm_consume_logs = null;
+			runtime._wasm.ecsactsi_wasm_allow_file_read_access = null;
 		}
 
 		if(runtime._dynamic != null) {
