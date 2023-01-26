@@ -1915,7 +1915,7 @@ public class EcsactRuntime {
 	//              maybe in another package
 	// ecsactsi_* fns
 	public class Wasm : ModuleBase {
-		public enum Error {
+		public enum ErrorCode {
 			Ok,
 			OpenFail,
 			ReadFail,
@@ -1926,15 +1926,24 @@ public class EcsactRuntime {
 			GuestImportUnknown,
 		}
 
+		public struct Error {
+			public ErrorCode code;
+			public string    message;
+		}
+
 		public static string[] methods => new string[] {
 			"ecsactsi_wasm_load",
 			"ecsactsi_wasm_load_file",
 			"ecsactsi_wasm_reset",
 			"ecsactsi_wasm_unload",
 			"ecsactsi_wasm_set_trap_handler",
+			"ecsactsi_wasm_last_error_message",
+			"ecsactsi_wasm_last_error_message_length",
+			"ecsactsi_wasm_consume_logs",
+			"ecsactsi_wasm_allow_file_read_access",
 		};
 
-		internal delegate Error ecsactsi_wasm_load_delegate(
+		internal delegate ErrorCode ecsactsi_wasm_load_delegate(
 			sbyte[] wasmData,
 			Int32 wasmDataSize,
 			Int32 systemsCount,
@@ -1944,7 +1953,7 @@ public class EcsactRuntime {
 
 		internal ecsactsi_wasm_load_delegate? ecsactsi_wasm_load;
 
-		internal delegate Error ecsactsi_wasm_load_file_delegate(
+		internal delegate ErrorCode ecsactsi_wasm_load_file_delegate(
 			[MarshalAs(UnmanagedType.LPStr)] string wasmFilePath,
 			Int32                                   systemsCount,
 			Int32[] systmIds,
@@ -1975,6 +1984,63 @@ public class EcsactRuntime {
 		internal
 			ecsactsi_wasm_set_trap_handler_delegate? ecsactsi_wasm_set_trap_handler;
 
+		internal delegate Int32 ecsactsi_wasm_last_error_message_length_delegate();
+		internal
+			ecsactsi_wasm_last_error_message_length_delegate? ecsactsi_wasm_last_error_message_length;
+
+		internal delegate void ecsactsi_wasm_last_error_message_delegate(
+			IntPtr outMessage,
+			Int32  outMessageMaxLength
+		);
+		internal
+			ecsactsi_wasm_last_error_message_delegate? ecsactsi_wasm_last_error_message;
+
+		internal delegate void ecsactsi_wasm_consume_logs_delegate(
+			LogConsumer consumer,
+			IntPtr      userData
+		);
+		internal ecsactsi_wasm_consume_logs_delegate? ecsactsi_wasm_consume_logs;
+
+		internal delegate void ecsactsi_wasm_allow_file_read_access_delegate();
+		internal
+			ecsactsi_wasm_allow_file_read_access_delegate? ecsactsi_wasm_allow_file_read_access;
+
+		internal enum LogLevel : Int32 {
+			Info = 0,
+			Warning = 1,
+			Error = 2,
+		}
+
+		internal delegate void LogConsumer(
+			LogLevel logLevel,
+			IntPtr   message,
+			Int32    messageLength,
+			IntPtr   userData
+		);
+
+		private string LastErrorMessage() {
+			if(ecsactsi_wasm_last_error_message == null || ecsactsi_wasm_last_error_message_length == null) {
+				return "";
+			}
+
+			var errMessageLength = ecsactsi_wasm_last_error_message_length();
+			if(errMessageLength == 0) {
+				return "";
+			}
+
+			var errMessage = new string(' ', errMessageLength);
+			errMessage += '\0';
+
+			var errMessagePtr = Marshal.StringToHGlobalAnsi(errMessage);
+			try {
+				ecsactsi_wasm_last_error_message(errMessagePtr, errMessageLength);
+				errMessage = Marshal.PtrToStringAnsi(errMessagePtr, errMessageLength);
+			} finally {
+				Marshal.FreeHGlobal(errMessagePtr);
+			}
+			return errMessage;
+		}
+
 		public Error LoadFile(
 			string wasmFilePath,
 			Int32  systemId,
@@ -1987,7 +2053,67 @@ public class EcsactRuntime {
 			var systemIds = new Int32[] { systemId };
 			var exportNames = new string[] { exportName };
 
-			return ecsactsi_wasm_load_file(wasmFilePath, 1, systemIds, exportNames);
+			var errCode =
+				ecsactsi_wasm_load_file(wasmFilePath, 1, systemIds, exportNames);
+
+			return new Error {
+				code = errCode,
+				message = LastErrorMessage(),
+			};
+		}
+
+		public Error LoadFile(
+			string wasmFilePath,
+			Int32[] systemIds,
+			string[] exportNames
+		) {
+			if(ecsactsi_wasm_load_file == null) {
+				throw new EcsactRuntimeMissingMethod("ecsactsi_wasm_load_file");
+			}
+
+			if(systemIds.Length != exportNames.Length) {
+				throw new Exception("System IDs and exportNames length do not match");
+			}
+
+			var errCode = ecsactsi_wasm_load_file(
+				wasmFilePath,
+				systemIds.Length,
+				systemIds,
+				exportNames
+			);
+
+			return new Error {
+				code = errCode,
+				message = LastErrorMessage(),
+			};
+		}
+
+		public Error Load(
+			byte[] wasmData,
+			Int32[] systemIds,
+			string[] exportNames
+		) {
+			AssertPlayMode();
+			if(ecsactsi_wasm_load == null) {
+				throw new EcsactRuntimeMissingMethod("ecsactsi_wasm_load");
+			}
+
+			if(systemIds.Length != exportNames.Length) {
+				throw new Exception("System IDs and exportNames length do not match");
+			}
+
+			var errCode = ecsactsi_wasm_load(
+				(sbyte[])(Array)wasmData,
+				wasmData.Length,
+				systemIds.Length,
+				systemIds,
+				exportNames
+			);
+
+			return new Error {
+				code = errCode,
+				message = LastErrorMessage(),
+			};
 		}
 
 		public Error Load(byte[] wasmData, Int32 systemId, string exportName) {
@@ -1999,13 +2125,7 @@ public class EcsactRuntime {
 			var systemIds = new Int32[] { systemId };
 			var exportNames = new string[] { exportName };
 
-			return ecsactsi_wasm_load(
-				(sbyte[])(Array)wasmData,
-				wasmData.Length,
-				1,
-				systemIds,
-				exportNames
-			);
+			return Load(wasmData, systemIds, exportNames);
 		}
 
 		void Unload(IEnumerable<Int32> systemIds) {
@@ -2026,6 +2146,46 @@ public class EcsactRuntime {
 			}
 
 			ecsactsi_wasm_reset();
+		}
+
+		/// <summary>
+		/// Convenience function to pipe Ecsact Wasm logs to the Unity logger
+		/// </summary>
+		public void PrintAndConsumeLogs() {
+			if(ecsactsi_wasm_consume_logs == null) {
+				return;
+			}
+
+			ecsactsi_wasm_consume_logs(EcsactWasmUnityLoggerConsumer, IntPtr.Zero);
+		}
+
+		[AOT.MonoPInvokeCallback(typeof(LogConsumer))]
+		internal static void EcsactWasmUnityLoggerConsumer(
+			LogLevel logLevel,
+			IntPtr   message,
+			Int32    messageLength,
+			IntPtr   userData
+		) {
+			var messageStr = Marshal.PtrToStringAnsi(message, messageLength);
+			var unityLogType = UnityEngine.LogType.Log;
+			switch(logLevel) {
+				case LogLevel.Info:
+					unityLogType = UnityEngine.LogType.Log;
+					break;
+				case LogLevel.Warning:
+					unityLogType = UnityEngine.LogType.Warning;
+					break;
+				case LogLevel.Error:
+					unityLogType = UnityEngine.LogType.Error;
+					break;
+			}
+
+			UnityEngine.Debug.LogFormat(
+				unityLogType,
+				UnityEngine.LogOption.NoStacktrace,
+				null,
+				messageStr
+			);
 		}
 	}
 
@@ -2483,6 +2643,36 @@ public class EcsactRuntime {
 				out runtime._wasm.ecsactsi_wasm_set_trap_handler,
 				runtime._wasm
 			);
+			LoadDelegate(
+				lib,
+				"ecsactsi_wasm_last_error_message",
+				out runtime._wasm.ecsactsi_wasm_last_error_message,
+				runtime._wasm
+			);
+			LoadDelegate(
+				lib,
+				"ecsactsi_wasm_last_error_message_length",
+				out runtime._wasm.ecsactsi_wasm_last_error_message_length,
+				runtime._wasm
+			);
+			LoadDelegate(
+				lib,
+				"ecsactsi_wasm_consume_logs",
+				out runtime._wasm.ecsactsi_wasm_consume_logs,
+				runtime._wasm
+			);
+			LoadDelegate(
+				lib,
+				"ecsactsi_wasm_allow_file_read_access",
+				out runtime._wasm.ecsactsi_wasm_allow_file_read_access,
+				runtime._wasm
+			);
+			LoadDelegate(
+				lib,
+				"ecsactsi_wasm_allow_file_read_access",
+				out runtime._wasm.ecsactsi_wasm_allow_file_read_access,
+				runtime._wasm
+			);
 		}
 
 		if(runtime._wasm.ecsactsi_wasm_set_trap_handler != null) {
@@ -2549,6 +2739,10 @@ public class EcsactRuntime {
 			runtime._wasm.ecsactsi_wasm_reset = null;
 			runtime._wasm.ecsactsi_wasm_unload = null;
 			runtime._wasm.ecsactsi_wasm_set_trap_handler = null;
+			runtime._wasm.ecsactsi_wasm_last_error_message_length = null;
+			runtime._wasm.ecsactsi_wasm_last_error_message = null;
+			runtime._wasm.ecsactsi_wasm_consume_logs = null;
+			runtime._wasm.ecsactsi_wasm_allow_file_read_access = null;
 		}
 
 		if(runtime._dynamic != null) {

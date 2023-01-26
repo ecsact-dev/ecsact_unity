@@ -2,6 +2,9 @@ using System;
 using System.IO;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Linq;
+
+using SystemMapEntry = EcsactWasmRuntimeSettings.SystemMapEntry;
 
 #if HAS_UNITY_WASM_PACKAGE
 
@@ -86,32 +89,38 @@ public static class EcsactWasmRuntimeLoader {
 	private static void ReloadWasmFile(string filePath) {
 		var settings = EcsactWasmRuntimeSettings.Get();
 		UnityEngine.Debug.Log($"Reloading wasm system impls {filePath}");
-		foreach(var entry in settings.wasmSystemEntries) {
+
+		var validEntries = CollectWasmSystemEntries(settings, entry => {
 			if(string.IsNullOrWhiteSpace(entry.wasmExportName)) {
 				Debug.Log("no export name...", entry.wasmAsset);
-				continue;
+				return false;
 			}
+
 			var assetPath = UnityEditor.AssetDatabase.GetAssetPath(entry.wasmAsset);
 			if(String.IsNullOrEmpty(assetPath)) {
 				Debug.Log("No asset path...", entry.wasmAsset);
-				continue;
+				return false;
 			}
 
-			if(Path.GetFullPath(assetPath) == filePath) {
-				Debug.Log($"  Reloading {entry.wasmExportName}", entry.wasmAsset);
-
-				var loadError = Ecsact.Defaults.Runtime.wasm.LoadFile(
-					filePath,
-					entry.systemId,
-					entry.wasmExportName
-				);
-				PrintLoadError(loadError, entry.wasmExportName);
-			} else {
+			if(Path.GetFullPath(assetPath) != filePath) {
 				Debug.Log(
 					$"Skipping: {Path.GetFullPath(assetPath)} != {filePath}",
 					entry.wasmAsset
 				);
+				return false;
 			}
+
+			return true;
+		});
+
+		foreach(var entries in validEntries.Values) {
+			var wasmAsset = entries[0].wasmAsset!;
+			var systemIds = entries.Select(entry => entry.systemId).ToArray();
+			var exportNames = entries.Select(entry => entry.wasmExportName).ToArray();
+
+			var loadError =
+				Ecsact.Defaults.Runtime.wasm.LoadFile(filePath, systemIds, exportNames);
+			PrintLoadError(loadError, wasmAsset);
 		}
 	}
 
@@ -128,29 +137,58 @@ public static class EcsactWasmRuntimeLoader {
 	}
 #	endif
 
-	private static void Load(EcsactWasmRuntimeSettings settings) {
+	// KEY is asset instance ID
+	private static Dictionary<int, List<SystemMapEntry>> CollectWasmSystemEntries(
+		EcsactWasmRuntimeSettings                settings,
+		global::System.Predicate<SystemMapEntry> pred
+	) {
+		var result = new Dictionary<int, List<SystemMapEntry>>();
+
 		foreach(var entry in settings.wasmSystemEntries) {
-			if(string.IsNullOrWhiteSpace(entry.wasmExportName)) continue;
+			if(!pred(entry)) continue;
 
-			var loadError = Ecsact.Defaults.Runtime.wasm.Load(
-				entry.wasmAsset.bytes,
-				entry.systemId,
-				entry.wasmExportName
-			);
+			var assetId = entry.wasmAsset.GetInstanceID();
+			if(!result.TryGetValue(assetId, out var entries)) {
+				entries = new();
+				result.Add(assetId, entries);
+			}
 
-			PrintLoadError(loadError, entry.wasmExportName);
+			entries.Add(entry);
+		}
+
+		return result;
+	}
+
+	private static void Load(EcsactWasmRuntimeSettings settings) {
+		var validEntries = CollectWasmSystemEntries(
+			settings,
+			entry => !string.IsNullOrWhiteSpace(entry.wasmExportName)
+		);
+
+		foreach(var entries in validEntries.Values) {
+			var wasmAsset = entries[0].wasmAsset!;
+			var systemIds = entries.Select(entry => entry.systemId).ToArray();
+			var exportNames = entries.Select(entry => entry.wasmExportName).ToArray();
+
+			var loadError = Ecsact.Defaults.Runtime.wasm
+												.Load(wasmAsset.bytes, systemIds, exportNames);
+			PrintLoadError(loadError, wasmAsset);
 		}
 	}
 
 	private static void PrintLoadError(
 		EcsactRuntime.Wasm.Error err,
-		string                   exportName
+		UnityEngine.Object       context = null
 	) {
-		if(err != EcsactRuntime.Wasm.Error.Ok) {
-			UnityEngine.Debug.LogError(
-				$"Failed to load ecsact Wasm system impl. " +
-				$"ErrorCode={err} ExportName={exportName}"
-			);
+		if(err.code != EcsactRuntime.Wasm.ErrorCode.Ok) {
+			var errMessage =
+				$"Failed to load ecsact Wasm system impl. " + $"ErrorCode={err.code}";
+
+			if(err.message.Length > 0) {
+				errMessage += $": {err.message}";
+			}
+
+			UnityEngine.Debug.LogError(errMessage, context);
 		}
 	}
 }

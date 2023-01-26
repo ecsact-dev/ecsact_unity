@@ -62,6 +62,8 @@ public class EcsactRunner : MonoBehaviour {
 
 			executionOptions.executionOptions = new EcsactRuntime.CExecutionOptions();
 		}
+
+		Ecsact.Defaults.Runtime.wasm.PrintAndConsumeLogs();
 	}
 }
 
