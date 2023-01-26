@@ -2059,6 +2059,60 @@ public class EcsactRuntime {
 			};
 		}
 
+		public Error LoadFile(
+			string wasmFilePath,
+			Int32[] systemIds,
+			string[] exportNames
+		) {
+			if(ecsactsi_wasm_load_file == null) {
+				throw new EcsactRuntimeMissingMethod("ecsactsi_wasm_load_file");
+			}
+
+			if(systemIds.Length != exportNames.Length) {
+				throw new Exception("System IDs and exportNames length do not match");
+			}
+
+			var errCode = ecsactsi_wasm_load_file(
+				wasmFilePath,
+				systemIds.Length,
+				systemIds,
+				exportNames
+			);
+
+			return new Error {
+				code = errCode,
+				message = LastErrorMessage(),
+			};
+		}
+
+		public Error Load(
+			byte[] wasmData,
+			Int32[] systemIds,
+			string[] exportNames
+		) {
+			AssertPlayMode();
+			if(ecsactsi_wasm_load == null) {
+				throw new EcsactRuntimeMissingMethod("ecsactsi_wasm_load");
+			}
+
+			if(systemIds.Length != exportNames.Length) {
+				throw new Exception("System IDs and exportNames length do not match");
+			}
+
+			var errCode = ecsactsi_wasm_load(
+				(sbyte[])(Array)wasmData,
+				wasmData.Length,
+				systemIds.Length,
+				systemIds,
+				exportNames
+			);
+
+			return new Error {
+				code = errCode,
+				message = LastErrorMessage(),
+			};
+		}
+
 		public Error Load(byte[] wasmData, Int32 systemId, string exportName) {
 			AssertPlayMode();
 			if(ecsactsi_wasm_load == null) {
@@ -2068,18 +2122,7 @@ public class EcsactRuntime {
 			var systemIds = new Int32[] { systemId };
 			var exportNames = new string[] { exportName };
 
-			var errCode = ecsactsi_wasm_load(
-				(sbyte[])(Array)wasmData,
-				wasmData.Length,
-				1,
-				systemIds,
-				exportNames
-			);
-
-			return new Error {
-				code = errCode,
-				message = LastErrorMessage(),
-			};
+			return Load(wasmData, systemIds, exportNames);
 		}
 
 		void Unload(IEnumerable<Int32> systemIds) {
@@ -2105,7 +2148,7 @@ public class EcsactRuntime {
 		/// <summary>
 		/// Convenience function to pipe Ecsact Wasm logs to the Unity logger
 		/// </summary>
-		void PrintAndConsumeLogs() {
+		public void PrintAndConsumeLogs() {
 			if(ecsactsi_wasm_consume_logs == null) {
 				return;
 			}

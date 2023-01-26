@@ -268,6 +268,8 @@ public static class EcsactRuntimeBuilder {
 			proc.StartInfo.Arguments += " --wasm=none ";
 		}
 
+		proc.StartInfo.Arguments += " --report_format=json ";
+
 		proc.StartInfo.Arguments += "--output=\"";
 		proc.StartInfo.Arguments +=
 			Path.GetFullPath(_settings.runtimeBuilderOutputPath);
