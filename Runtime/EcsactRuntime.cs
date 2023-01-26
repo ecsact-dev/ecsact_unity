@@ -86,11 +86,14 @@ SEE: https://github.com/ecsact-dev/ecsact_unity/issues/59
 		var originalLibraryPath = libraryPath + "";
 		var timestamp = NowInSeconds();
 		EnsureTempDir();
-		libraryPath = tempDir + $"/{libraryPath}-{timestamp}";
+		var _tmpLibraryPath = tempDir + "/" + libraryPath;
+		libraryPath = _tmpLibraryPath + $"-{timestamp}";
 		Directory.CreateDirectory(Path.GetDirectoryName(libraryPath));
 		File.Copy(originalLibraryPath + ".dll", libraryPath + ".dll");
 		if(File.Exists(originalLibraryPath + ".pdb")) {
-			File.Copy(originalLibraryPath + ".pdb", libraryPath + ".pdb");
+			// Keeping the original name because the .dll will be looking for it by
+			// that name.
+			File.Copy(originalLibraryPath + ".pdb", _tmpLibraryPath + ".pdb", true);
 		}
 		if(File.Exists(originalLibraryPath + ".lib")) {
 			File.Copy(originalLibraryPath + ".lib", libraryPath + ".lib");
