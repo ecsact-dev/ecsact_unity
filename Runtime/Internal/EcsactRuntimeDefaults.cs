@@ -57,20 +57,25 @@ internal static class EcsactRuntimeDefaults {
 			throw new Exception("Failed to load default ecsact runtime");
 		}
 
-		settings.defaultRegistry!.registryId =
-			Ecsact.Defaults.Runtime.core.CreateRegistry(
-				settings.defaultRegistry.registryName
-			);
+		var registry_id = Ecsact.Defaults.Runtime.core.CreateRegistry(
+			settings.defaultRegistry.registryName
+		);
+
+		// If async, no default available registry!
+		if(settings.runner != EcsactRuntimeSettings.RunnerType.AsyncRunner) {
+			settings.defaultRegistry!.registryId = registry_id;
+		}
 
 		SetRunner(settings);
 
-		var reg = new Ecsact.Registry(
-			Ecsact.Defaults.Runtime,
-			settings.defaultRegistry.registryId
-		);
+		var reg = new Ecsact.Registry(Ecsact.Defaults.Runtime, registryId);
 
 		if(settings.enableUnitySync) {
-			SetupUnitySync(Ecsact.Defaults.Runtime, settings.defaultRegistry);
+			SetupUnitySync(
+				Ecsact.Defaults.Runtime,
+				settings.defaultRegistry,
+				settings
+			);
 			if(!unitySyncScriptsRegistered) {
 				RegisterUnitySyncScripts(settings);
 			}
@@ -87,7 +92,10 @@ internal static class EcsactRuntimeDefaults {
 		Ecsact.Defaults.ClearDefaults();
 	}
 
-	private static void SetRunner(EcsactRuntimeSettings settings) {
+	private static void SetRunner(
+		EcsactRuntimeSettings settings,
+		Int32                 registry_id
+	) {
 		var defReg = settings.defaultRegistry;
 
 		if(settings.runner == EcsactRuntimeSettings.RunnerType.DefaultRunner) {
@@ -110,29 +118,40 @@ internal static class EcsactRuntimeDefaults {
 
 	private static void SetupUnitySync(
 		EcsactRuntime                runtime,
-		EcsactRuntimeDefaultRegistry defReg
+		EcsactRuntimeDefaultRegistry registry,
+		EcsactRuntimeSettings        settings
 	) {
 		Debug.Assert(
-			defReg.pool == null,
+			registry.pool == null,
 			"EntityGameObjectPool already created. SetupUnitySync should only be " +
 				"called once."
 		);
-		defReg.pool = EntityGameObjectPool.CreateInstance(
-			new RegistryEntitySource(defReg.registryId, runtime)
+
+		var id = Ecsact.Defaults.Runtime.core.CreateRegistry("async_reg");
+
+		registry.pool = EntityGameObjectPool.CreateInstance(
+			new RegistryEntitySource(registry.registryId, runtime)
 		);
 
-		// IF async enabled
-		var async_ref = runtime.core.CreateRegistry("async_reg");
+		// NOTE: This only updates pool
+		// I need to set registry updates
+		// Need to set up a caching registry to be updated on
+
+		// Problem
+		// Flushing updates (ex: gravity) triggers the handler
+		// Adding to the cache registry will not work
+		// The "update" change when applied to the registry will trigger another
+		// "update" change Infinite loop
 
 		cleanupFns.AddRange(new List<global::System.Action> {
 			runtime.OnInitComponent((entity, compId, compData) => {
-				defReg.pool.InitComponent(entity, compId, in compData);
+				registry.pool.InitComponent(entity, compId, in compData);
 			}),
 			runtime.OnUpdateComponent((entity, compId, compData) => {
-				defReg.pool.UpdateComponent(entity, compId, in compData);
+				registry.pool.UpdateComponent(entity, compId, in compData);
 			}),
 			runtime.OnRemoveComponent((entity, compId, compData) => {
-				defReg.pool.RemoveComponent(entity, compId, in compData);
+				registry.pool.RemoveComponent(entity, compId, in compData);
 			}),
 		});
 	}

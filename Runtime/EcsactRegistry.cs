@@ -20,8 +20,22 @@ public class Registry {
 		rt.core.ClearRegistry(ID);
 	}
 
-	public Int32 CreateEntity() {
-		return rt.core.CreateEntity(ID);
+	// Callback for both
+
+	public void CreateEntity(EcsactRuntime.EntityIdCallback callback) {
+		var settings = EcsactRuntimeSettings.Get();
+		// NOTE: If we go the route of the Default Registry being NULL this doesn't
+		// work
+		// Downside: Async and sync no longer coincide
+		// NOTE: We should add "entities" to the execution options
+		// People can still use `runtime.core` which will break when they use async
+
+		if(settings.runner == EcsactRuntimeSettings.RunnerType.DefaultRunner) {
+			var entityId = rt.core.CreateEntity(ID);
+			callback(entityId);
+		} else if(settings.runner == EcsactRuntimeSettings.RunnerType.AsyncRunner) {
+			rt.async.CreateEntity(callback);
+		}
 	}
 
 	public void EnsureEntity(Int32 entityId) {

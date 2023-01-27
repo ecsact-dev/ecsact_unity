@@ -18,8 +18,11 @@ public class ExecutionOptions {
 	internal ExecutionOptions() {
 		actions = new();
 		adds = new();
+		adds_entities = new();
 		updates = new();
+		updates_entities = new();
 		removes = new();
+		removes_entities = new();
 		executionOptions = new();
 	}
 
@@ -34,7 +37,7 @@ public class ExecutionOptions {
 		if(adds.Count > 0) {
 			var addsArray = adds.ToArray();
 			var addsEntitiesArray = adds_entities.ToArray();
-
+			UnityEngine.Debug.Log("Alloc Add Component");
 			executionOptions.addComponents = addsArray;
 			executionOptions.addComponentsLength = addsArray.Length;
 			executionOptions.addComponentsEntities = addsEntitiesArray;
@@ -83,6 +86,22 @@ public class ExecutionOptions {
     };
     adds.Add(ecsComponent);
     adds_entities.Add(entityId);
+	}
+
+	public void AddComponent(
+		Int32  entityId,
+		Int32  componentId,
+		object componentData
+	) {
+		var componentPtr = Marshal.AllocHGlobal(Marshal.SizeOf(componentData));
+
+		Marshal.StructureToPtr(componentId, componentPtr, false);
+		var ecsComponent = new EcsactRuntime.EcsactComponent {
+			componentId = componentId,
+			componentData = componentPtr
+		};
+		adds.Add(ecsComponent);
+		adds_entities.Add(entityId);
 	}
 
 	public void UpdateComponent<T>(Int32 entityId, T component)

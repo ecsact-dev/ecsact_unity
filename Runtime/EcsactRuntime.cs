@@ -652,6 +652,8 @@ public class EcsactRuntime {
 		IntPtr callbackUserData
 	);
 
+	public delegate void EntityIdCallback(Int32 entityId);
+
 	public delegate void AsyncExecSystemErrorCallback(
 		Ecsact.ecsact_exec_systems_error systemError,
 		IntPtr                           callbackUserData
@@ -736,7 +738,7 @@ public class EcsactRuntime {
 		internal delegate void ecsact_async_disconnect_delegate();
 		internal ecsact_async_disconnect_delegate? ecsact_async_disconnect;
 
-		internal delegate int ecsact_async_create_entity_delegate();
+		internal delegate Int32 ecsact_async_create_entity_delegate();
 		internal ecsact_async_create_entity_delegate? ecsact_async_create_entity;
 
 		internal delegate int ecsact_async_get_current_tick_delegate();
@@ -763,13 +765,11 @@ public class EcsactRuntime {
 			}
 		}
 
-		internal delegate void EntityCallback(Int32 entityId);
-
 		private AsyncEventsCollector _asyncEvs;
 		private List<ErrorCallback>  _errCallbacks = new();
 		private EcsactRuntime        _owner;
 
-		private Dictionary<Int32, EntityCallback> entity_callbacks = new();
+		private Dictionary<Int32, EntityIdCallback> entity_callbacks = new();
 
 		internal Async(EcsactRuntime owner) {
 			_owner = owner;
@@ -792,10 +792,11 @@ public class EcsactRuntime {
 		) {
 			var self = (GCHandle.FromIntPtr(callbackUserData).Target as Async)!;
 
-			EntityCallback ? callback;
+			EcsactRuntime.EntityIdCallback ? callback;
 			self.entity_callbacks.TryGetValue(requestId, out callback);
 
 			if(callback != null) {
+				UnityEngine.Debug.Log("Invoking entity callback");
 				callback(entityId);
 				self.entity_callbacks.Remove(requestId);
 			}
@@ -828,7 +829,7 @@ public class EcsactRuntime {
 			return () => { _errCallbacks.Remove(callback); };
 		}
 
-		// NOTE: Connect using god?tick_rate=whatever#youchoose
+		// NOTE: Connect using good?tick_rate=whatever#youchoose
 		public void Connect(string connectionString) {
 			if(ecsact_async_connect == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_async_connect");
@@ -843,11 +844,14 @@ public class EcsactRuntime {
 			ecsact_async_disconnect();
 		}
 
-		public Int32 CreateEntity() {
+		public void CreateEntity(EntityIdCallback callback) {
 			if(ecsact_async_create_entity == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_async_create_entity");
 			}
-			return ecsact_async_create_entity();
+
+			Int32 request_id = ecsact_async_create_entity();
+			entity_callbacks.Add(request_id, callback);
+
 			// The player passes in a function callback
 			// Store the callback in a dictionary associated with the request id
 			// When the request ID associated with the request returns, invoke it!
@@ -2343,7 +2347,7 @@ public class EcsactRuntime {
 			LoadDelegate(
 				lib,
 				"ecsact_async_get_current_tick",
-				out runtime._async.ecsact_async_flush_events,
+				out runtime._async.ecsact_async_get_current_tick,
 				runtime._async
 			);
 
@@ -3088,6 +3092,7 @@ public class EcsactRuntime {
 		IntPtr      componentData,
 		IntPtr      callbackUserData
 	) {
+		// NOTE: Add listeners to handle components
 		AssertPlayMode();
 		UnityEngine.Debug.Assert(ev == EcsactEvent.InitComponent);
 

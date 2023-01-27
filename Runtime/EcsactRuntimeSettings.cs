@@ -18,6 +18,7 @@ public class EcsactRuntimeDefaultRegistry {
 		FixedUpdate,
 	}
 
+	// NOTE: Remove pool from DefaultRegistry class?
 	[NonSerialized]
 	public EntityGameObjectPool? pool;
 

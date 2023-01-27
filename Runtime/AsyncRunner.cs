@@ -15,8 +15,6 @@ public class AsyncRunner : EcsactRunner {
 	}
 
 	private void Enqueue() {
-		// NOTE(Kelwan): Elaborate on C# systems not working with Async currently
-		// The async runner's system execution is not in C# land
 		var ownerPinned = GCHandle.Alloc(runtime, GCHandleType.Pinned);
 		try {
 			var ownerIntPtr = GCHandle.ToIntPtr(ownerPinned);
@@ -35,10 +33,11 @@ public class AsyncRunner : EcsactRunner {
 	void Update() {
 		if(runtime != null) {
 			if(!executionOptions.isEmpty()) {
+				UnityEngine.Debug.Log("Enqueue");
 				Enqueue();
 			}
 
-			// runtime.async.Flush();
+			runtime.async.Flush();
 		}
 	}
 }
