@@ -68,7 +68,7 @@ internal static class EcsactRuntimeDefaults {
 
 		SetRunner(settings);
 
-		var reg = new Ecsact.Registry(Ecsact.Defaults.Runtime, registryId);
+		var reg = new Ecsact.Registry(Ecsact.Defaults.Runtime, registry_id);
 
 		if(settings.enableUnitySync) {
 			SetupUnitySync(
@@ -92,10 +92,7 @@ internal static class EcsactRuntimeDefaults {
 		Ecsact.Defaults.ClearDefaults();
 	}
 
-	private static void SetRunner(
-		EcsactRuntimeSettings settings,
-		Int32                 registry_id
-	) {
+	private static void SetRunner(EcsactRuntimeSettings settings) {
 		var defReg = settings.defaultRegistry;
 
 		if(settings.runner == EcsactRuntimeSettings.RunnerType.DefaultRunner) {

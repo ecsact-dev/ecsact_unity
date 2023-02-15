@@ -174,6 +174,8 @@ public class EcsactRuntime {
 		InitComponent = 0,
 		UpdateComponent = 1,
 		RemoveComponent = 2,
+		CreateEntity = 3,
+		DestroyEntity = 4,
 	}
 
 	public delegate void EachComponentCallback(
@@ -187,6 +189,12 @@ public class EcsactRuntime {
 		Int32       entityId,
 		Int32       componentId,
 		IntPtr      componentData,
+		IntPtr      callbackUserData
+	);
+
+	public delegate void EntityEventCallback(
+		EcsactEvent ev,
+		Int32       entityId,
 		IntPtr      callbackUserData
 	);
 
@@ -226,6 +234,16 @@ public class EcsactRuntime {
 		public Int32 actionsLength;
 		[MarshalAs(UnmanagedType.LPArray)]
 		public EcsactAction[] actions;
+
+		public Int32 createEntitiesLength;
+		[MarshalAs(UnmanagedType.LPArray)]
+		public Int32[] createEntitiesComponentsLength;
+		[MarshalAs(UnmanagedType.LPArray)]
+		public IntPtr[] createEntitiesComponents;
+
+		public Int32 destroyEntitiesLength;
+		[MarshalAs(UnmanagedType.LPArray)]
+		public EcsactComponentId[] destroyEntities;
 	};
 
 	public struct ExecutionEventsCollector {
@@ -265,6 +283,30 @@ public class EcsactRuntime {
 		/// <c>callbackUserData</c> passed to <c>removeCallback</c>
 		/// </summary>
 		public IntPtr removeCallbackUserData;
+
+		/// <summary>
+		/// invoked after system executions are finished for every created entity.
+		/// Invocation happens in the calling thread. <c>event</c> will
+		/// always be <c>EcsactEvent.CreateEntity</c>.
+		/// </summary>
+		public EntityEventCallback createEntityCallback;
+
+		/// <summary>
+		/// <c>callbackUserData</c> passed to <c>createEntityCallback</c>
+		/// </summary>
+		public IntPtr createEntityCallbackUserData;
+
+		/// <summary>
+		/// invoked after system executions are finished for every destroyed entity.
+		/// Invocation happens in the calling thread. <c>event</c> will
+		/// always be <c>EcsactEvent.DestroyEntity</c>.
+		/// </summary>
+		public EntityEventCallback destroyEntityCallback;
+
+		/// <summary>
+		/// <c>callbackUserData</c> passed to <c>destroyEntityCallback</c>
+		/// </summary>
+		public IntPtr destroyEntitycallbackUserData;
 	}
 
 	public struct StaticComponentInfo {
@@ -662,8 +704,6 @@ public class EcsactRuntime {
 	public struct AsyncEventsCollector {
 		public AsyncErrorCallback           errorCallback;
 		public IntPtr                       errorCallbackUserData;
-		public AsyncEntityCallback          entityCallback;
-		public IntPtr                       entityCallbackUserData;
 		public AsyncExecSystemErrorCallback asyncExecErrorCallback;
 		public IntPtr                       asyncExecErrorCallbackUserData;
 	}
@@ -769,7 +809,9 @@ public class EcsactRuntime {
 		private List<ErrorCallback>  _errCallbacks = new();
 		private EcsactRuntime        _owner;
 
-		private Dictionary<Int32, EntityIdCallback> entity_callbacks = new();
+		private Dictionary<Int32, EntityIdCallback> destroy_entity_callbacks =
+			new();
+		private Dictionary<Int32, EntityIdCallback> create_entity_callbacks = new();
 
 		internal Async(EcsactRuntime owner) {
 			_owner = owner;
@@ -777,8 +819,6 @@ public class EcsactRuntime {
 			_asyncEvs = new AsyncEventsCollector {
 				errorCallback = OnAsyncErrorHandler,
 				errorCallbackUserData = IntPtr.Zero,
-				entityCallback = OnEntityCreatedHandler,
-				entityCallbackUserData = IntPtr.Zero,
 				asyncExecErrorCallback = OnAsyncExecutionErrorHandler,
 				asyncExecErrorCallbackUserData = IntPtr.Zero,
 			};
@@ -793,12 +833,12 @@ public class EcsactRuntime {
 			var self = (GCHandle.FromIntPtr(callbackUserData).Target as Async)!;
 
 			EcsactRuntime.EntityIdCallback ? callback;
-			self.entity_callbacks.TryGetValue(requestId, out callback);
+			self.create_entity_callbacks.TryGetValue(requestId, out callback);
 
 			if(callback != null) {
 				UnityEngine.Debug.Log("Invoking entity callback");
 				callback(entityId);
-				self.entity_callbacks.Remove(requestId);
+				self.create_entity_callbacks.Remove(requestId);
 			}
 		}
 
@@ -830,6 +870,8 @@ public class EcsactRuntime {
 		}
 
 		// NOTE: Connect using good?tick_rate=whatever#youchoose
+		// Tick rate is currently the time in Milliseconds between ticks
+		// This should be changed, or the variable more accurately named
 		public void Connect(string connectionString) {
 			if(ecsact_async_connect == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_async_connect");
@@ -850,7 +892,7 @@ public class EcsactRuntime {
 			}
 
 			Int32 request_id = ecsact_async_create_entity();
-			entity_callbacks.Add(request_id, callback);
+			create_entity_callbacks.Add(request_id, callback);
 
 			// The player passes in a function callback
 			// Store the callback in a dictionary associated with the request id
@@ -886,9 +928,10 @@ public class EcsactRuntime {
 				_owner._execEvs.initCallbackUserData = ownerIntPtr;
 				_owner._execEvs.updateCallbackUserData = ownerIntPtr;
 				_owner._execEvs.removeCallbackUserData = ownerIntPtr;
+				_owner._execEvs.createEntityCallbackUserData = ownerIntPtr;
+				_owner._execEvs.destroyEntitycallbackUserData = ownerIntPtr;
 				_asyncEvs.asyncExecErrorCallbackUserData = selfIntPtr;
 				_asyncEvs.errorCallbackUserData = selfIntPtr;
-				_asyncEvs.entityCallbackUserData = selfIntPtr;
 				ecsact_async_flush_events(in _owner._execEvs, in _asyncEvs);
 			} finally {
 				selfPinned.Free();

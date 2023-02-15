@@ -5,6 +5,17 @@ using System;
 namespace Ecsact {
 
 public class ExecutionOptions {
+	public class BuilderEntity {
+		public BuilderEntity AddComponent<C>(C component)
+			where              C : Ecsact.Component {
+      var componentId = Ecsact.Util.GetComponentID<C>();
+      components.Add(componentId, component);
+      return this;
+		}
+
+		internal Dictionary<Int32, object> components = new();
+	};
+
 	public EcsactRuntime.CExecutionOptions executionOptions;
 
 	private List<EcsactRuntime.EcsactAction>      actions;
@@ -15,6 +26,13 @@ public class ExecutionOptions {
 	private List<EcsactRuntime.EcsactComponentId> removes;
 	private List<Int32>                           removes_entities;
 
+	private List<BuilderEntity>                       create_entities;
+	private List<List<EcsactRuntime.EcsactComponent>> create_entities_components;
+	private List<Int32>    create_entities_components_length;
+	private List<GCHandle> create_entity_pins;
+
+	private List<EcsactRuntime.EcsactComponentId> destroy_entities;
+
 	internal ExecutionOptions() {
 		actions = new();
 		adds = new();
@@ -23,6 +41,10 @@ public class ExecutionOptions {
 		updates_entities = new();
 		removes = new();
 		removes_entities = new();
+		create_entities = new();
+		create_entities_components = new();
+		create_entities_components_length = new();
+		destroy_entities = new();
 		executionOptions = new();
 	}
 
@@ -37,7 +59,6 @@ public class ExecutionOptions {
 		if(adds.Count > 0) {
 			var addsArray = adds.ToArray();
 			var addsEntitiesArray = adds_entities.ToArray();
-			UnityEngine.Debug.Log("Alloc Add Component");
 			executionOptions.addComponents = addsArray;
 			executionOptions.addComponentsLength = addsArray.Length;
 			executionOptions.addComponentsEntities = addsEntitiesArray;
@@ -59,6 +80,42 @@ public class ExecutionOptions {
 			executionOptions.removeComponents = removesArray;
 			executionOptions.removeComponentsLength = removesArray.Length;
 			executionOptions.removeComponentsEntities = removesEntitiesArray;
+		}
+
+		if(create_entities.Count > 0) {
+			for(int i = 0; i < create_entities.Count; i++) {
+				var builder = create_entities[i];
+				foreach(var component in builder.components) {
+					var componentPtr =
+						Marshal.AllocHGlobal(Marshal.SizeOf(component.Value));
+
+					Ecsact.Util
+						.ComponentToPtr(component.Value, component.Key, componentPtr);
+
+					EcsactRuntime.EcsactComponent ecsactComponent;
+					ecsactComponent.componentData = componentPtr;
+					ecsactComponent.componentId = component.Key;
+
+					create_entities_components[i].Add(ecsactComponent);
+				}
+
+				var createPinned =
+					GCHandle.Alloc(create_entities_components[i], GCHandleType.Pinned);
+
+				create_entity_pins.Add(createPinned);
+
+				var createEntityComponentsPinned = GCHandle.ToIntPtr(createPinned);
+
+				executionOptions.createEntitiesComponents[i] =
+					createEntityComponentsPinned;
+			}
+		}
+
+		if(destroy_entities.Count > 0) {
+			var destroyEntitiesArray = destroy_entities.ToArray();
+
+			executionOptions.destroyEntities = destroyEntitiesArray;
+			executionOptions.destroyEntitiesLength = destroy_entities.Count;
 		}
 	}
 
@@ -125,6 +182,12 @@ public class ExecutionOptions {
 		removes_entities.Add(entityId);
 	}
 
+	public BuilderEntity CreateEntity() {
+		BuilderEntity builder = new();
+		create_entities.Add(builder);
+		return builder;
+	}
+
 	public EcsactRuntime.CExecutionOptions C() {
 		return executionOptions;
 	}
@@ -149,6 +212,20 @@ public class ExecutionOptions {
 
 		removes.Clear();
 		removes_entities.Clear();
+
+		foreach(var componentList in create_entities_components) {
+			foreach(var ecsComponent in componentList) {
+				Marshal.FreeHGlobal(ecsComponent.componentData);
+			}
+		}
+
+		foreach(var pin in create_entity_pins) {
+			pin.Free();
+		}
+
+		create_entity_pins.Clear();
+		create_entities.Clear();
+		destroy_entities.Clear();
 	}
 
 	public bool isEmpty() {
@@ -162,6 +239,12 @@ public class ExecutionOptions {
 			return false;
 		}
 		if(removes.Count > 0) {
+			return false;
+		}
+		if(create_entities.Count > 0) {
+			return false;
+		}
+		if(destroy_entities.Count > 0) {
 			return false;
 		}
 		return true;
