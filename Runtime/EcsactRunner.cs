@@ -22,6 +22,8 @@ public class EcsactRunner : MonoBehaviour {
 
 	public Ecsact.ExecutionOptions executionOptions = new();
 
+	private Ecsact.Details.ExecutionEntityCallbacks entityCallbacks = new();
+
 	internal static EcsactRunner CreateInstance<ComponentT>(
 		EcsactRuntimeSettings settings,
 		string                name
@@ -31,8 +33,6 @@ public class EcsactRunner : MonoBehaviour {
 
 		var gameObject = new GameObject(gameObjectName);
 		var runner = gameObject.AddComponent(typeof(ComponentT)) as EcsactRunner;
-
-		//
 
 		if(runner is not null) {
 			runner.executionOptions = new Ecsact.ExecutionOptions();
@@ -44,15 +44,24 @@ public class EcsactRunner : MonoBehaviour {
 		return runner;
 	}
 
+	void Start() {
+		Ecsact.Defaults.Runtime.OnEntityCreated((entityId, placeholderId) => {
+			var callback = entityCallbacks.GetAndClearCallback(placeholderId);
+			callback(entityId);
+		});
+	}
+
 	protected void Execute() {
 #if UNITY_EDITOR
 		var executionTimeWatch = Stopwatch.StartNew();
 #endif
 		executionOptions.Alloc();
 		try {
+			LoadEntityCallbacks();
 			Ecsact.Defaults.Registry.ExecuteSystems(executionOptions);
 		} finally {
 			executionOptions.Free();
+
 #if UNITY_EDITOR
 			executionTimeWatch.Stop();
 			debugExecutionTimeMs = (int)executionTimeWatch.ElapsedMilliseconds;
@@ -63,6 +72,12 @@ public class EcsactRunner : MonoBehaviour {
 		}
 
 		Ecsact.Defaults.Runtime.wasm.PrintAndConsumeLogs();
+	}
+
+	protected void LoadEntityCallbacks() {
+		foreach(var builder in executionOptions.create_entities) {
+			entityCallbacks.AddCallback(builder.callback);
+		}
 	}
 }
 

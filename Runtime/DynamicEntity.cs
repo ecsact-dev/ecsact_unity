@@ -92,7 +92,7 @@ public class DynamicEntity : MonoBehaviour {
 		if(entityId == -1 && callbackPending == false) {
 			var runtimeSettings = EcsactRuntimeSettings.Get();
 			callbackPending = true;
-			Ecsact.Defaults.Registry.CreateEntity((id) => {
+			Ecsact.Defaults.Runner.executionOptions.CreateEntity((id) => {
 				Debug.Log("CreateEntityIfNeeded");
 				entityId = id;
 				if(Ecsact.Defaults.Pool != null) {

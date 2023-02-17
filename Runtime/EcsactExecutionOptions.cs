@@ -12,7 +12,7 @@ public class ExecutionOptions {
       components.Add(componentId, component);
       return this;
 		}
-
+		public EcsactRuntime.EntityIdCallback callback;
 		internal Dictionary<Int32, object> components = new();
 	};
 
@@ -26,7 +26,8 @@ public class ExecutionOptions {
 	private List<EcsactRuntime.EcsactComponentId> removes;
 	private List<Int32>                           removes_entities;
 
-	private List<BuilderEntity>                       create_entities;
+	// NOTE: Is there a way to make this not public?
+	public List<BuilderEntity>                        create_entities;
 	private List<List<EcsactRuntime.EcsactComponent>> create_entities_components;
 	private List<Int32>    create_entities_components_length;
 	private List<GCHandle> create_entity_pins;
@@ -44,6 +45,7 @@ public class ExecutionOptions {
 		create_entities = new();
 		create_entities_components = new();
 		create_entities_components_length = new();
+		create_entity_pins = new();
 		destroy_entities = new();
 		executionOptions = new();
 	}
@@ -83,8 +85,24 @@ public class ExecutionOptions {
 		}
 
 		if(create_entities.Count > 0) {
+			executionOptions.createEntitiesLength = create_entities.Count;
+			executionOptions.createEntitiesComponentsLength =
+				new Int32[create_entities.Count];
+			executionOptions.createEntitiesComponents =
+				new IntPtr[create_entities.Count];
+
+			create_entities_components =
+				new List<List<EcsactRuntime.EcsactComponent>>(create_entities.Count);
+
 			for(int i = 0; i < create_entities.Count; i++) {
 				var builder = create_entities[i];
+
+				executionOptions.createEntitiesComponentsLength[i] =
+					builder.components.Count;
+
+				var compList = new List<EcsactRuntime.EcsactComponent>();
+				create_entities_components.Add(compList);
+
 				foreach(var component in builder.components) {
 					var componentPtr =
 						Marshal.AllocHGlobal(Marshal.SizeOf(component.Value));
@@ -96,11 +114,11 @@ public class ExecutionOptions {
 					ecsactComponent.componentData = componentPtr;
 					ecsactComponent.componentId = component.Key;
 
-					create_entities_components[i].Add(ecsactComponent);
+					compList.Add(ecsactComponent);
 				}
-
+				// I need to be able to send "nothing" if an entity has no components
 				var createPinned =
-					GCHandle.Alloc(create_entities_components[i], GCHandleType.Pinned);
+					GCHandle.Alloc(compList.ToArray(), GCHandleType.Pinned);
 
 				create_entity_pins.Add(createPinned);
 
@@ -182,8 +200,10 @@ public class ExecutionOptions {
 		removes_entities.Add(entityId);
 	}
 
-	public BuilderEntity CreateEntity() {
+	public BuilderEntity CreateEntity(EcsactRuntime.EntityIdCallback callback) {
 		BuilderEntity builder = new();
+		builder.callback = callback;
+
 		create_entities.Add(builder);
 		return builder;
 	}
