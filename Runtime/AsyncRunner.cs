@@ -22,6 +22,8 @@ public class AsyncRunner : EcsactRunner {
 			runtime._execEvs.updateCallbackUserData = ownerIntPtr;
 			runtime._execEvs.removeCallbackUserData = ownerIntPtr;
 
+			LoadEntityCallbacks();
+
 			executionOptions.Alloc();
 			runtime.async.EnqueueExecutionOptions(executionOptions.C());
 			executionOptions.Free();
