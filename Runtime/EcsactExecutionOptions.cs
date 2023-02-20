@@ -66,9 +66,9 @@ public class ExecutionOptions {
 		adds_entities.Add(entityId);
 	}
 
-	public void UpdateComponent<T>(Int32 entityId, T component)
-		where     T : Ecsact.Component {
-    var componentId = Ecsact.Util.GetComponentID<T>();
+	public void UpdateComponent<C>(Int32 entityId, C component)
+		where     C : Ecsact.Component {
+    var componentId = Ecsact.Util.GetComponentID<C>();
     var componentPtr = Marshal.AllocHGlobal(Marshal.SizeOf(component));
 
     Marshal.StructureToPtr(component, componentPtr, false);
@@ -78,6 +78,15 @@ public class ExecutionOptions {
     };
     updates.Add(ecsComponent);
     updates_entities.Add(entityId);
+	}
+
+	public void RemoveComponent<C>(Int32 entityId)
+		where     C : Ecsact.Component {
+    var componentId = Ecsact.Util.GetComponentID<C>();
+    var ecsComponent =
+      new EcsactRuntime.EcsactComponentId { componentId = componentId };
+    removes.Add(ecsComponent);
+    removes_entities.Add(entityId);
 	}
 
 	public void RemoveComponent(Int32 entityId, Int32 componentId) {
