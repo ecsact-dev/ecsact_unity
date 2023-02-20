@@ -60,7 +60,7 @@ public class DynamicEntity : MonoBehaviour {
 	public void AddEcsactCompnent<C>(C component)
 		where     C : Ecsact.Component {
     if(Application.isPlaying) {
-      Ecsact.Defaults.Registry.AddComponent(entityId, component);
+      Ecsact.Defaults.Runner.executionOptions.AddComponent(entityId, component);
     }
 
     ecsactComponents.Add(new SerializableEcsactComponent {
@@ -74,7 +74,7 @@ public class DynamicEntity : MonoBehaviour {
 		object               componentData
 	) {
 		if(Application.isPlaying) {
-			Ecsact.Defaults.Registry
+			Ecsact.Defaults.Runner.executionOptions
 				.AddComponent(entityId, componentId, componentData);
 		}
 
@@ -109,7 +109,7 @@ public class DynamicEntity : MonoBehaviour {
 		}
 
 		foreach(var ecsactComponent in ecsactComponents) {
-			Ecsact.Defaults.Registry
+			Ecsact.Defaults.Runner.executionOptions
 				.AddComponent(entityId, ecsactComponent.id, ecsactComponent.data!);
 		}
 	}
@@ -127,7 +127,7 @@ public class DynamicEntity : MonoBehaviour {
 				var hasComponent =
 					Ecsact.Defaults.Registry.HasComponent(entityId, ecsactComponent.id);
 				if(hasComponent) {
-					Ecsact.Defaults.Registry.RemoveComponent(
+					Ecsact.Defaults.Runner.executionOptions.RemoveComponent(
 						entityId,
 						ecsactComponent.id
 					);
