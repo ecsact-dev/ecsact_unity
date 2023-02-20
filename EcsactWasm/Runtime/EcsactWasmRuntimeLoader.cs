@@ -4,9 +4,9 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 
-using SystemMapEntry = EcsactWasmRuntimeSettings.SystemMapEntry;
-
 #if HAS_UNITY_WASM_PACKAGE
+
+using SystemMapEntry = EcsactWasmRuntimeSettings.SystemMapEntry;
 
 namespace Ecsact {
 

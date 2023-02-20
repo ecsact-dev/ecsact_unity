@@ -191,24 +191,33 @@ public class EcsactRuntime {
 		public IntPtr actionData;
 	}
 
+	public struct EcsactComponent {
+		public Int32  componentId;
+		public IntPtr componentData;
+	}
+
+	public struct EcsactComponentId {
+		public Int32 componentId;
+	}
+
 	public struct CExecutionOptions {
 		public Int32 addComponentsLength;
 		[MarshalAs(UnmanagedType.LPArray)]
 		public Int32[] addComponentsEntities;
 		[MarshalAs(UnmanagedType.LPArray)]
-		public IntPtr[] addComponents;
+		public EcsactComponent[] addComponents;
 
 		public Int32 updateComponentsLength;
 		[MarshalAs(UnmanagedType.LPArray)]
 		public Int32[] updateComponentsEntities;
 		[MarshalAs(UnmanagedType.LPArray)]
-		public IntPtr[] updateComponents;
+		public EcsactComponent[] updateComponents;
 
 		public Int32 removeComponentsLength;
 		[MarshalAs(UnmanagedType.LPArray)]
 		public Int32[] removeComponentsEntities;
 		[MarshalAs(UnmanagedType.LPArray)]
-		public Int32[] removeComponents;
+		public EcsactComponentId[] removeComponents;
 
 		public Int32 actionsLength;
 		[MarshalAs(UnmanagedType.LPArray)]
