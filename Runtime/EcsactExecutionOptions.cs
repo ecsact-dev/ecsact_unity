@@ -5,16 +5,6 @@ using System;
 namespace Ecsact {
 
 public class ExecutionOptions {
-	public class BuilderEntity {
-		public BuilderEntity AddComponent<C>(C component)
-			where              C : Ecsact.Component {
-      var componentId = Ecsact.Util.GetComponentID<C>();
-      components.Add(componentId, component);
-      return this;
-		}
-		internal Dictionary<Int32, object> components = new();
-	};
-
 	public EcsactRuntime.CExecutionOptions executionOptions;
 
 	private List<EcsactRuntime.EcsactAction>      actions;
@@ -36,9 +26,9 @@ public class ExecutionOptions {
 		executionOptions = new();
 	}
 
-	public void AddComponent<T>(Int32 entityId, T component)
-		where     T : Ecsact.Component {
-    var componentId = Ecsact.Util.GetComponentID<T>();
+	public void AddComponent<C>(Int32 entityId, C component)
+		where     C : Ecsact.Component {
+    var componentId = Ecsact.Util.GetComponentID<C>();
     var componentPtr = Marshal.AllocHGlobal(Marshal.SizeOf(component));
 
     Marshal.StructureToPtr(component, componentPtr, false);
