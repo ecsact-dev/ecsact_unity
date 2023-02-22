@@ -57,6 +57,10 @@ public class DynamicEntity : MonoBehaviour {
 	public global::System.Int32              entityId { get; private set; } = -1;
 	public List<SerializableEcsactComponent> ecsactComponents = new();
 
+	public List<global::System.Action> pending_callbacks = new();
+
+	bool callbackPending = false;
+
 	public void AddEcsactCompnent<C>(C component)
 		where     C : Ecsact.Component {
     if(Application.isPlaying) {
@@ -87,12 +91,29 @@ public class DynamicEntity : MonoBehaviour {
 		});
 	}
 
-	private void CreateEntityIfNeeded() {
-		if(entityId == -1) {
-			entityId = Ecsact.Defaults.Registry.CreateEntity();
-			if(Ecsact.Defaults.Pool != null) {
-				Ecsact.Defaults.Pool.SetPreferredEntityGameObject(entityId, gameObject);
-			}
+	private void CreateEntityIfNeeded(global::System.Action callback) {
+		if(entityId == -1 && callbackPending == false) {
+			var runtimeSettings = EcsactRuntimeSettings.Get();
+			callbackPending = true;
+			Ecsact.Defaults.Runner!.executionOptions.CreateEntity((id) => {
+				Debug.Log("CreateEntityIfNeeded", this);
+				entityId = id;
+				if(Ecsact.Defaults.Pool != null) {
+					Ecsact.Defaults.Pool.SetPreferredEntityGameObject(
+						entityId,
+						gameObject
+					);
+				}
+				callback();
+				foreach(var callback in pending_callbacks) {
+					callback();
+				}
+				pending_callbacks.Clear();
+			});
+		} else if(entityId == -1 && callbackPending == true) {
+			pending_callbacks.Add(callback);
+		} else {
+			callback();
 		}
 	}
 
@@ -101,12 +122,14 @@ public class DynamicEntity : MonoBehaviour {
 			for(int i = 0; ecsactComp.otherEntities.Count > i; ++i) {
 				var otherEntity = ecsactComp.otherEntities[i];
 				if(otherEntity != null && otherEntity.entityId == -1) {
-					otherEntity.CreateEntityIfNeeded();
-					var fieldName = ecsactComp.entityFieldNames[i];
-					var compType = ecsactComp.data!.GetType();
-					var field = compType.GetField(fieldName);
-					Debug.Assert(field != null, this);
-					field!.SetValue(ecsactComp.data, otherEntity.entityId);
+					otherEntity.CreateEntityIfNeeded(() => {
+						var fieldName = ecsactComp.entityFieldNames[i];
+						var compType = ecsactComp.data!.GetType();
+						var field = compType.GetField(fieldName);
+						Debug.Log("Add components");
+						Debug.Assert(field != null, this);
+						field!.SetValue(ecsactComp.data, otherEntity.entityId);
+					});
 				}
 			}
 		}
@@ -119,8 +142,7 @@ public class DynamicEntity : MonoBehaviour {
 
 	void OnEnable() {
 		Ecsact.Defaults.WhenReady(() => {
-			CreateEntityIfNeeded();
-			AddInitialEcsactComponents();
+			CreateEntityIfNeeded(() => { AddInitialEcsactComponents(); });
 		});
 	}
 
