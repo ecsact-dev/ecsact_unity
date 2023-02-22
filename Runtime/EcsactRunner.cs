@@ -20,6 +20,15 @@ public class EcsactRunner : MonoBehaviour {
 	public int debugExecutionTimeMs = 0;
 #endif
 
+	private Ecsact.Details.ExecutionEntityCallbacks entityCallbacks = new();
+
+	void Start() {
+		Ecsact.Defaults.Runtime.OnEntityCreated((entityId, placeholderId) => {
+			var callback = entityCallbacks.GetAndClearCallback(placeholderId);
+			callback(entityId);
+		});
+	}
+
 	public Ecsact.ExecutionOptions executionOptions = new();
 
 	internal static EcsactRunner CreateInstance<ComponentT>(
@@ -51,11 +60,16 @@ public class EcsactRunner : MonoBehaviour {
 		}
 
 		try {
+			LoadEntityCallbacks();
+			// NOTE: Temporary, this should be abstracted out
+			executionOptions.executionOptions.createEntities =
+				executionOptions.create_entities_placeholders.ToArray();
 			Ecsact.Defaults.Registry.ExecuteSystems(executionOptions);
 		} finally {
 			executionOptions.Free();
 #if UNITY_EDITOR
 			executionTimeWatch.Stop();
+			executionOptions.create_entities_placeholders = new();
 			debugExecutionTimeMs = (int)executionTimeWatch.ElapsedMilliseconds;
 			debugExecutionCountTotal += 1;
 #endif
@@ -64,6 +78,15 @@ public class EcsactRunner : MonoBehaviour {
 		}
 
 		Ecsact.Defaults.Runtime.wasm.PrintAndConsumeLogs();
+	}
+
+	protected void LoadEntityCallbacks() {
+		for(int i = 0; i < executionOptions.create_entities.Count; i++) {
+			var builder = executionOptions.create_entities[i];
+			var id = entityCallbacks.AddCallback(builder.callback);
+			// NOTE: Temporary, this should be abstracted out
+			executionOptions.create_entities_placeholders.Add(id);
+		}
 	}
 }
 

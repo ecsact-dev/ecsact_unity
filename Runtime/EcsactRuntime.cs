@@ -170,6 +170,7 @@ public class EcsactRuntime {
 		InitComponent = 0,
 		UpdateComponent = 1,
 		RemoveComponent = 2,
+		CreateEntity = 3,
 	}
 
 	public delegate void EachComponentCallback(
@@ -183,6 +184,13 @@ public class EcsactRuntime {
 		Int32       entityId,
 		Int32       componentId,
 		IntPtr      componentData,
+		IntPtr      callbackUserData
+	);
+
+	public delegate void EntityEventCallback(
+		EcsactEvent ev,
+		Int32       entityId,
+		Int32       placeholderId,
 		IntPtr      callbackUserData
 	);
 
@@ -222,6 +230,18 @@ public class EcsactRuntime {
 		public Int32 actionsLength;
 		[MarshalAs(UnmanagedType.LPArray)]
 		public EcsactAction[] actions;
+
+		public Int32 createEntitiesLength;
+		[MarshalAs(UnmanagedType.LPArray)]
+		public Int32[] createEntities;
+		[MarshalAs(UnmanagedType.LPArray)]
+		public Int32[] createEntitiesComponentsLength;
+		[MarshalAs(UnmanagedType.LPArray)]
+		public IntPtr[] createEntitiesComponents;
+
+		public Int32 destroyEntitiesLength;
+		[MarshalAs(UnmanagedType.LPArray)]
+		public EcsactComponentId[] destroyEntities;
 	};
 
 	public struct ExecutionEventsCollector {
@@ -261,6 +281,30 @@ public class EcsactRuntime {
 		/// <c>callbackUserData</c> passed to <c>removeCallback</c>
 		/// </summary>
 		public IntPtr removeCallbackUserData;
+
+		/// <summary>
+		/// invoked after system executions are finished for every created entity.
+		/// Invocation happens in the calling thread. <c>event</c> will
+		/// always be <c>EcsactEvent.CreateEntity</c>.
+		/// </summary>
+		public EntityEventCallback createEntityCallback;
+
+		/// <summary>
+		/// <c>callbackUserData</c> passed to <c>createEntityCallback</c>
+		/// </summary>
+		public IntPtr createEntityCallbackUserData;
+
+		/// <summary>
+		/// invoked after system executions are finished for every destroyed entity.
+		/// Invocation happens in the calling thread. <c>event</c> will
+		/// always be <c>EcsactEvent.DestroyEntity</c>.
+		/// </summary>
+		public EntityEventCallback destroyEntityCallback;
+
+		/// <summary>
+		/// <c>callbackUserData</c> passed to <c>destroyEntityCallback</c>
+		/// </summary>
+		public IntPtr destroyEntitycallbackUserData;
 	}
 
 	public struct StaticComponentInfo {
@@ -1418,6 +1462,7 @@ public class EcsactRuntime {
 				_owner._execEvs.initCallbackUserData = ownerIntPtr;
 				_owner._execEvs.updateCallbackUserData = ownerIntPtr;
 				_owner._execEvs.removeCallbackUserData = ownerIntPtr;
+				_owner._execEvs.createEntityCallbackUserData = ownerIntPtr;
 				var error = ecsact_execute_systems(
 					registryId,
 					executionCount,
@@ -2832,12 +2877,15 @@ public class EcsactRuntime {
 	/// <summary>Remove Component Untyped Callback</summary>
 	private delegate void RmvCompUtCb(Int32 entityId, object component);
 
+	public delegate void EntityIdCallback(Int32 entityId);
+
 	private List<InitComponentCallback>           _initAnyCompCbs = new();
 	private List<UpdateComponentCallback>         _updateAnyCompCbs = new();
 	private List<RemoveComponentCallback>         _removeAnyCompCbs = new();
 	private Dictionary<Int32, List<InitCompUtCb>> _initCompCbs = new();
 	private Dictionary<Int32, List<UpCompUtCb>>   _updateCompCbs = new();
 	private Dictionary<Int32, List<RmvCompUtCb>>  _removeCompCbs = new();
+	private List<EntityCallback>                  _createEntityCbs = new();
 	internal ExecutionEventsCollector             _execEvs;
 
 	private EcsactRuntime() {
@@ -2848,6 +2896,8 @@ public class EcsactRuntime {
 			updateCallbackUserData = IntPtr.Zero,
 			removeCallback = OnRemoveComponentHandler,
 			removeCallbackUserData = IntPtr.Zero,
+			createEntityCallback = OnEntityCreatedHandler,
+			createEntityCallbackUserData = IntPtr.Zero,
 		};
 	}
 
@@ -3084,5 +3134,35 @@ public class EcsactRuntime {
 			Ecsact.Util.PtrToComponent(componentData, componentId);
 		componentObject = Ecsact.Util.HandlePtrToComponent(ref componentObject);
 		self._TriggerRemoveComponentEvent(entityId, componentId, componentObject);
+	}
+
+	public delegate void EntityCallback(Int32 entityId, Int32 placeholderId);
+
+	public Action OnEntityCreated(EntityCallback callback) {
+		_createEntityCbs.Add(callback);
+		return () => { _createEntityCbs.Remove(callback); };
+	}
+
+	[AOT.MonoPInvokeCallback(typeof(EntityCallback))]
+	private static void OnEntityCreatedHandler(
+		EcsactEvent ev,
+		Int32       entityId,
+		Int32       placeholderId,
+		IntPtr      callbackUserData
+	) {
+		AssertPlayMode();
+		UnityEngine.Debug.Assert(ev == EcsactEvent.CreateEntity);
+		UnityEngine.Debug.Log("Entity created");
+
+		try {
+			var self =
+				(GCHandle.FromIntPtr(callbackUserData).Target as EcsactRuntime)!;
+
+			foreach(var callback in self._createEntityCbs) {
+				callback(entityId, placeholderId);
+			}
+		} catch(Exception e) {
+			UnityEngine.Debug.LogException(e);
+		}
 	}
 }
