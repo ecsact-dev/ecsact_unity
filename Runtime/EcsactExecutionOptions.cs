@@ -5,6 +5,17 @@ using System;
 namespace Ecsact {
 
 public class ExecutionOptions {
+	public class BuilderEntity {
+		public BuilderEntity AddComponent<C>(C component)
+			where              C : Ecsact.Component {
+      var componentId = Ecsact.Util.GetComponentID<C>();
+      components.Add(componentId, component);
+      return this;
+		}
+		public EcsactRuntime.EntityIdCallback callback;
+		internal Dictionary<Int32, object> components = new();
+	};
+
 	public EcsactRuntime.CExecutionOptions executionOptions;
 
 	private List<EcsactRuntime.EcsactAction>      actions;
@@ -15,6 +26,14 @@ public class ExecutionOptions {
 	private List<EcsactRuntime.EcsactComponentId> removes;
 	private List<Int32>                           removes_entities;
 
+	public List<BuilderEntity>                        create_entities;
+	private List<List<EcsactRuntime.EcsactComponent>> create_entities_components;
+	public List<Int32>     create_entities_placeholders;
+	private List<Int32>    create_entities_components_length;
+	private List<GCHandle> create_entity_pins;
+
+	private List<EcsactRuntime.EcsactComponentId> destroy_entities;
+
 	internal ExecutionOptions() {
 		actions = new();
 		adds = new();
@@ -24,6 +43,12 @@ public class ExecutionOptions {
 		removes = new();
 		removes_entities = new();
 		executionOptions = new();
+		create_entities = new();
+		create_entities_components = new();
+		create_entities_placeholders = new();
+		create_entities_components_length = new();
+		create_entity_pins = new();
+		destroy_entities = new();
 	}
 
 	public void AddComponent<C>(Int32 entityId, C component)
@@ -86,6 +111,14 @@ public class ExecutionOptions {
 		removes_entities.Add(entityId);
 	}
 
+	public BuilderEntity CreateEntity(EcsactRuntime.EntityIdCallback callback) {
+		BuilderEntity builder = new();
+		builder.callback = callback;
+
+		create_entities.Add(builder);
+		return builder;
+	}
+
 	public void Alloc() {
 		if(actions.Count > 0) {
 			var actionsArray = actions.ToArray();
@@ -118,6 +151,57 @@ public class ExecutionOptions {
 			executionOptions.removeComponents = removesArray;
 			executionOptions.removeComponentsLength = removesArray.Length;
 			executionOptions.removeComponentsEntities = removesEntitiesArray;
+		}
+
+		if(create_entities.Count > 0) {
+			executionOptions.createEntitiesLength = create_entities.Count;
+			create_entities_placeholders = new List<Int32>(create_entities.Count);
+			executionOptions.createEntitiesComponentsLength =
+				new Int32[create_entities.Count];
+			executionOptions.createEntitiesComponents =
+				new IntPtr[create_entities.Count];
+
+			create_entities_components =
+				new List<List<EcsactRuntime.EcsactComponent>>(create_entities.Count);
+
+			for(int i = 0; i < create_entities.Count; i++) {
+				var builder = create_entities[i];
+
+				executionOptions.createEntitiesComponentsLength[i] =
+					builder.components.Count;
+
+				// Lists can't be intptrs
+				var compList = new List<EcsactRuntime.EcsactComponent>();
+				create_entities_components.Add(compList);
+
+				foreach(var component in builder.components) {
+					var componentPtr =
+						Marshal.AllocHGlobal(Marshal.SizeOf(component.Value));
+
+					Ecsact.Util
+						.ComponentToPtr(component.Value, component.Key, componentPtr);
+
+					EcsactRuntime.EcsactComponent ecsactComponent;
+					ecsactComponent.componentData = componentPtr;
+					ecsactComponent.componentId = component.Key;
+
+					compList.Add(ecsactComponent);
+				}
+
+				if(builder.components.Count > 0) {
+					var createPinned =
+						GCHandle.Alloc(compList.ToArray(), GCHandleType.Pinned);
+
+					create_entity_pins.Add(createPinned);
+
+					var createEntityComponentsPinned = createPinned.AddrOfPinnedObject();
+
+					executionOptions.createEntitiesComponents[i] =
+						createEntityComponentsPinned;
+				} else {
+					executionOptions.createEntitiesComponents[i] = IntPtr.Zero;
+				}
+			}
 		}
 	}
 
@@ -161,6 +245,25 @@ public class ExecutionOptions {
 
 		removes.Clear();
 		removes_entities.Clear();
+
+		create_entities_placeholders.Clear();
+
+		foreach(var componentList in create_entities_components) {
+			foreach(var ecsComponent in componentList) {
+				Marshal.FreeHGlobal(ecsComponent.componentData);
+			}
+		}
+		create_entities_components.Clear();
+
+		foreach(var pin in create_entity_pins) {
+			pin.Free();
+		}
+
+		create_entities_components_length.Clear();
+		create_entity_pins.Clear();
+		create_entities.Clear();
+
+		destroy_entities.Clear();
 	}
 
 	public bool isEmpty() {
@@ -174,6 +277,12 @@ public class ExecutionOptions {
 			return false;
 		}
 		if(removes.Count > 0) {
+			return false;
+		}
+		if(create_entities.Count > 0) {
+			return false;
+		}
+		if(destroy_entities.Count > 0) {
 			return false;
 		}
 		return true;
