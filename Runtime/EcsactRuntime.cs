@@ -171,6 +171,7 @@ public class EcsactRuntime {
 		UpdateComponent = 1,
 		RemoveComponent = 2,
 		CreateEntity = 3,
+		DestroyEntity = 4,
 	}
 
 	public delegate void EachComponentCallback(
@@ -877,6 +878,7 @@ public class EcsactRuntime {
 				_owner._execEvs.initCallbackUserData = ownerIntPtr;
 				_owner._execEvs.updateCallbackUserData = ownerIntPtr;
 				_owner._execEvs.removeCallbackUserData = ownerIntPtr;
+				_owner._execEvs.destroyEntitycallbackUserData = ownerIntPtr;
 				_asyncEvs.errorCallbackUserData = selfIntPtr;
 				_asyncEvs.connectCallbackUserData = selfIntPtr;
 				_asyncEvs.actionCommittedCallbackUserData = selfIntPtr;
@@ -1463,6 +1465,7 @@ public class EcsactRuntime {
 				_owner._execEvs.updateCallbackUserData = ownerIntPtr;
 				_owner._execEvs.removeCallbackUserData = ownerIntPtr;
 				_owner._execEvs.createEntityCallbackUserData = ownerIntPtr;
+				_owner._execEvs.destroyEntitycallbackUserData = ownerIntPtr;
 				var error = ecsact_execute_systems(
 					registryId,
 					executionCount,
@@ -2886,6 +2889,7 @@ public class EcsactRuntime {
 	private Dictionary<Int32, List<UpCompUtCb>>   _updateCompCbs = new();
 	private Dictionary<Int32, List<RmvCompUtCb>>  _removeCompCbs = new();
 	private List<EntityCallback>                  _createEntityCbs = new();
+	private List<EntityCallback>                  _destroyEntityCbs = new();
 	internal ExecutionEventsCollector             _execEvs;
 
 	private EcsactRuntime() {
@@ -2898,6 +2902,8 @@ public class EcsactRuntime {
 			removeCallbackUserData = IntPtr.Zero,
 			createEntityCallback = OnEntityCreatedHandler,
 			createEntityCallbackUserData = IntPtr.Zero,
+			destroyEntityCallback = OnEntityDestroyedHandler,
+			destroyEntitycallbackUserData = IntPtr.Zero,
 		};
 	}
 
@@ -3152,7 +3158,6 @@ public class EcsactRuntime {
 	) {
 		AssertPlayMode();
 		UnityEngine.Debug.Assert(ev == EcsactEvent.CreateEntity);
-		UnityEngine.Debug.Log("Entity created");
 
 		try {
 			var self =
@@ -3163,6 +3168,28 @@ public class EcsactRuntime {
 			}
 		} catch(Exception e) {
 			UnityEngine.Debug.LogException(e);
+		}
+	}
+
+	public Action OnEntityDestroyed(EntityCallback callback) {
+		_destroyEntityCbs.Add(callback);
+		return () => { _destroyEntityCbs.Remove(callback); };
+	}
+
+	[AOT.MonoPInvokeCallback(typeof(EntityCallback))]
+	private static void OnEntityDestroyedHandler(
+		EcsactEvent ev,
+		Int32       entityId,
+		Int32       placeholderId,
+		IntPtr      callbackUserData
+	) {
+		AssertPlayMode();
+		UnityEngine.Debug.Assert(ev == EcsactEvent.DestroyEntity);
+
+		var self = (GCHandle.FromIntPtr(callbackUserData).Target as EcsactRuntime)!;
+
+		foreach(var callback in self._destroyEntityCbs) {
+			callback(entityId, placeholderId);
 		}
 	}
 }

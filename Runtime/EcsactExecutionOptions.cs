@@ -119,6 +119,14 @@ public class ExecutionOptions {
 		return builder;
 	}
 
+	public void DestroyEntity(Int32 entityId) {
+		var remove = new EcsactRuntime.EcsactComponentId {
+			componentId = entityId,
+		};
+
+		destroy_entities.Add(remove);
+	}
+
 	public void Alloc() {
 		if(actions.Count > 0) {
 			var actionsArray = actions.ToArray();
@@ -201,6 +209,13 @@ public class ExecutionOptions {
 					executionOptions.createEntitiesComponents[i] = IntPtr.Zero;
 				}
 			}
+		}
+
+		if(destroy_entities.Count > 0) {
+			var destroyEntitiesArray = destroy_entities.ToArray();
+
+			executionOptions.destroyEntities = destroyEntitiesArray;
+			executionOptions.destroyEntitiesLength = destroyEntitiesArray.Length;
 		}
 	}
 
