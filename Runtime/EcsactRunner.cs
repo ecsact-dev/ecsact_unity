@@ -61,6 +61,7 @@ public class EcsactRunner : MonoBehaviour {
 
 		try {
 			LoadEntityCallbacks();
+			// NOTE: Temporary, this should be abstracted out
 			executionOptions.executionOptions.createEntities =
 				executionOptions.create_entities_placeholders.ToArray();
 			Ecsact.Defaults.Registry.ExecuteSystems(executionOptions);
@@ -83,6 +84,7 @@ public class EcsactRunner : MonoBehaviour {
 		for(int i = 0; i < executionOptions.create_entities.Count; i++) {
 			var builder = executionOptions.create_entities[i];
 			var id = entityCallbacks.AddCallback(builder.callback);
+			// NOTE: Temporary, this should be abstracted out
 			executionOptions.create_entities_placeholders.Add(id);
 		}
 	}

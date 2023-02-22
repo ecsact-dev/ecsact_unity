@@ -170,7 +170,6 @@ public class ExecutionOptions {
 				executionOptions.createEntitiesComponentsLength[i] =
 					builder.components.Count;
 
-				// Lists can't be intptrs
 				var compList = new List<EcsactRuntime.EcsactComponent>();
 				create_entities_components.Add(compList);
 
