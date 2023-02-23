@@ -24,8 +24,13 @@ public class EcsactRunner : MonoBehaviour {
 
 	void Start() {
 		Ecsact.Defaults.Runtime.OnEntityCreated((entityId, placeholderId) => {
-			var callback = entityCallbacks.GetAndClearCallback(placeholderId);
-			callback(entityId);
+			EcsactRuntime.EntityIdCallback callback;
+
+			var hasCallback =
+				entityCallbacks.GetAndClearCallback(placeholderId, out callback);
+			if(hasCallback) {
+				callback(entityId);
+			}
 		});
 	}
 
@@ -59,33 +64,33 @@ public class EcsactRunner : MonoBehaviour {
 			executionOptions.Alloc();
 		}
 
+		var localExecutionOptions = executionOptions;
 		try {
-			LoadEntityCallbacks();
+			executionOptions = new();
+			LoadEntityCallbacks(localExecutionOptions);
 			// NOTE: Temporary, this should be abstracted out
-			executionOptions.executionOptions.createEntities =
-				executionOptions.create_entities_placeholders.ToArray();
-			Ecsact.Defaults.Registry.ExecuteSystems(executionOptions);
+			localExecutionOptions.executionOptions.createEntities =
+				localExecutionOptions.create_entities_placeholders.ToArray();
+			Ecsact.Defaults.Registry.ExecuteSystems(localExecutionOptions);
 		} finally {
-			executionOptions.Free();
+			localExecutionOptions.Free();
 #if UNITY_EDITOR
 			executionTimeWatch.Stop();
-			executionOptions.create_entities_placeholders = new();
+			localExecutionOptions.create_entities_placeholders = new();
 			debugExecutionTimeMs = (int)executionTimeWatch.ElapsedMilliseconds;
 			debugExecutionCountTotal += 1;
 #endif
-
-			executionOptions.executionOptions = new EcsactRuntime.CExecutionOptions();
 		}
 
 		Ecsact.Defaults.Runtime.wasm.PrintAndConsumeLogs();
 	}
 
-	protected void LoadEntityCallbacks() {
-		for(int i = 0; i < executionOptions.create_entities.Count; i++) {
-			var builder = executionOptions.create_entities[i];
+	protected void LoadEntityCallbacks(ExecutionOptions localExecutionOptions) {
+		for(int i = 0; i < localExecutionOptions.create_entities.Count; i++) {
+			var builder = localExecutionOptions.create_entities[i];
 			var id = entityCallbacks.AddCallback(builder.callback);
 			// NOTE: Temporary, this should be abstracted out
-			executionOptions.create_entities_placeholders.Add(id);
+			localExecutionOptions.create_entities_placeholders.Add(id);
 		}
 	}
 }

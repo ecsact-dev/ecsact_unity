@@ -10,13 +10,18 @@ class ExecutionEntityCallbacks {
 		return entity_id_counter++;
 	}
 
-	public EcsactRuntime.EntityIdCallback GetAndClearCallback(Int32 placeholderId
+	public bool GetAndClearCallback(
+		Int32 placeholderId,
+		out EcsactRuntime.EntityIdCallback callback
 	) {
-		EcsactRuntime.EntityIdCallback callback;
 		var hasCallback = callbacks.TryGetValue(placeholderId, out callback);
 
-		callbacks.Remove(placeholderId);
-		return callback;
+		if(hasCallback) {
+			callbacks.Remove(placeholderId);
+			return true;
+		}
+
+		return false;
 	}
 
 	private Int32 entity_id_counter = 0;
