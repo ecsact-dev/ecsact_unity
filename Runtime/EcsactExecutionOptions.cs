@@ -16,12 +16,6 @@ public class ExecutionOptions {
 		internal Dictionary<Int32, object> components = new();
 	};
 
-	// Create local scope CexecutionOptions
-	// Clear the local CexecutionOptions
-	// Allows us to handle callbacks while changing the next wave of options
-
-	// var asd = Runner.executionOptions;
-
 	public EcsactRuntime.CExecutionOptions executionOptions;
 
 	private List<EcsactRuntime.EcsactAction>      actions;
