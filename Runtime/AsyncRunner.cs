@@ -1,35 +1,42 @@
 using UnityEngine;
+using System.Runtime.InteropServices;
 
 #nullable enable
 
 namespace Ecsact {
 
 [AddComponentMenu("")]
-public class AsyncRunner : MonoBehaviour {
-	private static AsyncRunner? instance = null;
+public class AsyncRunner : EcsactRunner {
+	private EcsactRuntime? runtime;
+	private int? tickRate;
 
-	private static void OnRuntimeLoad() {
-		if(instance != null) {
-			return;
+	void Start() {
+		Ecsact.Defaults.WhenReady(() => { runtime = Ecsact.Defaults.Runtime; });
+	}
+
+	private void Enqueue() {
+		var localExecutionOptions = executionOptions;
+
+		try {
+			executionOptions = new();
+			LoadEntityCallbacks(localExecutionOptions);
+			// NOTE: Temporary, this should be abstracted out
+			localExecutionOptions.executionOptions.createEntities =
+				localExecutionOptions.create_entities_placeholders.ToArray();
+			localExecutionOptions.Alloc();
+			runtime.async.EnqueueExecutionOptions(localExecutionOptions.C());
+		} finally {
+			executionOptions.Free();
 		}
-
-		var settings = EcsactRuntimeSettings.Get();
-		if(!settings.useAsyncRunner) {
-			return;
-		}
-
-		var gameObject = new GameObject("Ecsact Async Runner");
-		instance = gameObject.AddComponent<AsyncRunner>();
-		DontDestroyOnLoad(gameObject);
 	}
 
 	void Update() {
-		Ecsact.Defaults.Runtime.async.FlushEvents();
-	}
-
-	void OnDestroy() {
-		if(this.Equals(instance)) {
-			instance = null;
+		if(runtime != null) {
+			if(!executionOptions.isEmpty()) {
+				UnityEngine.Debug.Log("Enqueue");
+				Enqueue();
+			}
+			runtime.async.Flush();
 		}
 	}
 }

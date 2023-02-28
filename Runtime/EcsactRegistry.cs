@@ -100,6 +100,14 @@ public class Registry {
 		rt.core.EachComponent(ID, entityId, callback, callbackUserData);
 	}
 
+	public void UpdateComponent(
+		Int32  entityId,
+		Int32  componentId,
+		object componentData
+	) {
+		rt.core.UpdateComponent(ID, entityId, componentId, componentData);
+	}
+
 	public void UpdateComponent<C>(Int32 entityId, C component)
 		where     C : Ecsact.Component {
     rt.core.UpdateComponent<C>(ID, entityId, component);

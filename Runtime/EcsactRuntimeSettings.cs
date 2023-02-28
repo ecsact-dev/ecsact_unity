@@ -12,7 +12,7 @@ using UnityEditor;
 
 [System.Serializable]
 public class EcsactRuntimeDefaultRegistry {
-	public enum RunnerType {
+	public enum UpdateMethod {
 		None,
 		Update,
 		FixedUpdate,
@@ -27,8 +27,8 @@ public class EcsactRuntimeDefaultRegistry {
 		"Create game object at startup with the Ecsact.DefaultRunner or " +
 		"Ecsact.DefaultFixedRunner script for this registry."
 	)]
-	public RunnerType runner;
-	public Int32      registryId { get; internal set; } = -1;
+	public UpdateMethod updateMethod;
+	public Int32        registryId { get; internal set; } = -1;
 }
 
 [System.Serializable]
@@ -44,18 +44,28 @@ public class EcsactRuntimeSettings : ScriptableObject {
 
 	// Turned off for now.
 	// @SEE: https://github.com/ecsact-dev/ecsact_unity/issues/20
-	[NonSerialized]
-	public bool useAsyncRunner = false;
+	// NOTE: Close issue on completion
+	public enum RunnerType {
+		DefaultRunner,
+		AsyncRunner,
+	}
+
 	public bool useVisualScriptingEvents = true;
 	[Tooltip(
 		"List of ecsact registries that are created automatically when " +
 		"the game loads."
 	)]
 
+	public RunnerType runner;
+
+	[HideInInspector]
+	public int tickRate = 32;
+
+	[HideInInspector]
 	public EcsactRuntimeDefaultRegistry defaultRegistry =
 		new EcsactRuntimeDefaultRegistry {
 			registryName = "Default Registry",
-			runner = EcsactRuntimeDefaultRegistry.RunnerType.FixedUpdate,
+			updateMethod = EcsactRuntimeDefaultRegistry.UpdateMethod.FixedUpdate,
 		};
 
 	[System.Serializable]

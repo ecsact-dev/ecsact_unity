@@ -148,16 +148,16 @@ public class DynamicEntity : MonoBehaviour {
 
 	void OnDisable() {
 		if(entityId != -1) {
-			foreach(var ecsactComponent in ecsactComponents) {
-				var hasComponent =
-					Ecsact.Defaults.Registry.HasComponent(entityId, ecsactComponent.id);
-				if(hasComponent) {
-					Ecsact.Defaults.Runner!.executionOptions.RemoveComponent(
-						entityId,
-						ecsactComponent.id
-					);
-				}
-			}
+			// foreach(var ecsactComponent in ecsactComponents) {
+			// 	var hasComponent =
+			// 		Ecsact.Defaults.Registry.HasComponent(entityId, ecsactComponent.id);
+			// 	if(hasComponent) {
+			// 		Ecsact.Defaults.Runner!.executionOptions.RemoveComponent(
+			// 			entityId,
+			// 			ecsactComponent.id
+			// 		);
+			// 	}
+			// }
 		} else {
 			throw new Exception("Uninitialized entityID");
 		}
