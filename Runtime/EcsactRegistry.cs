@@ -53,12 +53,12 @@ public class Registry {
 		return rt.core.GetEntities(ID);
 	}
 
-	public void AddComponent<C>(int entityId, C component)
-		where     C : Ecsact.Component {
+	internal void AddComponent<C>(int entityId, C component)
+		where       C : Ecsact.Component {
     rt.core.AddComponent<C>(ID, entityId, component);
 	}
 
-	public void AddComponent(
+	internal void AddComponent(
 		Int32  entityId,
 		Int32  componentId,
 		object componentData
@@ -100,7 +100,7 @@ public class Registry {
 		rt.core.EachComponent(ID, entityId, callback, callbackUserData);
 	}
 
-	public void UpdateComponent(
+	internal void UpdateComponent(
 		Int32  entityId,
 		Int32  componentId,
 		object componentData
@@ -108,17 +108,17 @@ public class Registry {
 		rt.core.UpdateComponent(ID, entityId, componentId, componentData);
 	}
 
-	public void UpdateComponent<C>(Int32 entityId, C component)
-		where     C : Ecsact.Component {
+	internal void UpdateComponent<C>(Int32 entityId, C component)
+		where       C : Ecsact.Component {
     rt.core.UpdateComponent<C>(ID, entityId, component);
 	}
 
-	public void RemoveComponent<C>(Int32 entityId)
-		where     C : Ecsact.Component {
+	internal void RemoveComponent<C>(Int32 entityId)
+		where       C : Ecsact.Component {
     rt.core.RemoveComponent<C>(ID, entityId);
 	}
 
-	public void RemoveComponent(Int32 entityId, Int32 componentId) {
+	internal void RemoveComponent(Int32 entityId, Int32 componentId) {
 		rt.core.RemoveComponent(ID, entityId, componentId);
 	}
 

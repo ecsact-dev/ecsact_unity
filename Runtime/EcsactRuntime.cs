@@ -1186,8 +1186,6 @@ public class EcsactRuntime {
 			} finally {
 				Marshal.FreeHGlobal(componentPtr);
 			}
-
-			_owner._TriggerInitComponentEvent(entityId, componentId, component);
 		}
 
 		public void AddComponent(
@@ -1202,10 +1200,10 @@ public class EcsactRuntime {
 			}
 
 #if UNITY_EDITOR
-			// var result = HasComponent(registryId, entityId, componentId);
-			// if(result == true) {
-			// 	throw new Exception("Entity already has added component");
-			// }
+			var result = HasComponent(registryId, entityId, componentId);
+			if(result == true) {
+				throw new Exception("Entity already has added component");
+			}
 #endif
 			var componentPtr = Marshal.AllocHGlobal(Marshal.SizeOf(componentData));
 
@@ -1222,8 +1220,6 @@ public class EcsactRuntime {
 			} finally {
 				Marshal.FreeHGlobal(componentPtr);
 			}
-
-			_owner._TriggerInitComponentEvent(entityId, componentId, componentData);
 		}
 
 		public bool HasComponent(
@@ -1454,7 +1450,6 @@ public class EcsactRuntime {
 			var componentData = GetComponent<C>(registryId, entityId);
 			var componentId = Ecsact.Util.GetComponentID<C>();
 			ecsact_remove_component(registryId, entityId, componentId);
-			_owner._TriggerRemoveComponentEvent(entityId, componentId, componentData);
 		}
 
 		public void RemoveComponent(
@@ -1476,7 +1471,6 @@ public class EcsactRuntime {
 
 			var componentData = GetComponent(registryId, entityId, componentId);
 			ecsact_remove_component(registryId, entityId, componentId);
-			_owner._TriggerRemoveComponentEvent(entityId, componentId, componentData);
 		}
 
 		public void ExecuteSystems(
@@ -3170,6 +3164,8 @@ public class EcsactRuntime {
 	) {
 		AssertPlayMode();
 		UnityEngine.Debug.Assert(ev == EcsactEvent.RemoveComponent);
+
+		UnityEngine.Debug.Log("RemoveComponentHandler");
 
 		var self = (GCHandle.FromIntPtr(callbackUserData).Target as EcsactRuntime)!;
 		var componentObject =

@@ -81,14 +81,14 @@ internal static class EcsactRuntimeDefaults {
 
 		SetDefaultsRunner(settings);
 
-		Ecsact.UnitySync.EntityGameObjectPool entityPool;
+		EntityGameObjectPool ? pool;
 
 		if(settings.enableUnitySync) {
-			SetupUnitySync(Ecsact.Defaults.Runtime, reg, settings, out entityPool);
+			SetupUnitySync(Ecsact.Defaults.Runtime, reg, settings, out pool);
 			if(!unitySyncScriptsRegistered) {
 				RegisterUnitySyncScripts(settings);
 			}
-			EntityGameObjectPool ? pool;
+
 			pool = settings.defaultRegistry.pool;
 			Ecsact.Defaults.Pool = pool;
 		}
