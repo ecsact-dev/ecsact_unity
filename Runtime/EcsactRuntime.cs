@@ -810,10 +810,9 @@ public class EcsactRuntime {
 			IntPtr callbackUserData
 		) {
 			var self = (GCHandle.FromIntPtr(callbackUserData).Target as Async)!;
-			UnityEngine.Debug.Log("OnAsyncErrorHandler");
-			// foreach(var cb in self._errCallbacks) {
-			// 	cb(err, requestIds);
-			// }
+			foreach(var cb in self._errCallbacks) {
+				cb(err, requestIds);
+			}
 		}
 
 		public Action OnError(ErrorCallback callback) {
@@ -3190,7 +3189,6 @@ public class EcsactRuntime {
 	) {
 		AssertPlayMode();
 		UnityEngine.Debug.Assert(ev == EcsactEvent.CreateEntity);
-		UnityEngine.Debug.Log("In entity created handler");
 		try {
 			var self =
 				(GCHandle.FromIntPtr(callbackUserData).Target as EcsactRuntime)!;

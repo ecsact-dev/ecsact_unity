@@ -42,9 +42,6 @@ public class EcsactRuntimeSettings : ScriptableObject {
 	public static event Action<EcsactRuntimeSettings>? editorValidateEvent;
 #endif
 
-	// Turned off for now.
-	// @SEE: https://github.com/ecsact-dev/ecsact_unity/issues/20
-	// NOTE: Close issue on completion
 	public enum RunnerType {
 		DefaultRunner,
 		AsyncRunner,

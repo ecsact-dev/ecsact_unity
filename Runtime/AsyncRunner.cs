@@ -21,10 +21,11 @@ public class AsyncRunner : EcsactRunner {
 			executionOptions = new();
 			LoadEntityCallbacks(localExecutionOptions);
 			// NOTE: Temporary, this should be abstracted out
+			// Everything involving create_entities_placeholders should go elsewhere
 			localExecutionOptions.executionOptions.createEntities =
 				localExecutionOptions.create_entities_placeholders.ToArray();
 			localExecutionOptions.Alloc();
-			runtime.async.EnqueueExecutionOptions(localExecutionOptions.C());
+			runtime!.async.EnqueueExecutionOptions(localExecutionOptions.C());
 		} finally {
 			executionOptions.Free();
 		}
@@ -33,7 +34,6 @@ public class AsyncRunner : EcsactRunner {
 	void Update() {
 		if(runtime != null) {
 			if(!executionOptions.isEmpty()) {
-				UnityEngine.Debug.Log("Enqueue");
 				Enqueue();
 			}
 			runtime.async.Flush();

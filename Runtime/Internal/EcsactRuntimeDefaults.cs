@@ -71,7 +71,6 @@ internal static class EcsactRuntimeDefaults {
 
 		// If async, no default available registry!
 		if(settings.runner == EcsactRuntimeSettings.RunnerType.AsyncRunner) {
-			UnityEngine.Debug.Log("Cache Registry created");
 			cacheRegistry = new CacheRegistry(Ecsact.Defaults.Runtime, reg);
 		} else if(settings.runner == EcsactRuntimeSettings.RunnerType.DefaultRunner) {
 			settings.defaultRegistry!.registryId = registry_id;
@@ -127,7 +126,6 @@ internal static class EcsactRuntimeDefaults {
 		}
 	}
 
-	// NOTE: Try an out parameter
 	private static void SetupUnitySync(
 		EcsactRuntime         runtime,
 		Ecsact.Registry       registry,
@@ -140,9 +138,6 @@ internal static class EcsactRuntimeDefaults {
 		// 		"called once."
 		// );
 
-		// NOTE: The registry ID here is important. Sync(Core): We want defaultreg.
-		// Async: Freehand
-		// Find a nice way to keep cache registry updated
 		var initPool = EntityGameObjectPool.CreateInstance(
 			new RegistryEntitySource(registry.ID, runtime)
 		);
