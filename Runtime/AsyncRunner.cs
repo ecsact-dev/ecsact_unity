@@ -8,7 +8,6 @@ namespace Ecsact {
 [AddComponentMenu("")]
 public class AsyncRunner : EcsactRunner {
 	private EcsactRuntime? runtime;
-	private int? tickRate;
 
 	void Start() {
 		Ecsact.Defaults.WhenReady(() => { runtime = Ecsact.Defaults.Runtime; });

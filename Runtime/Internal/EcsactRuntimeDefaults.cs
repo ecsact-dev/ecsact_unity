@@ -69,7 +69,7 @@ internal static class EcsactRuntimeDefaults {
 
 		var reg = new Ecsact.Registry(Ecsact.Defaults.Runtime, registry_id);
 
-		// If async, no default available registry!
+		// If async no default available registry!
 		if(settings.runner == EcsactRuntimeSettings.RunnerType.AsyncRunner) {
 			cacheRegistry = new CacheRegistry(Ecsact.Defaults.Runtime, reg);
 		} else if(settings.runner == EcsactRuntimeSettings.RunnerType.DefaultRunner) {
