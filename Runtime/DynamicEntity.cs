@@ -95,6 +95,7 @@ public class DynamicEntity : MonoBehaviour {
 		if(entityId == -1 && callbackPending == false) {
 			var runtimeSettings = EcsactRuntimeSettings.Get();
 			callbackPending = true;
+			UnityEngine.Debug.Log("Trying to create entity");
 			Ecsact.Defaults.Runner!.executionOptions.CreateEntity((id) => {
 				Debug.Log("CreateEntityIfNeeded", this);
 				entityId = id;
@@ -111,8 +112,10 @@ public class DynamicEntity : MonoBehaviour {
 				pending_callbacks.Clear();
 			});
 		} else if(entityId == -1 && callbackPending == true) {
+			Debug.Log("entityId == - 1");
 			pending_callbacks.Add(callback);
 		} else {
+			Debug.Log("Callback");
 			callback();
 		}
 	}

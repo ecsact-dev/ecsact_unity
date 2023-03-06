@@ -9,10 +9,6 @@ namespace Ecsact {
 public class AsyncRunner : EcsactRunner {
 	private EcsactRuntime? runtime;
 
-	void Start() {
-		Ecsact.Defaults.WhenReady(() => { runtime = Ecsact.Defaults.Runtime; });
-	}
-
 	private void Enqueue() {
 		var localExecutionOptions = executionOptions;
 
@@ -24,18 +20,20 @@ public class AsyncRunner : EcsactRunner {
 			localExecutionOptions.executionOptions.createEntities =
 				localExecutionOptions.create_entities_placeholders.ToArray();
 			localExecutionOptions.Alloc();
-			runtime!.async.EnqueueExecutionOptions(localExecutionOptions.C());
+			Ecsact.Defaults.Runtime.async.EnqueueExecutionOptions(
+				localExecutionOptions.C()
+			);
 		} finally {
 			executionOptions.Free();
 		}
 	}
 
 	void Update() {
-		if(runtime != null) {
+		if(Ecsact.Defaults.Runtime != null) {
 			if(!executionOptions.isEmpty()) {
 				Enqueue();
 			}
-			runtime.async.Flush();
+			Ecsact.Defaults.Runtime.async.Flush();
 		}
 	}
 }

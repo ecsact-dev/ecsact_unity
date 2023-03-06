@@ -687,7 +687,7 @@ public class EcsactRuntime {
 	public delegate void AsyncErrorCallback(
 		Ecsact.AsyncError err,
 		Int32             requestIdsLength,
-		Int32[] requestIds,
+		[MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 1)] Int32[] requestIds,
 		IntPtr callbackUserData
 	);
 
@@ -809,6 +809,12 @@ public class EcsactRuntime {
 			Int32[] requestIds,
 			IntPtr callbackUserData
 		) {
+			throw new Exception(err.ToString());
+
+			foreach(var id in requestIds) {
+				UnityEngine.Debug.Log(id);
+			}
+
 			var self = (GCHandle.FromIntPtr(callbackUserData).Target as Async)!;
 			foreach(var cb in self._errCallbacks) {
 				cb(err, requestIds);
@@ -830,7 +836,7 @@ public class EcsactRuntime {
 			var self = (GCHandle.FromIntPtr(callbackUserData).Target as Async)!;
 		}
 
-		// NOTE: Connect using good?tick_rate=whatever#youchoose
+		// NOTE: Connect using good?delta_time=whatever#youchoose
 		// Tick rate is currently the time in Milliseconds between ticks
 		// NOTE: This should be changed, or the variable more accurately named
 		public void Connect(string connectionString) {
@@ -3164,8 +3170,6 @@ public class EcsactRuntime {
 		AssertPlayMode();
 		UnityEngine.Debug.Assert(ev == EcsactEvent.RemoveComponent);
 
-		UnityEngine.Debug.Log("RemoveComponentHandler");
-
 		var self = (GCHandle.FromIntPtr(callbackUserData).Target as EcsactRuntime)!;
 		var componentObject =
 			Ecsact.Util.PtrToComponent(componentData, componentId);
@@ -3189,6 +3193,7 @@ public class EcsactRuntime {
 	) {
 		AssertPlayMode();
 		UnityEngine.Debug.Assert(ev == EcsactEvent.CreateEntity);
+
 		try {
 			var self =
 				(GCHandle.FromIntPtr(callbackUserData).Target as EcsactRuntime)!;

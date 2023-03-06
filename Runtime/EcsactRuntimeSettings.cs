@@ -56,7 +56,7 @@ public class EcsactRuntimeSettings : ScriptableObject {
 	public RunnerType runner;
 
 	[HideInInspector]
-	public int tickRate = 32;
+	public int deltaTime = 32;
 
 	[HideInInspector]
 	public EcsactRuntimeDefaultRegistry defaultRegistry =

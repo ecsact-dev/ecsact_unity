@@ -241,8 +241,8 @@ public class EcsactRuntimeSettingsEditor : UnityEditor.Editor {
 		}
 
 		if(settings.runner == EcsactRuntimeSettings.RunnerType.AsyncRunner) {
-			settings.tickRate =
-				EditorGUILayout.IntField("Tick Rate", settings.tickRate);
+			settings.deltaTime =
+				EditorGUILayout.IntField("Delta Time", settings.deltaTime);
 		}
 
 		if(settings.enableUnitySync) {

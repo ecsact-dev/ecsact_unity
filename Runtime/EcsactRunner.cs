@@ -23,14 +23,16 @@ public class EcsactRunner : MonoBehaviour {
 	private Ecsact.Details.ExecutionEntityCallbacks entityCallbacks = new();
 
 	void Start() {
-		Ecsact.Defaults.Runtime.OnEntityCreated((entityId, placeholderId) => {
-			EcsactRuntime.EntityIdCallback callback;
+		Ecsact.Defaults.WhenReady(() => {
+			Ecsact.Defaults.Runtime.OnEntityCreated((entityId, placeholderId) => {
+				EcsactRuntime.EntityIdCallback callback;
 
-			var hasCallback =
-				entityCallbacks.GetAndClearCallback(placeholderId, out callback);
-			if(hasCallback) {
-				callback(entityId);
-			}
+				var hasCallback =
+					entityCallbacks.GetAndClearCallback(placeholderId, out callback);
+				if(hasCallback) {
+					callback(entityId);
+				}
+			});
 		});
 	}
 
