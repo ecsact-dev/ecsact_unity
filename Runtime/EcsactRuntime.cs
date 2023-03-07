@@ -412,10 +412,6 @@ public class EcsactRuntime {
 				);
 			}
 
-			if(contextPtr == IntPtr.Zero) {
-				UnityEngine.Debug.Log("This is bad!");
-			}
-
 			Int32[] componentIds = components.Keys.ToArray();
 
 			List<IntPtr> componentsList = new();
@@ -778,9 +774,13 @@ public class EcsactRuntime {
 		internal
 			ecsact_async_get_current_tick_delegate? ecsact_async_get_current_tick;
 
-		public delegate void ErrorCallback(
+		public delegate void AsyncErrorCallback(
 			Ecsact.AsyncError err,
 			Int32[] requestIds
+		);
+
+		public delegate void SystemErrorCallback(
+			Ecsact.ecsact_exec_systems_error err
 		);
 
 		public delegate void ConnectCallback(
@@ -788,9 +788,10 @@ public class EcsactRuntime {
 			Int32  connectPort
 		);
 
-		private AsyncEventsCollector _asyncEvs;
-		private List<ErrorCallback>  _errCallbacks = new();
-		private EcsactRuntime        _owner;
+		private AsyncEventsCollector      _asyncEvs;
+		private List<AsyncErrorCallback>  _errCallbacks = new();
+		private List<SystemErrorCallback> _sysErrCallbacks = new();
+		private EcsactRuntime             _owner;
 
 		internal Async(EcsactRuntime owner) {
 			_owner = owner;
@@ -809,19 +810,13 @@ public class EcsactRuntime {
 			Int32[] requestIds,
 			IntPtr callbackUserData
 		) {
-			throw new Exception(err.ToString());
-
-			foreach(var id in requestIds) {
-				UnityEngine.Debug.Log(id);
-			}
-
 			var self = (GCHandle.FromIntPtr(callbackUserData).Target as Async)!;
 			foreach(var cb in self._errCallbacks) {
 				cb(err, requestIds);
 			}
 		}
 
-		public Action OnError(ErrorCallback callback) {
+		public Action OnAsyncError(AsyncErrorCallback callback) {
 			_errCallbacks.Add(callback);
 
 			return () => { _errCallbacks.Remove(callback); };
@@ -832,13 +827,20 @@ public class EcsactRuntime {
 			Ecsact.ecsact_exec_systems_error systemError,
 			IntPtr                           callbackUserData
 		) {
-			UnityEngine.Debug.Log("OnAsyncExecutionErrorHandler");
 			var self = (GCHandle.FromIntPtr(callbackUserData).Target as Async)!;
+			foreach(var cb in self._sysErrCallbacks) {
+				cb(systemError);
+			}
+		}
+
+		public Action OnSystemError(SystemErrorCallback callback) {
+			_sysErrCallbacks.Add(callback);
+
+			return () => { _sysErrCallbacks.Remove(callback); };
 		}
 
 		// NOTE: Connect using good?delta_time=whatever#youchoose
-		// Tick rate is currently the time in Milliseconds between ticks
-		// NOTE: This should be changed, or the variable more accurately named
+		// Delta speed is the time in Milliseconds between ticks
 		public void Connect(string connectionString) {
 			if(ecsact_async_connect == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_async_connect");
