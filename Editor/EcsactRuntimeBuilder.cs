@@ -302,11 +302,13 @@ public static class EcsactRuntimeBuilder {
 	}
 
 	private static void ReceiveMessage(int progressId, AlertMessage message) {
-		EditorUtility.DisplayDialog(
-			title: "Ecsact Runtime Builder",
-			message: message.content,
-			ok: "ok"
-		);
+		EditorApplication.delayCall += () => {
+			EditorUtility.DisplayDialog(
+				title: "Ecsact Runtime Builder",
+				message: message.content,
+				ok: "ok"
+			);
+		};
 	}
 
 	private static void ReceiveMessage(int progressId, InfoMessage message) {
