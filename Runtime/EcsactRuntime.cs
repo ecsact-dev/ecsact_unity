@@ -17,12 +17,16 @@ class CurrentSystemExecutionState {
 namespace Ecsact {
 
 public enum AsyncError : Int32 {
-	ConnectionClosed,
-	ConnectFail,
-	SocketFail,
-	StateFail,
-	StartFail,
+	PermissionDenied,
 	InvalidConnectionString,
+	ConnectionClosed,
+	ExecutionMergeFailure,
+}
+
+public enum ecsact_exec_systems_error {
+	OK = 0,
+	ENTITY_INVALID = 1,
+	CONSTRAINT_BROKEN = 2,
 }
 
 } // namespace Ecsact
@@ -408,10 +412,6 @@ public class EcsactRuntime {
 				);
 			}
 
-			if(contextPtr == IntPtr.Zero) {
-				UnityEngine.Debug.Log("This is bad!");
-			}
-
 			Int32[] componentIds = components.Keys.ToArray();
 
 			List<IntPtr> componentsList = new();
@@ -682,31 +682,21 @@ public class EcsactRuntime {
 
 	public delegate void AsyncErrorCallback(
 		Ecsact.AsyncError err,
-		Int32             requestId,
-		IntPtr            callbackUserData
-	);
-
-	public delegate void AsyncConnectCallback(
-		[MarshalAs(UnmanagedType.LPStr)] string connectAddress,
-		Int32                                   connectPort,
-		IntPtr                                  callbackUserData
-	);
-
-	public delegate void AsyncActionCommittedCallback(
-		Int32  actionId,
-		object actionData,
-		Int32  committedTick,
-		Int32  requestId,
+		Int32             requestIdsLength,
+		[MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 1)] Int32[] requestIds,
 		IntPtr callbackUserData
+	);
+
+	public delegate void AsyncExecSystemErrorCallback(
+		Ecsact.ecsact_exec_systems_error systemError,
+		IntPtr                           callbackUserData
 	);
 
 	public struct AsyncEventsCollector {
 		public AsyncErrorCallback           errorCallback;
 		public IntPtr                       errorCallbackUserData;
-		public AsyncConnectCallback         connectCallback;
-		public IntPtr                       connectCallbackUserData;
-		public AsyncActionCommittedCallback actionCommittedCallback;
-		public IntPtr                       actionCommittedCallbackUserData;
+		public AsyncExecSystemErrorCallback asyncExecErrorCallback;
+		public IntPtr                       asyncExecErrorCallbackUserData;
 	}
 
 	static EcsactRuntime() {
@@ -754,24 +744,17 @@ public class EcsactRuntime {
 		public static string[] methods => new string[] {
 			"ecsact_async_connect",
 			"ecsact_async_disconnect",
-			"ecsact_async_execute_action_at",
-			"ecsact_async_execute_action",
+			"ecsact_async_enqueue_execution_options",
+			"ecsact_async_get_current_tick",
 			"ecsact_async_flush_events",
 		};
 
-		internal delegate void ecsact_async_execute_action_delegate(
-			Int32  actionId,
-			IntPtr actionData
+		internal delegate void ecsact_async_enqueue_execute_options_delegate(
+			CExecutionOptions executionOptions
 		);
-		internal ecsact_async_execute_action_delegate? ecsact_async_execute_action;
 
-		internal delegate void ecsact_async_execute_action_at_delegate(
-			Int32  actionId,
-			IntPtr actionData,
-			Int32  tick
-		);
 		internal
-			ecsact_async_execute_action_at_delegate? ecsact_async_execute_action_at;
+			ecsact_async_enqueue_execute_options_delegate? ecsact_async_enqueue_execution_options;
 
 		internal delegate void ecsact_async_flush_events_delegate(
 			in ExecutionEventsCollector executionEventsCollector,
@@ -787,77 +770,77 @@ public class EcsactRuntime {
 		internal delegate void ecsact_async_disconnect_delegate();
 		internal ecsact_async_disconnect_delegate? ecsact_async_disconnect;
 
-		public delegate void ErrorCallback(Ecsact.AsyncError err, Int32 requestId);
+		internal delegate int ecsact_async_get_current_tick_delegate();
+		internal
+			ecsact_async_get_current_tick_delegate? ecsact_async_get_current_tick;
+
+		public delegate void AsyncErrorCallback(
+			Ecsact.AsyncError err,
+			Int32[] requestIds
+		);
+
+		public delegate void SystemErrorCallback(
+			Ecsact.ecsact_exec_systems_error err
+		);
 
 		public delegate void ConnectCallback(
 			string connectAddress,
 			Int32  connectPort
 		);
 
-		private AsyncEventsCollector  _asyncEvs;
-		private List<ErrorCallback>   _errCallbacks = new();
-		private List<ConnectCallback> _connectCallbacks = new();
-		private EcsactRuntime         _owner;
+		private AsyncEventsCollector      _asyncEvs;
+		private List<AsyncErrorCallback>  _errCallbacks = new();
+		private List<SystemErrorCallback> _sysErrCallbacks = new();
+		private EcsactRuntime             _owner;
 
 		internal Async(EcsactRuntime owner) {
 			_owner = owner;
 			_asyncEvs = new AsyncEventsCollector {
-				actionCommittedCallback = OnActionCommittedHandler,
-				actionCommittedCallbackUserData = IntPtr.Zero,
-				errorCallback = OnErrorHandler,
+				errorCallback = OnAsyncErrorHandler,
 				errorCallbackUserData = IntPtr.Zero,
-				connectCallback = OnConnectHandler,
-				connectCallbackUserData = IntPtr.Zero,
+				asyncExecErrorCallback = OnAsyncExecutionErrorHandler,
+				asyncExecErrorCallbackUserData = IntPtr.Zero,
 			};
 		}
 
-		[AOT.MonoPInvokeCallback(typeof(AsyncActionCommittedCallback))]
-		private static void OnActionCommittedHandler(
-			Int32  actionId,
-			object actionData,
-			Int32  committedTick,
-			Int32  requestId,
+		[AOT.MonoPInvokeCallback(typeof(AsyncErrorCallback))]
+		private static void OnAsyncErrorHandler(
+			Ecsact.AsyncError err,
+			Int32             requestIdsLength,
+			Int32[] requestIds,
 			IntPtr callbackUserData
 		) {
 			var self = (GCHandle.FromIntPtr(callbackUserData).Target as Async)!;
-		}
-
-		[AOT.MonoPInvokeCallback(typeof(AsyncErrorCallback))]
-		private static void OnErrorHandler(
-			Ecsact.AsyncError err,
-			Int32             requestId,
-			IntPtr            callbackUserData
-		) {
-			var self = (GCHandle.FromIntPtr(callbackUserData).Target as Async)!;
 			foreach(var cb in self._errCallbacks) {
-				cb(err, requestId);
+				cb(err, requestIds);
 			}
 		}
 
-		[AOT.MonoPInvokeCallback(typeof(AsyncConnectCallback))]
-		private static void OnConnectHandler(
-			[MarshalAs(UnmanagedType.LPStr)] string connectAddress,
-			Int32                                   connectPort,
-			IntPtr                                  callbackUserData
-		) {
-			var self = (GCHandle.FromIntPtr(callbackUserData).Target as Async)!;
-			foreach(var cb in self._connectCallbacks) {
-				cb(connectAddress, connectPort);
-			}
-		}
-
-		public Action OnError(ErrorCallback callback) {
+		public Action OnAsyncError(AsyncErrorCallback callback) {
 			_errCallbacks.Add(callback);
 
 			return () => { _errCallbacks.Remove(callback); };
 		}
 
-		public Action OnConnect(ConnectCallback callback) {
-			_connectCallbacks.Add(callback);
-
-			return () => { _connectCallbacks.Remove(callback); };
+		[AOT.MonoPInvokeCallback(typeof(AsyncExecSystemErrorCallback))]
+		private static void OnAsyncExecutionErrorHandler(
+			Ecsact.ecsact_exec_systems_error systemError,
+			IntPtr                           callbackUserData
+		) {
+			var self = (GCHandle.FromIntPtr(callbackUserData).Target as Async)!;
+			foreach(var cb in self._sysErrCallbacks) {
+				cb(systemError);
+			}
 		}
 
+		public Action OnSystemError(SystemErrorCallback callback) {
+			_sysErrCallbacks.Add(callback);
+
+			return () => { _sysErrCallbacks.Remove(callback); };
+		}
+
+		// NOTE: Connect using good?delta_time=whatever#youchoose
+		// Delta speed is the time in Milliseconds between ticks
 		public void Connect(string connectionString) {
 			if(ecsact_async_connect == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_async_connect");
@@ -865,10 +848,35 @@ public class EcsactRuntime {
 			ecsact_async_connect(connectionString);
 		}
 
-		public void FlushEvents() {
+		public void Disconnect() {
+			if(ecsact_async_disconnect == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_async_disconnect");
+			}
+			ecsact_async_disconnect();
+		}
+
+		public Int32 GetCurrentTick() {
+			if(ecsact_async_get_current_tick == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_async_get_current_tick");
+			}
+			return ecsact_async_get_current_tick();
+		}
+
+		public void EnqueueExecutionOptions(CExecutionOptions executionOptions) {
+			if(ecsact_async_enqueue_execution_options == null) {
+				throw new EcsactRuntimeMissingMethod(
+					"ecsact_async_enqueue_execution_options"
+				);
+			}
+			ecsact_async_enqueue_execution_options(executionOptions);
+		}
+
+		public void Flush() {
 			if(ecsact_async_flush_events == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_async_flush_events");
 			}
+
+			CurrentSystemExecutionState.runtime = _owner;
 
 			var selfPinned = GCHandle.Alloc(this, GCHandleType.Pinned);
 			var ownerPinned = GCHandle.Alloc(_owner, GCHandleType.Pinned);
@@ -878,10 +886,10 @@ public class EcsactRuntime {
 				_owner._execEvs.initCallbackUserData = ownerIntPtr;
 				_owner._execEvs.updateCallbackUserData = ownerIntPtr;
 				_owner._execEvs.removeCallbackUserData = ownerIntPtr;
+				_owner._execEvs.createEntityCallbackUserData = ownerIntPtr;
 				_owner._execEvs.destroyEntitycallbackUserData = ownerIntPtr;
+				_asyncEvs.asyncExecErrorCallbackUserData = selfIntPtr;
 				_asyncEvs.errorCallbackUserData = selfIntPtr;
-				_asyncEvs.connectCallbackUserData = selfIntPtr;
-				_asyncEvs.actionCommittedCallbackUserData = selfIntPtr;
 				ecsact_async_flush_events(in _owner._execEvs, in _asyncEvs);
 			} finally {
 				selfPinned.Free();
@@ -1037,20 +1045,13 @@ public class EcsactRuntime {
 			IntPtr      callbackUserData
 		);
 
-		internal enum ecsact_exec_systems_error {
-			OK = 0,
-			ENTITY_INVALID = 1,
-			CONSTRAINT_BROKEN = 2
-		}
-
-		;
-
-		internal delegate ecsact_exec_systems_error ecsact_execute_systems_delegate(
-			Int32 registryId,
-			Int32 executionCount,
-			CExecutionOptions[] executionOptionsList,
-			in ExecutionEventsCollector eventsCollector
-		);
+		internal delegate
+			Ecsact.ecsact_exec_systems_error ecsact_execute_systems_delegate(
+				Int32 registryId,
+				Int32 executionCount,
+				CExecutionOptions[] executionOptionsList,
+				in ExecutionEventsCollector eventsCollector
+			);
 		internal ecsact_execute_systems_delegate? ecsact_execute_systems;
 
 		private EcsactRuntime _owner;
@@ -1061,7 +1062,7 @@ public class EcsactRuntime {
 
 		// NOTE(Kelwan): Currently internal to keep the registry count to 1
 		// Addressed in issue: https://github.com/ecsact-dev/ecsact_unity/issues/28
-		internal Int32 CreateRegistry(string registryName) {
+		public Int32 CreateRegistry(string registryName) {
 			AssertPlayMode();
 			if(ecsact_create_registry == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_create_registry");
@@ -1192,8 +1193,6 @@ public class EcsactRuntime {
 			} finally {
 				Marshal.FreeHGlobal(componentPtr);
 			}
-
-			_owner._TriggerInitComponentEvent(entityId, componentId, component);
 		}
 
 		public void AddComponent(
@@ -1228,8 +1227,6 @@ public class EcsactRuntime {
 			} finally {
 				Marshal.FreeHGlobal(componentPtr);
 			}
-
-			_owner._TriggerInitComponentEvent(entityId, componentId, componentData);
 		}
 
 		public bool HasComponent(
@@ -1362,6 +1359,46 @@ public class EcsactRuntime {
 			ecsact_each_component(registryId, entityId, callback, callbackUserData);
 		}
 
+		public void UpdateComponent(
+			Int32  registryId,
+			Int32  entityId,
+			Int32  componentId,
+			object componentData
+		) {
+			AssertPlayMode();
+			if(ecsact_update_component == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_update_component");
+			}
+
+#if UNITY_EDITOR
+			var result = HasComponent(registryId, entityId, componentId);
+			if(result == false) {
+				throw new Exception("Can't update a component that doesn't exist");
+			}
+#endif
+
+			var componentPtr = Marshal.AllocHGlobal(Marshal.SizeOf(componentData));
+
+			try {
+				Marshal.StructureToPtr(componentData, componentPtr, false);
+				var error = ecsact_update_component(
+					registryId,
+					entityId,
+					componentId,
+					componentPtr
+				);
+
+				if(error == ecsact_update_error.ENTITY_INVALID) {
+					throw new Exception("Component update happening on invalid entity");
+				}
+				if(error == ecsact_update_error.CONSTRAINT_BROKEN) {
+					throw new Exception("Component update constraint broken");
+				}
+			} finally {
+				Marshal.FreeHGlobal(componentPtr);
+			}
+		}
+
 		public void UpdateComponent<C>(
 			Int32 registryId,
 			Int32 entityId,
@@ -1420,7 +1457,6 @@ public class EcsactRuntime {
 			var componentData = GetComponent<C>(registryId, entityId);
 			var componentId = Ecsact.Util.GetComponentID<C>();
 			ecsact_remove_component(registryId, entityId, componentId);
-			_owner._TriggerRemoveComponentEvent(entityId, componentId, componentData);
 		}
 
 		public void RemoveComponent(
@@ -1442,7 +1478,6 @@ public class EcsactRuntime {
 
 			var componentData = GetComponent(registryId, entityId, componentId);
 			ecsact_remove_component(registryId, entityId, componentId);
-			_owner._TriggerRemoveComponentEvent(entityId, componentId, componentData);
 		}
 
 		public void ExecuteSystems(
@@ -1472,10 +1507,12 @@ public class EcsactRuntime {
 					executionOptionsList,
 					in _owner._execEvs
 				);
-				if(error == ecsact_exec_systems_error.ENTITY_INVALID) {
-					throw new Exception("System execution happening on invalid entity");
+				if(error == Ecsact.ecsact_exec_systems_error.ENTITY_INVALID) {
+					throw new Exception(
+						"An Entity assocation data field was given an invalid ID"
+					);
 				}
-				if(error == ecsact_exec_systems_error.CONSTRAINT_BROKEN) {
+				if(error == Ecsact.ecsact_exec_systems_error.CONSTRAINT_BROKEN) {
 					throw new Exception("System execution constraint broken");
 				}
 			} finally {
@@ -2318,14 +2355,8 @@ public class EcsactRuntime {
 			// Load async methods
 			LoadDelegate(
 				lib,
-				"ecsact_async_execute_action",
-				out runtime._async.ecsact_async_execute_action,
-				runtime._async
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_async_execute_action_at",
-				out runtime._async.ecsact_async_execute_action_at,
+				"ecsact_async_enqueue_execution_options",
+				out runtime._async.ecsact_async_enqueue_execution_options,
 				runtime._async
 			);
 			LoadDelegate(
@@ -2344,6 +2375,12 @@ public class EcsactRuntime {
 				lib,
 				"ecsact_async_disconnect",
 				out runtime._async.ecsact_async_disconnect,
+				runtime._async
+			);
+			LoadDelegate(
+				lib,
+				"ecsact_async_get_current_tick",
+				out runtime._async.ecsact_async_get_current_tick,
 				runtime._async
 			);
 
@@ -2754,11 +2791,11 @@ public class EcsactRuntime {
 		}
 
 		if(runtime._async != null) {
-			runtime._async.ecsact_async_execute_action = null;
-			runtime._async.ecsact_async_execute_action_at = null;
 			runtime._async.ecsact_async_flush_events = null;
 			runtime._async.ecsact_async_connect = null;
 			runtime._async.ecsact_async_disconnect = null;
+			runtime._async.ecsact_async_enqueue_execution_options = null;
+			runtime._async.ecsact_async_get_current_tick = null;
 		}
 
 		if(runtime._core != null) {

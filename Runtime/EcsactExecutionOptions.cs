@@ -119,6 +119,10 @@ public class ExecutionOptions {
 		return builder;
 	}
 
+	public BuilderEntity CreateEntity() {
+		return CreateEntity(entity => {});
+	}
+
 	public void DestroyEntity(Int32 entityId) {
 		var remove = new EcsactRuntime.EcsactComponentId {
 			componentId = entityId,
