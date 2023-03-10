@@ -95,9 +95,7 @@ public class DynamicEntity : MonoBehaviour {
 		if(entityId == -1 && callbackPending == false) {
 			var runtimeSettings = EcsactRuntimeSettings.Get();
 			callbackPending = true;
-			UnityEngine.Debug.Log("Trying to create entity");
 			Ecsact.Defaults.Runner!.executionOptions.CreateEntity((id) => {
-				Debug.Log("CreateEntityIfNeeded", this);
 				entityId = id;
 				if(Ecsact.Defaults.Pool != null) {
 					Ecsact.Defaults.Pool.SetPreferredEntityGameObject(
@@ -112,10 +110,8 @@ public class DynamicEntity : MonoBehaviour {
 				pending_callbacks.Clear();
 			});
 		} else if(entityId == -1 && callbackPending == true) {
-			Debug.Log("entityId == - 1");
 			pending_callbacks.Add(callback);
 		} else {
-			Debug.Log("Callback");
 			callback();
 		}
 	}
@@ -129,7 +125,6 @@ public class DynamicEntity : MonoBehaviour {
 						var fieldName = ecsactComp.entityFieldNames[i];
 						var compType = ecsactComp.data!.GetType();
 						var field = compType.GetField(fieldName);
-						Debug.Log("Add components");
 						Debug.Assert(field != null, this);
 						field!.SetValue(ecsactComp.data, otherEntity.entityId);
 					});
