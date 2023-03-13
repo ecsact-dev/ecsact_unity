@@ -18,9 +18,6 @@ public class EcsactRuntimeDefaultRegistry {
 		FixedUpdate,
 	}
 
-	[NonSerialized]
-	public EntityGameObjectPool? pool;
-
 	[Tooltip("Name given to registry. For display and debug purposes only")]
 	public string registryName = "";
 	[Tooltip(

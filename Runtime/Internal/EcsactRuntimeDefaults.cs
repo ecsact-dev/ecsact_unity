@@ -88,7 +88,6 @@ internal static class EcsactRuntimeDefaults {
 				RegisterUnitySyncScripts(settings);
 			}
 
-			pool = settings.defaultRegistry.pool;
 			Ecsact.Defaults.Pool = pool;
 		}
 
