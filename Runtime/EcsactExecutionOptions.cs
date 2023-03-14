@@ -72,7 +72,7 @@ public class ExecutionOptions {
 	) {
 		var componentPtr = Marshal.AllocHGlobal(Marshal.SizeOf(componentData));
 
-		Marshal.StructureToPtr(componentId, componentPtr, false);
+		Marshal.StructureToPtr(componentData, componentPtr, false);
 		var ecsComponent = new EcsactRuntime.EcsactComponent {
 			componentId = componentId,
 			componentData = componentPtr
