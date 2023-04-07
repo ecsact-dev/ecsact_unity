@@ -164,9 +164,9 @@ public class EcsactRuntime {
 
 	private static void AssertPlayMode() {
 #if UNITY_EDITOR
-		if(!UnityEngine.Application.isPlaying) {
-			throw new EcsactRuntimeUsedInEditor();
-		}
+		// if(!UnityEngine.Application.isPlaying) {
+		// 	throw new EcsactRuntimeUsedInEditor();
+		// }
 #endif
 	}
 
@@ -1853,6 +1853,7 @@ public class EcsactRuntime {
 			"ecsact_serialize_action",
 			"ecsact_serialize_component_size",
 			"ecsact_serialize_component",
+			"ecsact_dump_entities",
 		};
 
 		internal delegate Int32 ecsact_serialize_action_size_delegate(Int32 actionId
@@ -1893,6 +1894,21 @@ public class EcsactRuntime {
 		);
 		internal
 			ecsact_deserialize_component_delegate? ecsact_deserialize_component;
+
+		internal delegate void ecsact_dump_entities_callback(
+			IntPtr data,
+			Int32  dataLength,
+			IntPtr callbackUserData
+		);
+
+		internal delegate void ecsact_dump_entities_delegate(
+			Int32                         registryId,
+			ecsact_dump_entities_callback callback,
+			IntPtr                        callbackUserData
+		);
+
+		internal
+			ecsact_dump_entities_delegate? ecsact_dump_entities;
 
 		public void DeserializeAction(
 			Int32  actionId,
@@ -1962,6 +1978,36 @@ public class EcsactRuntime {
 			}
 
 			ecsact_serialize_component(componentId, inComponentData, outBytes);
+		}
+
+		public delegate void DumpEntitiesCallback(byte[] data);
+
+		public void DumpEntities(
+			Int32                registryId,
+			DumpEntitiesCallback callback
+		) {
+			if(ecsact_dump_entities == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_dump_entities");
+			}
+
+			var callbackHandle = GCHandle.Alloc(callback, GCHandleType.Pinned);
+			var callbackPtr = Marshal.GetFunctionPointerForDelegate(callback);
+
+			try {
+				ecsact_dump_entities_callback rawCallback = //
+					(IntPtr data, Int32 dataLength, IntPtr ud) => {
+						var callback =
+							Marshal.GetDelegateForFunctionPointer<DumpEntitiesCallback>(ud);
+
+						var dataArr = new byte[dataLength];
+						Marshal.Copy(data, dataArr, 0, dataLength);
+						callback(dataArr);
+					};
+				
+				ecsact_dump_entities(registryId, rawCallback, callbackPtr);
+			} finally {
+				callbackHandle.Free();
+			}
 		}
 	}
 
@@ -2671,6 +2717,12 @@ public class EcsactRuntime {
 				lib,
 				"ecsact_deserialize_component",
 				out runtime._serialize.ecsact_deserialize_component,
+				runtime._serialize
+			);
+			LoadDelegate(
+				lib,
+				"ecsact_dump_entities",
+				out runtime._serialize.ecsact_dump_entities,
 				runtime._serialize
 			);
 

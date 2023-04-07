@@ -1,16 +1,20 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System;
+using System.Runtime.CompilerServices;
 
 #nullable enable
+
+[assembly:InternalsVisibleTo("EcsactDumpEntitiesWindow")]
 
 namespace Ecsact {
 
 [global::System.Serializable]
 public class SerializableEcsactComponent : ISerializationCallbackReceiver {
 #if UNITY_EDITOR
+	// TODO(zaucy): internals visible to not working :(
 	[SerializeField, HideInInspector]
-	internal string? _ecsactComponentNameEditorOnly;
+	public string? _ecsactComponentNameEditorOnly;
 #endif
 
 	[SerializeField, HideInInspector]
