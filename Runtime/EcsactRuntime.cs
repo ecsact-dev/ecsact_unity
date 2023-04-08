@@ -154,6 +154,9 @@ public class EcsactRuntimeMissingMethod : Exception {
 }
 
 public class EcsactRuntimeUsedInEditor : Exception {}
+public class EcsactRuntimeUnknownEntity : Exception {}
+public class EcsactRuntimeUnexpectedHasComponent : Exception {}
+public class EcsactRuntimeExpectedHasComponent : Exception {}
 
 public class EcsactRuntime {
 	public static class VisualScriptingEventNames {
@@ -920,6 +923,30 @@ public class EcsactRuntime {
 			"ecsact_update_component",
 		};
 
+		internal void AssertEntityExists(Int32 registryId, Int32 entityId) {
+#if UNITY_EDITOR
+			if(!EntityExists(registryId, entityId)) {
+				throw new EcsactRuntimeUnknownEntity(/* entityId */);
+			}
+#endif
+		}
+
+		internal void AssertHasComponent(Int32 registryId, Int32 entityId, Int32 componentId) {
+#if UNITY_EDITOR
+			if(!HasComponent(registryId, entityId, componentId)) {
+				throw new EcsactRuntimeUnexpectedHasComponent(/* entityId, componentId */);
+			}
+#endif
+		}
+
+		internal void AssertNotHasComponent(Int32 registryId, Int32 entityId, Int32 componentId) {
+#if UNITY_EDITOR
+			if(HasComponent(registryId, entityId, componentId)) {
+				throw new EcsactRuntimeExpectedHasComponent(/* entityId, componentId */);
+			}
+#endif
+		}
+
 		internal delegate Int32 ecsact_create_registry_delegate(string registryName
 		);
 		internal ecsact_create_registry_delegate? ecsact_create_registry;
@@ -1201,14 +1228,15 @@ public class EcsactRuntime {
 			Int32  componentId,
 			object componentData
 		) {
+			AssertEntityExists(registryId, entityId);
+			AssertNotHasComponent(registryId, entityId, componentId);
 			AssertPlayMode();
 			if(ecsact_add_component == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_add_component");
 			}
 
 #if UNITY_EDITOR
-			var result = HasComponent(registryId, entityId, componentId);
-			if(result == true) {
+			if(HasComponent(registryId, entityId, componentId)) {
 				throw new Exception("Entity already has added component");
 			}
 #endif
