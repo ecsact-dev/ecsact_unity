@@ -1,0 +1,28 @@
+{
+    "name": "Ecsact.Benchmark",
+    "rootNamespace": "",
+    "references": [
+        "GUID:f9bf33dba47762549805311a57d7fe7b",
+        "GUID:6e7029456009ab94da19a8f93d5e3523",
+        "GUID:32c992877973b9042be59ff147fb08fe",
+        "GUID:ca4af46195f783f4dbd7ce102283a091",
+        "GUID:7faa839a710e565409361b9f0c62a4da"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.seaube.unity-wasm",
+            "expression": "",
+            "define": "HAS_UNITY_WASM_PACKAGE"
+        }
+    ],
+    "noEngineReferences": false
+}
