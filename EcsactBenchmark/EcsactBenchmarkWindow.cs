@@ -6,6 +6,42 @@ using System.Collections.Generic;
 using System.Linq;
 using Ecsact.Editor;
 
+[System.Serializable]
+struct MessageBase {
+	public string type;
+}
+
+[System.Serializable]
+struct InfoMessage {
+	public const string type = "info";
+	public string       content;
+}
+
+[System.Serializable]
+struct WarningMessage {
+	public const string type = "warning";
+	public string       content;
+}
+
+[System.Serializable]
+struct ErrorMessage {
+	public const string type = "error";
+	public string       content;
+}
+
+[System.Serializable]
+struct BenchmarkProgressMessage {
+	public const string type = "progress";
+	public float        progress;
+}
+
+[System.Serializable]
+struct BenchmarkResultMessage {
+	public const string type = "result";
+	public float        total_duration_ms;
+	public float        average_duration_ms;
+}
+
 public class EcsactBenchmarkWindow : EditorWindow {
 	private static int _progressId = 0;
 	private static string _runtimePath {
@@ -17,6 +53,13 @@ public class EcsactBenchmarkWindow : EditorWindow {
 		set { SessionState.SetString("ecsactBenchmarkSeedPath", value); }
 	}
 
+	private static GUIContent copyIcon;
+	
+	private float _currentProgress = 0.0F;
+	private BenchmarkResultMessage? _lastResult = null;
+
+	Vector2 scrollPosition = new();
+
 	[MenuItem("Window/Ecsact/Benchmark")]
 	static void Init() {
 		var window = EditorWindow.GetWindow(typeof(EcsactBenchmarkWindow));
@@ -27,6 +70,9 @@ public class EcsactBenchmarkWindow : EditorWindow {
 	}
 
 	void OnEnable() {
+		if(copyIcon == null) {
+			copyIcon = EditorGUIUtility.IconContent("Clipboard");
+		}
 	}
 
 	void OnDisable() {
@@ -45,7 +91,8 @@ public class EcsactBenchmarkWindow : EditorWindow {
 
 #if HAS_UNITY_WASM_PACKAGE
 		var benchmarkRunning = BenchmarkInProgress();
-	
+		
+		scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
 		EditorGUI.BeginDisabledGroup(benchmarkRunning);
 
 		_runtimePath = EditorGUILayout.TextField("Runtime Path", _runtimePath);
@@ -83,6 +130,11 @@ public class EcsactBenchmarkWindow : EditorWindow {
 
 			GUILayout.BeginHorizontal();
 			GUILayout.FlexibleSpace();
+
+			if(GUILayout.Button(copyIcon)) {
+				EditorGUIUtility.systemCopyBuffer =
+					"ecsact benchmark " + GetBenchmarkArguments();
+			}
 			if(GUILayout.Button("Start Benchmark")) {
 				StartBenchmark();
 			}
@@ -92,10 +144,17 @@ public class EcsactBenchmarkWindow : EditorWindow {
 		} else {
 			EditorGUI.ProgressBar(
 				new Rect(3, 3, position.width - 6, 20),
-				0,
+				_currentProgress,
 				"Benchmark in progress"
 			);
 		}
+
+		if(_lastResult != null) {
+			EditorGUILayout.FloatField("Average (ms)", _lastResult.Value.average_duration_ms);
+			EditorGUILayout.FloatField("Total (ms)", _lastResult.Value.total_duration_ms);
+		}
+		
+		EditorGUILayout.EndScrollView();
 
 #else
 		EditorGUILayout.HelpBox(
@@ -107,11 +166,75 @@ public class EcsactBenchmarkWindow : EditorWindow {
 
 	private static bool BenchmarkInProgress() {
 		if(_progressId == 0) return false;
+		if(!Progress.Exists(_progressId)) return false;
 		var status = Progress.GetStatus(_progressId);
 		return status == Progress.Status.Running;
 	}
 
+	private string GetBenchmarkArguments() {
+		var benchmarkProcArgs = "";
+#if HAS_UNITY_WASM_PACKAGE
+		benchmarkProcArgs += " --runtime=" + Path.GetFullPath(_runtimePath).Replace('\\', '/');
+		benchmarkProcArgs += " --seed=" + Path.GetFullPath(_seedPath).Replace('\\', '/');
+		
+		var wasmRuntimeSettings = EcsactWasmRuntimeSettings.Get();
+		foreach(var entry in wasmRuntimeSettings.wasmSystemEntries) {
+			if(!entry.wasmAsset) continue;
+			var assetPath = UnityEditor.AssetDatabase.GetAssetPath(entry.wasmAsset);
+			if(string.IsNullOrEmpty(assetPath)) continue;
+			assetPath = Path.GetFullPath(assetPath).Replace('\\', '/');
+
+			var exportName = entry.wasmExportName;
+			var systemId = entry.systemId;
+			
+			benchmarkProcArgs += $" \"{assetPath};{exportName},{systemId}\"";
+		}
+#endif
+		return benchmarkProcArgs;
+	}
+
+	private void OnInfoMessage(InfoMessage msg) {
+	}
+
+	private void OnWarningMessage(WarningMessage msg) {
+	}
+
+	private void OnErrorMessage(ErrorMessage msg) {
+	}
+
+	private void OnBenchmarkProgressMessage(BenchmarkProgressMessage msg) {
+		if(!BenchmarkInProgress()) {
+			return;
+		}
+
+		_currentProgress = msg.progress;
+
+		Progress.Report(_progressId, msg.progress);
+	}
+
+	private void OnBenchmarkResultMessage(BenchmarkResultMessage msg) {
+		_lastResult = msg;
+	}
+
+	private void OnUnknownMessage(string type, string json) {
+		UnityEngine.Debug.LogWarning($"Unknown benchmark message {type}: {json}");
+	}
+
+	private void OnBenchmarkMessage(string type, string json) {
+		switch(type) {
+			case InfoMessage.type: OnInfoMessage(JsonUtility.FromJson<InfoMessage>(json)); break;
+			case WarningMessage.type: OnWarningMessage(JsonUtility.FromJson<WarningMessage>(json)); break;
+			case ErrorMessage.type: OnErrorMessage(JsonUtility.FromJson<ErrorMessage>(json)); break;
+			case BenchmarkProgressMessage.type: OnBenchmarkProgressMessage(JsonUtility.FromJson<BenchmarkProgressMessage>(json)); break;
+			case BenchmarkResultMessage.type: OnBenchmarkResultMessage(JsonUtility.FromJson<BenchmarkResultMessage>(json)); break;
+			default: OnUnknownMessage(type, json); break;
+		}
+	}
+
 	private void StartBenchmark() {
+		_lastResult = null;
+		_currentProgress = 0.0F;
+
 #if HAS_UNITY_WASM_PACKAGE
 		var ecsactExecutablePath = EcsactSdk.FindExecutable("ecsact");
 		
@@ -125,13 +248,23 @@ public class EcsactBenchmarkWindow : EditorWindow {
 		proc.StartInfo.CreateNoWindow = true;
 		proc.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
 		proc.EnableRaisingEvents = true;
-		proc.StartInfo.Arguments = "benchmark";
+		proc.StartInfo.Arguments = "benchmark " + GetBenchmarkArguments();
 		proc.StartInfo.RedirectStandardError = true;
 		proc.StartInfo.RedirectStandardOutput = true;
 		proc.StartInfo.UseShellExecute = false;
+		
+		var wasmRuntimeSettings = EcsactWasmRuntimeSettings.Get();
+		foreach(var entry in wasmRuntimeSettings.wasmSystemEntries) {
+			if(!entry.wasmAsset) continue;
+			var assetPath = UnityEditor.AssetDatabase.GetAssetPath(entry.wasmAsset);
+			if(string.IsNullOrEmpty(assetPath)) continue;
+			assetPath = Path.GetFullPath(assetPath);
 
-		proc.StartInfo.Arguments += " --runtime=" + Path.GetFullPath(_runtimePath);
-		proc.StartInfo.Arguments += " --seed=" + Path.GetFullPath(_seedPath);
+			var exportName = entry.wasmExportName;
+			var systemId = entry.systemId;
+			
+			proc.StartInfo.Arguments += $" {assetPath};{exportName},{systemId}";
+		}
 
 		proc.ErrorDataReceived += (_, ev) => {
 			try {
@@ -150,6 +283,19 @@ public class EcsactBenchmarkWindow : EditorWindow {
 				Progress.Finish(_progressId, Progress.Status.Failed);
 			} else {
 				Progress.Finish(_progressId, Progress.Status.Succeeded);
+			}
+		};
+
+		proc.OutputDataReceived += (_, ev) => {
+			try {
+				var line = ev.Data;
+				if(!string.IsNullOrWhiteSpace(line)) {
+					var baseMessage = JsonUtility.FromJson<MessageBase>(line);
+					EditorApplication.delayCall +=
+						() => OnBenchmarkMessage(baseMessage.type, line);
+				}
+			} catch(global::System.Exception err) {
+				UnityEngine.Debug.LogException(err);
 			}
 		};
 
