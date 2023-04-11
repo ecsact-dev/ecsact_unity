@@ -53,6 +53,21 @@ public class EcsactBenchmarkWindow : EditorWindow {
 		set { SessionState.SetString("ecsactBenchmarkSeedPath", value); }
 	}
 
+	private static int _iterations {
+		get => SessionState.GetInt("ecsactBenchmarkIterations", 10000);
+		set { SessionState.SetInt("ecsactBenchmarkIterations", value); }
+	}
+
+	private static int _reportInterval {
+		get => SessionState.GetInt("ecsactBenchmarkReportInterval", 1000);
+		set { SessionState.SetInt("ecsactBenchmarkReportInterval", value); }
+	}
+
+	private static bool _benchmarkResultFoldout {
+		get => SessionState.GetBool("ecsatBenchmarkResultFoldout", true);
+		set { SessionState.SetBool("ecsatBenchmarkResultFoldout", value); }
+	}
+
 	private static GUIContent copyIcon;
 	
 	private float _currentProgress = 0.0F;
@@ -98,6 +113,9 @@ public class EcsactBenchmarkWindow : EditorWindow {
 		_runtimePath = EditorGUILayout.TextField("Runtime Path", _runtimePath);
 		_seedPath = EditorGUILayout.TextField("Seed Path", _seedPath);
 
+		_iterations = EditorGUILayout.IntField("Iterations", _iterations);
+		_reportInterval = EditorGUILayout.IntField("Report Interval", _reportInterval);
+
 		EditorGUI.EndDisabledGroup();
 
 		EditorGUILayout.Space();
@@ -142,16 +160,28 @@ public class EcsactBenchmarkWindow : EditorWindow {
 
 			EditorGUI.EndDisabledGroup();
 		} else {
+			var progressRect = GUILayoutUtility.GetLastRect();
+			progressRect.position = new Vector2{
+				x = progressRect.position.x,
+				y = progressRect.position.y + 10,
+			};
+			progressRect.height = 20;
 			EditorGUI.ProgressBar(
-				new Rect(3, 3, position.width - 6, 20),
+				progressRect,
 				_currentProgress,
 				"Benchmark in progress"
 			);
 		}
 
 		if(_lastResult != null) {
-			EditorGUILayout.FloatField("Average (ms)", _lastResult.Value.average_duration_ms);
-			EditorGUILayout.FloatField("Total (ms)", _lastResult.Value.total_duration_ms);
+			_benchmarkResultFoldout = EditorGUILayout.BeginFoldoutHeaderGroup(
+				_benchmarkResultFoldout,
+				"Benchmark Result"
+			);
+			if(_benchmarkResultFoldout) {
+				EditorGUILayout.FloatField("    Average (ms)", _lastResult.Value.average_duration_ms);
+				EditorGUILayout.FloatField("    Total (ms)", _lastResult.Value.total_duration_ms);
+			}
 		}
 		
 		EditorGUILayout.EndScrollView();
@@ -176,6 +206,8 @@ public class EcsactBenchmarkWindow : EditorWindow {
 #if HAS_UNITY_WASM_PACKAGE
 		benchmarkProcArgs += " --runtime=" + Path.GetFullPath(_runtimePath).Replace('\\', '/');
 		benchmarkProcArgs += " --seed=" + Path.GetFullPath(_seedPath).Replace('\\', '/');
+		benchmarkProcArgs += " --iterations=" + _iterations;
+		benchmarkProcArgs += " --iteration_report_interval=" + _reportInterval;
 		
 		var wasmRuntimeSettings = EcsactWasmRuntimeSettings.Get();
 		foreach(var entry in wasmRuntimeSettings.wasmSystemEntries) {
@@ -194,26 +226,25 @@ public class EcsactBenchmarkWindow : EditorWindow {
 	}
 
 	private void OnInfoMessage(InfoMessage msg) {
+		UnityEngine.Debug.Log(msg.content);
 	}
 
 	private void OnWarningMessage(WarningMessage msg) {
+		UnityEngine.Debug.LogWarning(msg.content);
 	}
 
 	private void OnErrorMessage(ErrorMessage msg) {
+		UnityEngine.Debug.LogError(msg.content);
 	}
 
 	private void OnBenchmarkProgressMessage(BenchmarkProgressMessage msg) {
-		if(!BenchmarkInProgress()) {
-			return;
-		}
-
 		_currentProgress = msg.progress;
-
-		Progress.Report(_progressId, msg.progress);
 	}
 
 	private void OnBenchmarkResultMessage(BenchmarkResultMessage msg) {
-		_lastResult = msg;
+		EditorApplication.delayCall += () => {
+			_lastResult = msg;
+		};
 	}
 
 	private void OnUnknownMessage(string type, string json) {
@@ -228,6 +259,13 @@ public class EcsactBenchmarkWindow : EditorWindow {
 			case BenchmarkProgressMessage.type: OnBenchmarkProgressMessage(JsonUtility.FromJson<BenchmarkProgressMessage>(json)); break;
 			case BenchmarkResultMessage.type: OnBenchmarkResultMessage(JsonUtility.FromJson<BenchmarkResultMessage>(json)); break;
 			default: OnUnknownMessage(type, json); break;
+		}
+	}
+
+	void Update() {
+		if(BenchmarkInProgress()) {
+			Progress.Report(_progressId, _currentProgress);
+			Repaint();
 		}
 	}
 
@@ -284,6 +322,8 @@ public class EcsactBenchmarkWindow : EditorWindow {
 			} else {
 				Progress.Finish(_progressId, Progress.Status.Succeeded);
 			}
+
+			EditorApplication.delayCall += () => Repaint();
 		};
 
 		proc.OutputDataReceived += (_, ev) => {
@@ -291,13 +331,18 @@ public class EcsactBenchmarkWindow : EditorWindow {
 				var line = ev.Data;
 				if(!string.IsNullOrWhiteSpace(line)) {
 					var baseMessage = JsonUtility.FromJson<MessageBase>(line);
-					EditorApplication.delayCall +=
-						() => OnBenchmarkMessage(baseMessage.type, line);
+					OnBenchmarkMessage(baseMessage.type, line);
 				}
 			} catch(global::System.Exception err) {
 				UnityEngine.Debug.LogException(err);
 			}
 		};
+
+		Progress.RegisterCancelCallback(_progressId, () => {
+			proc.Close();
+			EditorApplication.delayCall += () => Repaint();
+			return true;
+		});
 
 		proc.Start();
 		proc.BeginOutputReadLine();
