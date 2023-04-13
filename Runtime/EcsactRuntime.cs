@@ -695,11 +695,19 @@ public class EcsactRuntime {
 		IntPtr                           callbackUserData
 	);
 
+	public delegate void AsyncReqCompleteCallback(
+		Int32             requestIdsLength,
+		[MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 1)] Int32[] requestIds,
+		IntPtr callbackUserData
+	);
+
 	public struct AsyncEventsCollector {
 		public AsyncErrorCallback           errorCallback;
 		public IntPtr                       errorCallbackUserData;
 		public AsyncExecSystemErrorCallback asyncExecErrorCallback;
 		public IntPtr                       asyncExecErrorCallbackUserData;
+		public AsyncReqCompleteCallback     asyncReqCompleteCallback;
+		public IntPtr                       asyncReqCompleteCallbackUserData;
 	}
 
 	static EcsactRuntime() {
@@ -803,6 +811,8 @@ public class EcsactRuntime {
 				errorCallbackUserData = IntPtr.Zero,
 				asyncExecErrorCallback = OnAsyncExecutionErrorHandler,
 				asyncExecErrorCallbackUserData = IntPtr.Zero,
+				asyncReqCompleteCallback = OnAsyncReqCompleteHandler,
+				asyncReqCompleteCallbackUserData = IntPtr.Zero,
 			};
 		}
 
@@ -834,6 +844,18 @@ public class EcsactRuntime {
 			foreach(var cb in self._sysErrCallbacks) {
 				cb(systemError);
 			}
+		}
+
+		[AOT.MonoPInvokeCallback(typeof(AsyncReqCompleteCallback))]
+		public static void OnAsyncReqCompleteHandler(
+			Int32   requestIdsLength,
+			Int32[] requestIds,
+			IntPtr  callbackUserData
+		) {
+			var self = (GCHandle.FromIntPtr(callbackUserData).Target as Async)!;
+			// foreach(var cb in self._sysErrCallbacks) {
+			// 	cb(systemError);
+			// }
 		}
 
 		public Action OnSystemError(SystemErrorCallback callback) {
@@ -893,6 +915,7 @@ public class EcsactRuntime {
 				_owner._execEvs.destroyEntitycallbackUserData = ownerIntPtr;
 				_asyncEvs.asyncExecErrorCallbackUserData = selfIntPtr;
 				_asyncEvs.errorCallbackUserData = selfIntPtr;
+				_asyncEvs.asyncReqCompleteCallbackUserData = selfIntPtr;
 				ecsact_async_flush_events(in _owner._execEvs, in _asyncEvs);
 			} finally {
 				selfPinned.Free();
