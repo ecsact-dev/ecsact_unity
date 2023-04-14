@@ -154,8 +154,11 @@ public class EcsactRuntimeMissingMethod : Exception {
 }
 
 public class EcsactRuntimeUsedInEditor : Exception {}
+
 public class EcsactRuntimeUnknownEntity : Exception {}
+
 public class EcsactRuntimeUnexpectedHasComponent : Exception {}
+
 public class EcsactRuntimeExpectedHasComponent : Exception {}
 
 public class EcsactRuntime {
@@ -696,7 +699,7 @@ public class EcsactRuntime {
 	);
 
 	public delegate void AsyncReqCompleteCallback(
-		Int32             requestIdsLength,
+		Int32 requestIdsLength,
 		[MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 1)] Int32[] requestIds,
 		IntPtr callbackUserData
 	);
@@ -848,9 +851,9 @@ public class EcsactRuntime {
 
 		[AOT.MonoPInvokeCallback(typeof(AsyncReqCompleteCallback))]
 		public static void OnAsyncReqCompleteHandler(
-			Int32   requestIdsLength,
+			Int32 requestIdsLength,
 			Int32[] requestIds,
-			IntPtr  callbackUserData
+			IntPtr callbackUserData
 		) {
 			var self = (GCHandle.FromIntPtr(callbackUserData).Target as Async)!;
 			// foreach(var cb in self._sysErrCallbacks) {
@@ -954,15 +957,25 @@ public class EcsactRuntime {
 #endif
 		}
 
-		internal void AssertHasComponent(Int32 registryId, Int32 entityId, Int32 componentId) {
+		internal void AssertHasComponent(
+			Int32 registryId,
+			Int32 entityId,
+			Int32 componentId
+		) {
 #if UNITY_EDITOR
 			if(!HasComponent(registryId, entityId, componentId)) {
-				throw new EcsactRuntimeUnexpectedHasComponent(/* entityId, componentId */);
+				throw new EcsactRuntimeUnexpectedHasComponent(/* entityId, componentId
+																											 */
+				);
 			}
 #endif
 		}
 
-		internal void AssertNotHasComponent(Int32 registryId, Int32 entityId, Int32 componentId) {
+		internal void AssertNotHasComponent(
+			Int32 registryId,
+			Int32 entityId,
+			Int32 componentId
+		) {
 #if UNITY_EDITOR
 			if(HasComponent(registryId, entityId, componentId)) {
 				throw new EcsactRuntimeExpectedHasComponent(/* entityId, componentId */);
@@ -1958,8 +1971,7 @@ public class EcsactRuntime {
 			IntPtr                        callbackUserData
 		);
 
-		internal
-			ecsact_dump_entities_delegate? ecsact_dump_entities;
+		internal ecsact_dump_entities_delegate? ecsact_dump_entities;
 
 		public void DeserializeAction(
 			Int32  actionId,
@@ -2033,10 +2045,7 @@ public class EcsactRuntime {
 
 		public delegate void DumpEntitiesCallback(byte[] data);
 
-		public void DumpEntities(
-			Int32                registryId,
-			DumpEntitiesCallback callback
-		) {
+		public void DumpEntities(Int32 registryId, DumpEntitiesCallback callback) {
 			if(ecsact_dump_entities == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_dump_entities");
 			}
@@ -2054,7 +2063,7 @@ public class EcsactRuntime {
 						Marshal.Copy(data, dataArr, 0, dataLength);
 						callback(dataArr);
 					};
-				
+
 				ecsact_dump_entities(registryId, rawCallback, callbackPtr);
 			} finally {
 				callbackHandle.Free();

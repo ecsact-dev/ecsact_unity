@@ -4,16 +4,16 @@ using System.IO;
 using System.Collections.Generic;
 
 public class EcsatDumpEntitiesWindow : EditorWindow {
-	static string dumpOutputPath = "";
-	static bool overwriteOutput = false;
-	static bool sceneEntitiesFoldout = true;
+	static string     dumpOutputPath = "";
+	static bool       overwriteOutput = false;
+	static bool       sceneEntitiesFoldout = true;
 	static List<bool> componentFoldouts = new();
-	const bool COMPONENT_FOLDOUT_DEFAULT = false;
+	const bool        COMPONENT_FOLDOUT_DEFAULT = false;
 
 	[MenuItem("Window/Ecsact/Dump Entities")]
 	static void Init() {
 		var window = EditorWindow.GetWindow(typeof(EcsatDumpEntitiesWindow));
-		var windowTitle = new GUIContent{};
+		var windowTitle = new GUIContent {};
 		windowTitle.text = "Ecsact - Dump Entities";
 		window.titleContent = windowTitle;
 		window.Show();
@@ -50,12 +50,12 @@ public class EcsatDumpEntitiesWindow : EditorWindow {
 		layoutStyle.padding.left = 20;
 
 		GUILayout.BeginHorizontal(new GUIStyle(layoutStyle));
-		foldout = SetEntityFoldoutAtIndex(index, EditorGUILayout.Foldout(
-			foldout,
-			dynamicEntity.name
-		));
+		foldout = SetEntityFoldoutAtIndex(
+			index,
+			EditorGUILayout.Foldout(foldout, dynamicEntity.name)
+		);
 		GUILayout.EndHorizontal();
-		
+
 		if(foldout) {
 			layoutStyle.padding.left += 20;
 			GUILayout.BeginVertical(layoutStyle);
@@ -102,11 +102,10 @@ public class EcsatDumpEntitiesWindow : EditorWindow {
 
 		GUILayout.BeginHorizontal();
 		GUILayout.FlexibleSpace();
-		
+
 		overwriteOutput = EditorGUILayout.Toggle("Overwrite", overwriteOutput);
-		
-		var invalidSave =
-			string.IsNullOrEmpty(dumpOutputPath) ||
+
+		var invalidSave = string.IsNullOrEmpty(dumpOutputPath) ||
 			Directory.Exists(dumpOutputPath) ||
 			(File.Exists(dumpOutputPath) && !overwriteOutput);
 
@@ -127,7 +126,7 @@ public class EcsatDumpEntitiesWindow : EditorWindow {
 		var tempRuntime = EcsactRuntime.Load(settings.runtimeLibraryPaths);
 		try {
 			var registry = tempRuntime.core.CreateRegistry("TempDumpEntities");
-			
+
 			foreach(var dynamicEntity in dynamicEntities) {
 				var entityId = tempRuntime.core.CreateEntity(registry);
 
