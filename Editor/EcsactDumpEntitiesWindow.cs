@@ -138,7 +138,6 @@ public class EcsatDumpEntitiesWindow : EditorWindow {
 					dumpOutputFile.Write(bytes);
 				});
 			} finally {
-				Debug.Log("free");
 				dumpOutputFile.Dispose();
 			}
 
@@ -178,7 +177,6 @@ public class EcsatDumpEntitiesWindow : EditorWindow {
 				dumpOutputFile.Write(bytes);
 			});
 		} finally {
-			Debug.Log("Free!");
 			EcsactRuntime.Free(tempRuntime);
 			dumpOutputFile.Dispose();
 		}
