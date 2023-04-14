@@ -69,18 +69,25 @@ public class EcsatDumpEntitiesWindow : EditorWindow {
 
 	void OnGUI() {
 		var dynamicEntities = GameObject.FindObjectsOfType<Ecsact.DynamicEntity>();
-
-		sceneEntitiesFoldout = EditorGUILayout.BeginFoldoutHeaderGroup(
-			sceneEntitiesFoldout,
-			"Scene Entities"
-		);
-		if(sceneEntitiesFoldout) {
-			var index = 0;
-			foreach(var dynamicEntity in dynamicEntities) {
-				DrawEntityGUI(index, dynamicEntity);
-				index += 1;
+		if(Application.isPlaying) {
+			EditorGUILayout.HelpBox(
+				"Entity list is unavailable during play mode",
+				MessageType.Info
+			);
+		} else {
+			sceneEntitiesFoldout = EditorGUILayout.BeginFoldoutHeaderGroup(
+				sceneEntitiesFoldout,
+				"Scene Entities"
+			);
+			if(sceneEntitiesFoldout) {
+				var index = 0;
+				foreach(var dynamicEntity in dynamicEntities) {
+					DrawEntityGUI(index, dynamicEntity);
+					index += 1;
+				}
 			}
 		}
+
 		EditorGUILayout.EndFoldoutHeaderGroup();
 
 		EditorGUILayout.Space();
@@ -122,8 +129,31 @@ public class EcsatDumpEntitiesWindow : EditorWindow {
 		Ecsact.DynamicEntity[] dynamicEntities
 	) {
 		var dumpOutputFile = File.Create(dumpOutputPath);
+
+		if(Application.isPlaying) {
+			var registry = Ecsact.Defaults.Registry.ID;
+
+			try {
+				Ecsact.Defaults.Runtime.serialize.DumpEntities(registry, bytes => {
+					dumpOutputFile.Write(bytes);
+				});
+			} finally {
+				Debug.Log("free");
+				dumpOutputFile.Dispose();
+			}
+
+		} else {
+			CreateTempReg(dumpOutputFile, dynamicEntities);
+		}
+	}
+
+	void CreateTempReg(
+		FileStream dumpOutputFile,
+		Ecsact.DynamicEntity[] dynamicEntities
+	) {
 		var settings = EcsactRuntimeSettings.Get();
 		var tempRuntime = EcsactRuntime.Load(settings.runtimeLibraryPaths);
+
 		try {
 			var registry = tempRuntime.core.CreateRegistry("TempDumpEntities");
 
@@ -148,6 +178,7 @@ public class EcsatDumpEntitiesWindow : EditorWindow {
 				dumpOutputFile.Write(bytes);
 			});
 		} finally {
+			Debug.Log("Free!");
 			EcsactRuntime.Free(tempRuntime);
 			dumpOutputFile.Dispose();
 		}
