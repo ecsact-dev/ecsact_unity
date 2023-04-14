@@ -18,7 +18,7 @@ public class DefaultRunnerEditor : UnityEditor.Editor {
 		if(runner.debugExecutionTimeMs > 0) {
 			// 0.0 - 1.0 how much the execution time takes up from the delta time
 			deltaTimePc =
-				Time.deltaTime / ((float)runner.debugExecutionTimeMs) / 1000f;
+				((float)runner.debugExecutionTimeMs / 1000f) / Time.deltaTime;
 
 			if(deltaTimePc > 0.5) {
 				executionHeatStyle.normal.textColor = Color.red;

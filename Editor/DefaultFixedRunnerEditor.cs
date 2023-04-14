@@ -5,6 +5,9 @@ namespace Ecsact.Editor {
 
 [CustomEditor(typeof(Ecsact.DefaultFixedRunner))]
 public class DefaultFixedRunnerEditor : UnityEditor.Editor {
+	private float deltaTimePcMax = 0f;
+	private float executionTimeMsMax = 0;
+
 	public override bool RequiresConstantRepaint() {
 		return Application.isPlaying;
 	}
@@ -18,7 +21,13 @@ public class DefaultFixedRunnerEditor : UnityEditor.Editor {
 		if(runner.debugExecutionTimeMs > 0) {
 			// 0.0 - 1.0 how much the execution time takes up from the delta time
 			deltaTimePc =
-				Time.deltaTime / ((float)runner.debugExecutionTimeMs) / 1000f;
+				((float)runner.debugExecutionTimeMs / 1000f) / Time.deltaTime;
+
+			deltaTimePcMax = global::System.MathF.Max(deltaTimePcMax, deltaTimePc);
+			executionTimeMsMax = global::System.Math.Max(
+				executionTimeMsMax,
+				runner.debugExecutionTimeMs
+			);
 
 			if(deltaTimePc > 0.5) {
 				executionHeatStyle.normal.textColor = Color.red;
@@ -33,10 +42,19 @@ public class DefaultFixedRunnerEditor : UnityEditor.Editor {
 		);
 		EditorGUILayout.LabelField(
 			"Execution Time",
-			$"{runner.debugExecutionTimeMs}ms " +
-				$"({deltaTimePc*100:0.0}% of delta time)",
+			$"{runner.debugExecutionTimeMs}ms\t\tupper={executionTimeMsMax}ms",
 			executionHeatStyle
 		);
+		EditorGUILayout.LabelField(
+			"Delta Time",
+			$"{deltaTimePc*100:0.0}%\t\tupper={deltaTimePcMax*100:0.0}%",
+			executionHeatStyle
+		);
+
+		if(GUILayout.Button("Reset Uppers")) {
+			executionTimeMsMax = 0;
+			deltaTimePcMax = 0;
+		}
 	}
 }
 
