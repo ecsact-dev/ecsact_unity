@@ -155,6 +155,12 @@ public class EcsactRuntimeMissingMethod : Exception {
 
 public class EcsactRuntimeUsedInEditor : Exception {}
 
+public class EcsactRuntimeUnknownEntity : Exception {}
+
+public class EcsactRuntimeUnexpectedHasComponent : Exception {}
+
+public class EcsactRuntimeExpectedHasComponent : Exception {}
+
 public class EcsactRuntime {
 	public static class VisualScriptingEventNames {
 		public const string AsyncError = "EcsactAsyncErrorEvent";
@@ -164,9 +170,9 @@ public class EcsactRuntime {
 
 	private static void AssertPlayMode() {
 #if UNITY_EDITOR
-		if(!UnityEngine.Application.isPlaying) {
-			throw new EcsactRuntimeUsedInEditor();
-		}
+		// if(!UnityEngine.Application.isPlaying) {
+		// 	throw new EcsactRuntimeUsedInEditor();
+		// }
 #endif
 	}
 
@@ -692,11 +698,19 @@ public class EcsactRuntime {
 		IntPtr                           callbackUserData
 	);
 
+	public delegate void AsyncReqCompleteCallback(
+		Int32 requestIdsLength,
+		[MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 1)] Int32[] requestIds,
+		IntPtr callbackUserData
+	);
+
 	public struct AsyncEventsCollector {
 		public AsyncErrorCallback           errorCallback;
 		public IntPtr                       errorCallbackUserData;
 		public AsyncExecSystemErrorCallback asyncExecErrorCallback;
 		public IntPtr                       asyncExecErrorCallbackUserData;
+		public AsyncReqCompleteCallback     asyncReqCompleteCallback;
+		public IntPtr                       asyncReqCompleteCallbackUserData;
 	}
 
 	static EcsactRuntime() {
@@ -800,6 +814,8 @@ public class EcsactRuntime {
 				errorCallbackUserData = IntPtr.Zero,
 				asyncExecErrorCallback = OnAsyncExecutionErrorHandler,
 				asyncExecErrorCallbackUserData = IntPtr.Zero,
+				asyncReqCompleteCallback = OnAsyncReqCompleteHandler,
+				asyncReqCompleteCallbackUserData = IntPtr.Zero,
 			};
 		}
 
@@ -831,6 +847,18 @@ public class EcsactRuntime {
 			foreach(var cb in self._sysErrCallbacks) {
 				cb(systemError);
 			}
+		}
+
+		[AOT.MonoPInvokeCallback(typeof(AsyncReqCompleteCallback))]
+		public static void OnAsyncReqCompleteHandler(
+			Int32 requestIdsLength,
+			Int32[] requestIds,
+			IntPtr callbackUserData
+		) {
+			var self = (GCHandle.FromIntPtr(callbackUserData).Target as Async)!;
+			// foreach(var cb in self._sysErrCallbacks) {
+			// 	cb(systemError);
+			// }
 		}
 
 		public Action OnSystemError(SystemErrorCallback callback) {
@@ -890,6 +918,7 @@ public class EcsactRuntime {
 				_owner._execEvs.destroyEntitycallbackUserData = ownerIntPtr;
 				_asyncEvs.asyncExecErrorCallbackUserData = selfIntPtr;
 				_asyncEvs.errorCallbackUserData = selfIntPtr;
+				_asyncEvs.asyncReqCompleteCallbackUserData = selfIntPtr;
 				ecsact_async_flush_events(in _owner._execEvs, in _asyncEvs);
 			} finally {
 				selfPinned.Free();
@@ -919,6 +948,40 @@ public class EcsactRuntime {
 			"ecsact_remove_component",
 			"ecsact_update_component",
 		};
+
+		internal void AssertEntityExists(Int32 registryId, Int32 entityId) {
+#if UNITY_EDITOR
+			if(!EntityExists(registryId, entityId)) {
+				throw new EcsactRuntimeUnknownEntity(/* entityId */);
+			}
+#endif
+		}
+
+		internal void AssertHasComponent(
+			Int32 registryId,
+			Int32 entityId,
+			Int32 componentId
+		) {
+#if UNITY_EDITOR
+			if(!HasComponent(registryId, entityId, componentId)) {
+				throw new EcsactRuntimeUnexpectedHasComponent(/* entityId, componentId
+																											 */
+				);
+			}
+#endif
+		}
+
+		internal void AssertNotHasComponent(
+			Int32 registryId,
+			Int32 entityId,
+			Int32 componentId
+		) {
+#if UNITY_EDITOR
+			if(HasComponent(registryId, entityId, componentId)) {
+				throw new EcsactRuntimeExpectedHasComponent(/* entityId, componentId */);
+			}
+#endif
+		}
 
 		internal delegate Int32 ecsact_create_registry_delegate(string registryName
 		);
@@ -1201,14 +1264,15 @@ public class EcsactRuntime {
 			Int32  componentId,
 			object componentData
 		) {
+			AssertEntityExists(registryId, entityId);
+			AssertNotHasComponent(registryId, entityId, componentId);
 			AssertPlayMode();
 			if(ecsact_add_component == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_add_component");
 			}
 
 #if UNITY_EDITOR
-			var result = HasComponent(registryId, entityId, componentId);
-			if(result == true) {
+			if(HasComponent(registryId, entityId, componentId)) {
 				throw new Exception("Entity already has added component");
 			}
 #endif
@@ -1853,6 +1917,7 @@ public class EcsactRuntime {
 			"ecsact_serialize_action",
 			"ecsact_serialize_component_size",
 			"ecsact_serialize_component",
+			"ecsact_dump_entities",
 		};
 
 		internal delegate Int32 ecsact_serialize_action_size_delegate(Int32 actionId
@@ -1893,6 +1958,20 @@ public class EcsactRuntime {
 		);
 		internal
 			ecsact_deserialize_component_delegate? ecsact_deserialize_component;
+
+		internal delegate void ecsact_dump_entities_callback(
+			IntPtr data,
+			Int32  dataLength,
+			IntPtr callbackUserData
+		);
+
+		internal delegate void ecsact_dump_entities_delegate(
+			Int32                         registryId,
+			ecsact_dump_entities_callback callback,
+			IntPtr                        callbackUserData
+		);
+
+		internal ecsact_dump_entities_delegate? ecsact_dump_entities;
 
 		public void DeserializeAction(
 			Int32  actionId,
@@ -1962,6 +2041,33 @@ public class EcsactRuntime {
 			}
 
 			ecsact_serialize_component(componentId, inComponentData, outBytes);
+		}
+
+		public delegate void DumpEntitiesCallback(byte[] data);
+
+		public void DumpEntities(Int32 registryId, DumpEntitiesCallback callback) {
+			if(ecsact_dump_entities == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_dump_entities");
+			}
+
+			var callbackHandle = GCHandle.Alloc(callback, GCHandleType.Pinned);
+			var callbackPtr = Marshal.GetFunctionPointerForDelegate(callback);
+
+			try {
+				ecsact_dump_entities_callback rawCallback = //
+					(IntPtr data, Int32 dataLength, IntPtr ud) => {
+						var callback =
+							Marshal.GetDelegateForFunctionPointer<DumpEntitiesCallback>(ud);
+
+						var dataArr = new byte[dataLength];
+						Marshal.Copy(data, dataArr, 0, dataLength);
+						callback(dataArr);
+					};
+
+				ecsact_dump_entities(registryId, rawCallback, callbackPtr);
+			} finally {
+				callbackHandle.Free();
+			}
 		}
 	}
 
@@ -2671,6 +2777,12 @@ public class EcsactRuntime {
 				lib,
 				"ecsact_deserialize_component",
 				out runtime._serialize.ecsact_deserialize_component,
+				runtime._serialize
+			);
+			LoadDelegate(
+				lib,
+				"ecsact_dump_entities",
+				out runtime._serialize.ecsact_dump_entities,
 				runtime._serialize
 			);
 

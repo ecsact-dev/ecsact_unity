@@ -292,8 +292,14 @@ public static class EcsactRuntimeBuilder {
 		}
 
 		proc.StartInfo.Arguments += "--temp_dir=";
-		proc.StartInfo.Arguments +=
-			Path.GetFullPath(FileUtil.GetUniqueTempPathInProject());
+		if(!string.IsNullOrEmpty(_settings.runtimeBuilderTempDirectory)) {
+			var tempDirFullPath =
+				Path.GetFullPath(_settings.runtimeBuilderTempDirectory);
+			proc.StartInfo.Arguments += tempDirFullPath;
+		} else {
+			proc.StartInfo.Arguments +=
+				Path.GetFullPath(FileUtil.GetUniqueTempPathInProject());
+		}
 
 		Progress.Report(progressId, 0.1f);
 		proc.Start();

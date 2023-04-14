@@ -23,7 +23,8 @@
                 <ui:Label text="Assets/Plugins/EcsactRuntime" display-tooltip-when-elided="true" binding-path="runtimeBuilderOutputPath" style="padding-left: 160px; font-size: 10px; color: rgba(210, 210, 210, 0.47); padding-right: 0;" />
                 <ui:Label text=".wasm" display-tooltip-when-elided="true" style="font-size: 10px; color: rgba(210, 210, 210, 0.47); padding-left: 0;" />
             </ui:VisualElement>
-            <ui:TextField picking-mode="Ignore" label="Runtime Compiler Path" multiline="false" binding-path="runtimeBuilderCompilerPath" />
+            <ui:TextField picking-mode="Ignore" label="Compiler Path" multiline="false" binding-path="runtimeBuilderCompilerPath" />
+            <ui:TextField picking-mode="Ignore" label="Temp Directory" multiline="false" binding-path="runtimeBuilderTempDirectory" />
         </ui:GroupBox>
         <ui:GroupBox>
             <ui:Label text="Runtime Settings" display-tooltip-when-elided="true" style="font-size: 16px; -unity-font-style: bold;" />
