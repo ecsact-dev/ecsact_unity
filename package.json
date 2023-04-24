@@ -2,7 +2,7 @@
   "name": "dev.ecsact.unity",
   "version": "0.8.0",
   "changelogUrl": "https://github.com/ecsact-dev/ecsact_unity/releases",
-  "documentationUrl": "https://ecsact.dev/docs/unity/defaults",
+  "documentationUrl": "https://ecsact.dev/start/unity",
   "license": "MIT",
   "description": "Ecsact Integration",
   "displayName": "Ecsact Integration",
