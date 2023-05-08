@@ -44,10 +44,10 @@ SEE: https://github.com/ecsact-dev/ecsact_unity/issues/59
 ";
 
 	private static Dictionary<IntPtr, string> libraryPaths = new();
-#if UNITY_EDITOR
-	private static string                     tempDir =
+#	if UNITY_EDITOR
+	private static string tempDir =
 		UnityEditor.FileUtil.GetUniqueTempPathInProject();
-#endif
+#	endif
 
 	[DllImport(
 		"Kernel32.dll",
@@ -75,14 +75,14 @@ SEE: https://github.com/ecsact-dev/ecsact_unity/issues/59
 		MarshalAs(UnmanagedType.LPStr)
 	] string procName);
 
-#if UNITY_EDITOR
+#	if UNITY_EDITOR
 	private static void EnsureTempDir() {
 		if(!Directory.Exists(tempDir)) {
 			Directory.CreateDirectory(tempDir);
 			File.WriteAllText(tempDir + "/README.md", TEMP_DIR_README);
 		}
 	}
-#endif
+#	endif
 
 	private static int NowInSeconds() {
 		var now = DateTime.Now.ToUniversalTime();

@@ -4,6 +4,7 @@ using System.Linq;
 using System;
 using System.Reflection;
 using System.Collections.Generic;
+using System.IO;
 using Unity.EditorCoroutines.Editor;
 
 #nullable enable
@@ -18,6 +19,9 @@ public class EcsactRuntimeSettingsEditor : UnityEditor.Editor {
 	private static Assembly? currentCheckingAssembly;
 	private static List<global::System.Type>      potentialUnitySyncTypes = new();
 	private static Dictionary<string, MonoScript> cachedMonoScriptLookups = new();
+	private static bool                           foldoutLibraryPaths = false;
+
+	private EcsactSettings? _ecsactSettings;
 
 	static EcsactRuntimeSettingsEditor() {
 		UnityEditor.EditorApplication.delayCall += () => { DelayedStaticInit(); };
@@ -34,6 +38,8 @@ public class EcsactRuntimeSettingsEditor : UnityEditor.Editor {
 	}
 
 	public void OnEnable() {
+		_ecsactSettings = EcsactSettings.GetOrCreateSettings();
+
 		if(potentialUnitySyncTypes.Count == 0) {
 			var settings = EcsactRuntimeSettings.Get();
 			EditorCoroutineUtility.StartCoroutine(LoadAssemblies(settings), this);
@@ -212,9 +218,81 @@ public class EcsactRuntimeSettingsEditor : UnityEditor.Editor {
 		return null;
 	}
 
+	private int DrawRuntimeLibraryPath(
+		EcsactRuntimeSettings settings,
+		int                   index
+	) {
+		var path = settings.runtimeLibraryPaths[index];
+		EditorGUILayout.BeginHorizontal();
+		EditorGUILayout.PrefixLabel($"  [{index}]");
+		settings.runtimeLibraryPaths[index] = EditorGUILayout.TextField(path);
+		var deleteClick =
+			GUILayout.Button(EditorGUIUtility.IconContent("TreeEditor.Trash"));
+		EditorGUILayout.EndHorizontal();
+
+		if(deleteClick) {
+			settings.runtimeLibraryPaths.RemoveAt(index);
+			return index - 1;
+		}
+
+		return index;
+	}
+
+	private void DrawRuntimeLibrariesList(EcsactRuntimeSettings settings) {
+		foldoutLibraryPaths = EditorGUILayout.BeginFoldoutHeaderGroup(
+			foldoutLibraryPaths,
+			$"Runtime Paths ({settings.runtimeLibraryPaths.Count - 1})"
+		);
+
+		if(foldoutLibraryPaths) {
+			if(_ecsactSettings!.runtimeBuilderEnabled) {
+				EditorGUI.BeginDisabledGroup(true);
+				DrawRuntimeLibraryPath(settings, 0);
+				EditorGUI.EndDisabledGroup();
+			}
+
+			for(int i = 1; settings.runtimeLibraryPaths.Count > i; ++i) {
+				i = DrawRuntimeLibraryPath(settings, i);
+			}
+
+			GUILayout.BeginHorizontal();
+			EditorGUILayout.PrefixLabel(" ");
+			var addRuntimePath =
+				GUILayout.Button("Add Runtime Path", new[] { GUILayout.MaxWidth(240) });
+			GUILayout.EndHorizontal();
+
+			if(addRuntimePath) {
+				var runtimeLibraryPath = EditorUtility.OpenFilePanel(
+					"Ecsact Runtime Library",
+					"",
+					EcsactRuntimeSettings.nativeLibraryExtension
+				);
+
+				if(!String.IsNullOrEmpty(runtimeLibraryPath)) {
+					var relRuntimeLibraryPath = Path.GetRelativePath(
+						Directory.GetCurrentDirectory(),
+						runtimeLibraryPath
+					);
+
+					relRuntimeLibraryPath = Path.Join(
+						Path.GetDirectoryName(relRuntimeLibraryPath),
+						Path.GetFileNameWithoutExtension(relRuntimeLibraryPath)
+					);
+
+					settings.runtimeLibraryPaths.Add(
+						relRuntimeLibraryPath.Replace('\\', '/')
+					);
+				}
+			}
+		}
+
+		EditorGUILayout.EndFoldoutHeaderGroup();
+	}
+
 	public override void OnInspectorGUI() {
 		var settings = (target as EcsactRuntimeSettings)!;
 
+		DrawRuntimeLibrariesList(settings);
 		DrawDefaultInspector();
 
 		var oldEnableUnitySync = settings.enableUnitySync;
@@ -238,11 +316,6 @@ public class EcsactRuntimeSettingsEditor : UnityEditor.Editor {
 					"Update Method",
 					settings.defaultRegistry.updateMethod
 				);
-		}
-
-		if(settings.runner == EcsactRuntimeSettings.RunnerType.AsyncRunner) {
-			settings.deltaTime =
-				EditorGUILayout.IntField("Delta Time", settings.deltaTime);
 		}
 
 		if(settings.enableUnitySync) {
