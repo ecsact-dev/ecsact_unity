@@ -159,10 +159,11 @@ public class EcsactBenchmarkWindow : EditorWindow {
 			return;
 		}
 
+		scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
+
 #if HAS_UNITY_WASM_PACKAGE
 		var benchmarkRunning = BenchmarkInProgress();
 
-		scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
 		EditorGUI.BeginDisabledGroup(benchmarkRunning);
 
 		_runtimePath = EditorGUILayout.TextField("Runtime Path", _runtimePath);
@@ -252,7 +253,6 @@ public class EcsactBenchmarkWindow : EditorWindow {
 			}
 		}
 
-		EditorGUILayout.EndScrollView();
 
 #else
 		EditorGUILayout.HelpBox(
@@ -260,6 +260,8 @@ public class EcsactBenchmarkWindow : EditorWindow {
 			MessageType.Error
 		);
 #endif
+
+		EditorGUILayout.EndScrollView();
 	}
 
 	private static bool BenchmarkInProgress() {
