@@ -94,7 +94,8 @@ SEE: https://github.com/ecsact-dev/ecsact_unity/issues/59
 		var originalLibraryPath = libraryPath + "";
 		var timestamp = NowInSeconds();
 		EnsureTempDir();
-		var _tmpLibraryPath = tempDir + "/" + libraryPath;
+		var _tmpLibraryPath = tempDir + "/" +
+			libraryPath.Replace("..", "").Replace("//", "/").Replace("\\\\", "\\");
 		libraryPath = _tmpLibraryPath + $"-{timestamp}";
 		Directory.CreateDirectory(Path.GetDirectoryName(libraryPath));
 		File.Copy(originalLibraryPath + ".dll", libraryPath + ".dll");
