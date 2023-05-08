@@ -151,7 +151,8 @@ public class EcsatDumpEntitiesWindow : EditorWindow {
 		Ecsact.DynamicEntity[] dynamicEntities
 	) {
 		var settings = EcsactRuntimeSettings.Get();
-		var tempRuntime = EcsactRuntime.Load(settings.runtimeLibraryPaths);
+		var tempRuntime =
+			EcsactRuntime.Load(settings.GetValidRuntimeLibraryPaths());
 
 		try {
 			var registry = tempRuntime.core.CreateRegistry("TempDumpEntities");

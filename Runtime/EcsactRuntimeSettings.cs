@@ -30,6 +30,16 @@ public class EcsactRuntimeDefaultRegistry {
 
 [System.Serializable]
 public class EcsactRuntimeSettings : ScriptableObject {
+#if UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
+	public const string nativeLibraryExtension = "dll";
+#elif UNITY_EDITOR_LINUX || UNITY_STANDALONE_LINUX
+	public const string nativeLibraryExtension = "so";
+#elif UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX
+	public const string nativeLibraryExtension = "dylib";
+#elif UNITY_WEBGL
+	public const string nativeLibraryExtension = "wasm";
+#endif
+
 	private static EcsactRuntimeSettings? _instance;
 
 	public const string resourcePath = "Settings/EcsactRuntimeSettings";
@@ -51,9 +61,6 @@ public class EcsactRuntimeSettings : ScriptableObject {
 	)]
 
 	public RunnerType runner;
-
-	[HideInInspector]
-	public int deltaTime = 32;
 
 	[HideInInspector]
 	public EcsactRuntimeDefaultRegistry defaultRegistry =
@@ -87,11 +94,19 @@ public class EcsactRuntimeSettings : ScriptableObject {
 	[HideInInspector]
 	public string defaultCsharpSystemImplsAssemblyName = "";
 
-	[Tooltip(
-		"Path to ecsact runtime library. First element is always the generated " +
-		"runtime from the runtime builder."
-	)]
+	[HideInInspector,
+	 Tooltip(
+		 "Path to ecsact runtime library. First element is always the generated " +
+		 "runtime from the runtime builder."
+	 )]
 	public List<string> runtimeLibraryPaths = new();
+
+	public IEnumerable<string> GetValidRuntimeLibraryPaths() {
+		foreach(var p in runtimeLibraryPaths) {
+			if(String.IsNullOrEmpty(p)) continue;
+			yield return p;
+		}
+	}
 
 #if UNITY_EDITOR
 	void OnValidate() {

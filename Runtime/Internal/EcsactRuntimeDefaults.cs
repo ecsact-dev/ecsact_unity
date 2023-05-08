@@ -40,7 +40,8 @@ internal static class EcsactRuntimeDefaults {
 	internal static void Setup() {
 		var settings = EcsactRuntimeSettings.Get();
 
-		Ecsact.Defaults._Runtime = EcsactRuntime.Load(settings.runtimeLibraryPaths);
+		Ecsact.Defaults._Runtime =
+			EcsactRuntime.Load(settings.GetValidRuntimeLibraryPaths());
 
 		if(Ecsact.Defaults._Runtime == null) {
 #if UNITY_EDITOR

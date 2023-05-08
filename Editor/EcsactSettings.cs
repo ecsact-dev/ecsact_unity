@@ -14,6 +14,7 @@ class EcsactSettings : ScriptableObject {
 	public const string        path = "Project/Ecsact";
 	public const SettingsScope scope = SettingsScope.Project;
 
+	public bool   runtimeBuilderEnabled = true;
 	public string runtimeBuilderOutputPath = "Assets/Plugins/EcsactRuntime";
 	public string runtimeBuilderTempDirectory = "";
 	public bool   runtimeBuilderDebugBuild = false;
@@ -49,18 +50,26 @@ class EcsactSettings : ScriptableObject {
 		var settings = GetOrCreateSettings();
 		var outputPath = settings.runtimeBuilderOutputPath;
 		if(rtSettings.runtimeLibraryPaths.Count == 0) {
-			rtSettings.runtimeLibraryPaths.Add(outputPath);
+			rtSettings.runtimeLibraryPaths.Add("");
+		}
+
+		if(settings.runtimeBuilderEnabled) {
+			rtSettings.runtimeLibraryPaths[0] = settings.runtimeBuilderOutputPath;
 		} else {
-			rtSettings.runtimeLibraryPaths[0] = outputPath;
+			rtSettings.runtimeLibraryPaths[0] = "";
 		}
 	}
 
 	void OnValidate() {
 		var rtSettings = EcsactRuntimeSettings.Get();
 		if(rtSettings.runtimeLibraryPaths.Count == 0) {
-			rtSettings.runtimeLibraryPaths.Add(runtimeBuilderOutputPath);
-		} else {
+			rtSettings.runtimeLibraryPaths.Add("");
+		}
+
+		if(runtimeBuilderEnabled) {
 			rtSettings.runtimeLibraryPaths[0] = runtimeBuilderOutputPath;
+		} else {
+			rtSettings.runtimeLibraryPaths[0] = "";
 		}
 	}
 #endif
@@ -129,7 +138,8 @@ class EcsactSettingsSettingsProvider : SettingsProvider {
 		TemplateContainer     ui,
 		EcsactRuntimeSettings settings
 	) {
-		var testDefaultRuntime = EcsactRuntime.Load(settings.runtimeLibraryPaths);
+		var testDefaultRuntime =
+			EcsactRuntime.Load(settings.GetValidRuntimeLibraryPaths());
 		try {
 			SetupMethodsUI(
 				ui,
@@ -219,8 +229,27 @@ class EcsactSettingsSettingsProvider : SettingsProvider {
 		BindingExtensions.Bind(ui, settings);
 		rootElement.Add(ui);
 
+		var builderSettingsElement =
+			ui.Q<TemplateContainer>("EcsactRuntimeBuilderSettings");
+		var rtbEnableToggle = ui.Q<Toggle>("EnableRTB");
+
+		rtbEnableToggle.RegisterValueChangedCallback(evt => {
+			if(evt.newValue) {
+				builderSettingsElement.style.display = DisplayStyle.Flex;
+			} else {
+				builderSettingsElement.style.display = DisplayStyle.None;
+			}
+		});
+
 		var runtimeSettings = EcsactRuntimeSettings.Get();
-		DrawMethodsUI(ui, runtimeSettings);
+		try {
+			DrawMethodsUI(ui, runtimeSettings);
+		} catch(System.Exception err) {
+			Debug.LogException(err, runtimeSettings);
+
+			var runtimeModulesGroup = ui.Q<GroupBox>("RuntimeModulesGroup");
+			runtimeModulesGroup.style.display = DisplayStyle.None;
+		}
 
 		runtimeSettingsContainer =
 			ui.Q<IMGUIContainer>("runtime-settings-container");
