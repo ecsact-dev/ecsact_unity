@@ -82,6 +82,8 @@ class EcsactMethodUIBindings : ScriptableObject {
 }
 
 class EcsactSettingsSettingsProvider : SettingsProvider {
+	private static bool showMissingMethods;
+
 	Editor? runtimeSettingsEditor = null;
 	Editor? wasmRuntimeSettingsEditor = null;
 	Editor? csharpSystemImplSettingsEditor = null;
@@ -113,8 +115,18 @@ class EcsactSettingsSettingsProvider : SettingsProvider {
 		var coreMethodTemplate =
 			ui.Q<TemplateContainer>($"{moduleName}-method-template");
 
+		var parent = coreMethodTemplate.contentContainer.parent;
+
+		var visibleMethods = 0;
 		foreach(var method in methods) {
-			var clone = coreMethodTemplate.templateSource.CloneTree();
+			TemplateContainer clone;
+
+			clone = parent.Q<TemplateContainer>(method);
+			if(clone == null) {
+				clone = coreMethodTemplate.templateSource.CloneTree();
+				clone.name = method;
+			}
+
 			var bindings = ScriptableObject.CreateInstance<EcsactMethodUIBindings>();
 			bindings.methodName = method;
 			bindings.methodLoaded = availableMethods.Contains(method);
@@ -128,7 +140,20 @@ class EcsactSettingsSettingsProvider : SettingsProvider {
 				availableIcon.style.display = DisplayStyle.None;
 			}
 
-			coreMethodTemplate.contentContainer.parent.Add(clone);
+			if(bindings.methodLoaded || showMissingMethods) {
+				clone.style.display = DisplayStyle.Flex;
+				visibleMethods += 1;
+			} else {
+				clone.style.display = DisplayStyle.None;
+			}
+
+			parent.Add(clone);
+		}
+
+		if(visibleMethods > 0) {
+			parent.parent.style.display = DisplayStyle.Flex;
+		} else {
+			parent.parent.style.display = DisplayStyle.None;
 		}
 
 		coreMethodTemplate.contentContainer.style.display = DisplayStyle.None;
@@ -195,6 +220,20 @@ class EcsactSettingsSettingsProvider : SettingsProvider {
 		}
 	}
 
+	private static void TryDrawMethodsUI(
+		TemplateContainer     ui,
+		EcsactRuntimeSettings settings
+	) {
+		var runtimeModulesGroup = ui.Q<GroupBox>("RuntimeModulesGroup");
+		try {
+			DrawMethodsUI(ui, settings);
+			runtimeModulesGroup.style.display = DisplayStyle.Flex;
+		} catch(System.Exception err) {
+			Debug.LogException(err, settings);
+			runtimeModulesGroup.style.display = DisplayStyle.None;
+		}
+	}
+
 	Ecsact.SystemImplSource SysImplSrcDropdownValue() {
 		return (Ecsact.SystemImplSource)sysImplSrcDropdown!.index;
 	}
@@ -242,14 +281,13 @@ class EcsactSettingsSettingsProvider : SettingsProvider {
 		});
 
 		var runtimeSettings = EcsactRuntimeSettings.Get();
-		try {
-			DrawMethodsUI(ui, runtimeSettings);
-		} catch(System.Exception err) {
-			Debug.LogException(err, runtimeSettings);
+		TryDrawMethodsUI(ui, runtimeSettings);
 
-			var runtimeModulesGroup = ui.Q<GroupBox>("RuntimeModulesGroup");
-			runtimeModulesGroup.style.display = DisplayStyle.None;
-		}
+		var showMissingMethodsToggle = ui.Q<Toggle>("ShowMissingMethodsToggle");
+		showMissingMethodsToggle.RegisterValueChangedCallback(ev => {
+			showMissingMethods = ev.newValue;
+			TryDrawMethodsUI(ui, runtimeSettings);
+		});
 
 		runtimeSettingsContainer =
 			ui.Q<IMGUIContainer>("runtime-settings-container");

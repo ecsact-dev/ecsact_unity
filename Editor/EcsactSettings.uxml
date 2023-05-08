@@ -19,6 +19,7 @@
         </ui:GroupBox>
         <ui:GroupBox name="RuntimeModulesGroup">
             <ui:Label text="Runtime Modules" display-tooltip-when-elided="true" style="font-size: 16px; -unity-font-style: bold;" />
+            <ui:Toggle label="Show Missing Methods" value="false" name="ShowMissingMethodsToggle" />
             <ui:GroupBox>
                 <ui:Label text="Dynamic Module" display-tooltip-when-elided="true" style="font-size: 14px; -unity-font-style: bold;" />
                 <ui:VisualElement>

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 
 using Ecsact.UnitySync;
 using UnityEditor;
@@ -89,20 +90,39 @@ SEE: https://github.com/ecsact-dev/ecsact_unity/issues/59
 		return (int)(now - new DateTime(1970, 1, 1)).TotalSeconds;
 	}
 
+	static string CalcFileHash(string filename) {
+		using(var hmac = HMACSHA256.Create()) {
+			using(var stream = File.OpenRead(filename)) {
+				var hash = hmac.ComputeHash(stream);
+				return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+			}
+		}
+	}
+
 	public static IntPtr Load(string libraryPath) {
 #	if UNITY_EDITOR
 		var originalLibraryPath = libraryPath + "";
-		var timestamp = NowInSeconds();
+		var fileHash = CalcFileHash(originalLibraryPath + ".dll");
 		EnsureTempDir();
 		var _tmpLibraryPath = tempDir + "/" +
 			libraryPath.Replace("..", "").Replace("//", "/").Replace("\\\\", "\\");
-		libraryPath = _tmpLibraryPath + $"-{timestamp}";
+		libraryPath = _tmpLibraryPath + $"-{fileHash}";
 		Directory.CreateDirectory(Path.GetDirectoryName(libraryPath));
 		File.Copy(originalLibraryPath + ".dll", libraryPath + ".dll");
+
 		if(File.Exists(originalLibraryPath + ".pdb")) {
+			var tmpPdbPath = _tmpLibraryPath + ".pdb";
 			// Keeping the original name because the .dll will be looking for it by
 			// that name.
-			File.Copy(originalLibraryPath + ".pdb", _tmpLibraryPath + ".pdb", true);
+			try {
+				if(File.Exists(tmpPdbPath)) {
+					File.Delete(tmpPdbPath);
+				}
+
+				File.Copy(originalLibraryPath + ".pdb", tmpPdbPath, true);
+			} catch(Exception err) {
+				UnityEngine.Debug.LogException(err);
+			}
 		}
 		if(File.Exists(originalLibraryPath + ".lib")) {
 			File.Copy(originalLibraryPath + ".lib", libraryPath + ".lib");
