@@ -253,7 +253,6 @@ public class EcsactBenchmarkWindow : EditorWindow {
 			}
 		}
 
-
 #else
 		EditorGUILayout.HelpBox(
 			"Unity wasm package is not installed. Please see your Ecsact settings.",
