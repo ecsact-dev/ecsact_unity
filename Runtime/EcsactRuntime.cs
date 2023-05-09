@@ -788,6 +788,8 @@ public class EcsactRuntime {
 			"ecsact_async_flush_events",
 		};
 
+		public enum ConnectState { NotConnected, Loading, Connected, ConnectError }
+
 		internal delegate void ecsact_async_enqueue_execute_options_delegate(
 			CExecutionOptions executionOptions
 		);
@@ -801,10 +803,10 @@ public class EcsactRuntime {
 		);
 		internal ecsact_async_flush_events_delegate? ecsact_async_flush_events;
 
-		internal delegate void ecsact_async_connect_delegate([
+		internal delegate Int32 ecsact_async_connect_delegate([
 			MarshalAs(UnmanagedType.LPStr)
 		] string connectionString);
-		internal               ecsact_async_connect_delegate? ecsact_async_connect;
+		internal                ecsact_async_connect_delegate? ecsact_async_connect;
 
 		internal delegate void ecsact_async_disconnect_delegate();
 		internal ecsact_async_disconnect_delegate? ecsact_async_disconnect;
@@ -832,6 +834,11 @@ public class EcsactRuntime {
 		private List<SystemErrorCallback> _sysErrCallbacks = new();
 		private EcsactRuntime             _owner;
 
+		public delegate void ConnectStateChangeHandler(ConnectState newState);
+		private Int32? connectRequestId = null;
+		public ConnectState connectState { get; private set; }
+		public event        ConnectStateChangeHandler? connectStateChange;
+
 		internal Async(EcsactRuntime owner) {
 			_owner = owner;
 			_asyncEvs = new AsyncEventsCollector {
@@ -852,6 +859,23 @@ public class EcsactRuntime {
 			IntPtr callbackUserData
 		) {
 			var self = (GCHandle.FromIntPtr(callbackUserData).Target as Async)!;
+
+			if(self.connectRequestId.HasValue) {
+				var connectReqId = self.connectRequestId.Value;
+				for(int i = 0; requestIdsLength > i; ++i) {
+					if(connectReqId == requestIds[i]) {
+						self.connectRequestId = null;
+						self.connectState = ConnectState.ConnectError;
+						try {
+							self.connectStateChange?.Invoke(self.connectState);
+						} catch(global::System.Exception e) {
+							UnityEngine.Debug.LogException(e);
+						}
+						break;
+					}
+				}
+			}
+
 			foreach(var cb in self._errCallbacks) {
 				cb(err, requestIds);
 			}
@@ -881,6 +905,19 @@ public class EcsactRuntime {
 			IntPtr callbackUserData
 		) {
 			var self = (GCHandle.FromIntPtr(callbackUserData).Target as Async)!;
+
+			if(self.connectRequestId.HasValue) {
+				var connectReqId = self.connectRequestId.Value;
+				for(int i = 0; requestIdsLength > i; ++i) {
+					if(connectReqId == requestIds[i]) {
+						self.connectRequestId = null;
+						self.connectState = ConnectState.Connected;
+						self.connectStateChange?.Invoke(self.connectState);
+						break;
+					}
+				}
+			}
+
 			// foreach(var cb in self._sysErrCallbacks) {
 			// 	cb(systemError);
 			// }
@@ -892,20 +929,28 @@ public class EcsactRuntime {
 			return () => { _sysErrCallbacks.Remove(callback); };
 		}
 
-		// NOTE: Connect using good?delta_time=whatever#youchoose
-		// Delta speed is the time in Milliseconds between ticks
+		/**
+		 *
+		 */
 		public void Connect(string connectionString) {
 			if(ecsact_async_connect == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_async_connect");
 			}
-			ecsact_async_connect(connectionString);
+			connectRequestId = ecsact_async_connect(connectionString);
+			connectState = ConnectState.Loading;
+			connectStateChange?.Invoke(connectState);
 		}
 
 		public void Disconnect() {
 			if(ecsact_async_disconnect == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_async_disconnect");
 			}
-			ecsact_async_disconnect();
+			if(connectRequestId.HasValue) {
+				ecsact_async_disconnect();
+				connectRequestId = null;
+				connectState = ConnectState.NotConnected;
+				connectStateChange?.Invoke(connectState);
+			}
 		}
 
 		public Int32 GetCurrentTick() {
