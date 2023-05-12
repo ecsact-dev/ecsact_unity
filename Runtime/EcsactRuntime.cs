@@ -725,7 +725,7 @@ public class EcsactRuntime {
 
 	public delegate void AsyncReqCompleteCallback(
 		Int32 requestIdsLength,
-		[MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 1)] Int32[] requestIds,
+		[MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 0)] Int32[] requestIds,
 		IntPtr callbackUserData
 	);
 
@@ -858,13 +858,13 @@ public class EcsactRuntime {
 			Int32[] requestIds,
 			IntPtr callbackUserData
 		) {
+			UnityEngine.Debug.Log("AsyncError!" + requestIds[0]);
 			var self = (GCHandle.FromIntPtr(callbackUserData).Target as Async)!;
 
 			if(self.connectRequestId.HasValue) {
 				var connectReqId = self.connectRequestId.Value;
 				for(int i = 0; requestIdsLength > i; ++i) {
 					if(connectReqId == requestIds[i]) {
-						self.connectRequestId = null;
 						self.connectState = ConnectState.ConnectError;
 						try {
 							self.connectStateChange?.Invoke(self.connectState);
@@ -904,13 +904,13 @@ public class EcsactRuntime {
 			Int32[] requestIds,
 			IntPtr callbackUserData
 		) {
+			UnityEngine.Debug.Log("Request completed: " + requestIds);
 			var self = (GCHandle.FromIntPtr(callbackUserData).Target as Async)!;
 
 			if(self.connectRequestId.HasValue) {
 				var connectReqId = self.connectRequestId.Value;
 				for(int i = 0; requestIdsLength > i; ++i) {
 					if(connectReqId == requestIds[i]) {
-						self.connectRequestId = null;
 						self.connectState = ConnectState.Connected;
 						self.connectStateChange?.Invoke(self.connectState);
 						break;
