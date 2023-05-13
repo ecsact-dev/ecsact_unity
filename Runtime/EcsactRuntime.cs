@@ -725,7 +725,7 @@ public class EcsactRuntime {
 
 	public delegate void AsyncReqCompleteCallback(
 		Int32 requestIdsLength,
-		[MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 1)] Int32[] requestIds,
+		[MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 0)] Int32[] requestIds,
 		IntPtr callbackUserData
 	);
 
