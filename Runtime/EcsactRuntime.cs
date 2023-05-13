@@ -910,7 +910,6 @@ public class EcsactRuntime {
 				var connectReqId = self.connectRequestId.Value;
 				for(int i = 0; requestIdsLength > i; ++i) {
 					if(connectReqId == requestIds[i]) {
-						self.connectRequestId = null;
 						self.connectState = ConnectState.Connected;
 						self.connectStateChange?.Invoke(self.connectState);
 						break;
@@ -936,6 +935,10 @@ public class EcsactRuntime {
 			if(ecsact_async_connect == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_async_connect");
 			}
+			if(connectRequestId.HasValue) {
+				Disconnect();
+			}
+
 			connectRequestId = ecsact_async_connect(connectionString);
 			connectState = ConnectState.Loading;
 			connectStateChange?.Invoke(connectState);
