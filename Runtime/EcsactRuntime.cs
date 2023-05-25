@@ -3009,12 +3009,16 @@ public class EcsactRuntime {
 		}
 
 		if(runtime._wasm != null) {
-			if(runtime._wasm.ecsactsi_wasm_reset != null) {
-				runtime._wasm.ecsactsi_wasm_reset();
-			} else {
-				UnityEngine.Debug.LogWarning(
-					"ecsactsi_wasm_reset method unavailable. Unity may become unstable after unloading the Ecsact runtime."
-				);
+			var hasWasmLoadFn = runtime._wasm.ecsactsi_wasm_load != null ||
+				runtime._wasm.ecsactsi_wasm_load != null;
+			if(hasWasmLoadFn) {
+				if(runtime._wasm.ecsactsi_wasm_reset != null) {
+					runtime._wasm.ecsactsi_wasm_reset();
+				} else {
+					UnityEngine.Debug.LogWarning(
+						"ecsactsi_wasm_reset method unavailable. Unity may become unstable after unloading the Ecsact runtime."
+					);
+				}
 			}
 
 			runtime._wasm.ecsactsi_wasm_load = null;
