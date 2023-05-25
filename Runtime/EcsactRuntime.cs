@@ -2976,6 +2976,10 @@ public class EcsactRuntime {
 		}
 
 		if(runtime._async != null) {
+			if(runtime._async.connectState == Async.ConnectState.Connected) {
+				runtime._async.Disconnect();
+			}
+
 			runtime._async.ecsact_async_flush_events = null;
 			runtime._async.ecsact_async_connect = null;
 			runtime._async.ecsact_async_disconnect = null;
