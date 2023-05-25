@@ -123,8 +123,12 @@ public class EcsactPackagesPostprocessor : AssetPostprocessor {
 		Progress.Report(progressId, 0.1f);
 		codegen.Start();
 
-		EcsactRuntimeBuilder.Build(new EcsactRuntimeBuilder.Options {
-			ecsactFiles = packages.Select(item => item.Item2).ToList(),
-		});
+		var settings = EcsactSettings.GetOrCreateSettings();
+
+		if(settings.runtimeBuilderEnabled) {
+			EcsactRuntimeBuilder.Build(new EcsactRuntimeBuilder.Options {
+				ecsactFiles = packages.Select(item => item.Item2).ToList(),
+			});
+		}
 	}
 }
