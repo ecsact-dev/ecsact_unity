@@ -741,7 +741,7 @@ public class EcsactRuntime {
 	static EcsactRuntime() {
 #if UNITY_EDITOR
 		EditorApplication.playModeStateChanged += state => {
-			if(state == PlayModeStateChange.ExitingPlayMode) {
+			if(state == PlayModeStateChange.EnteredEditMode) {
 				Ecsact.Internal.EcsactRuntimeDefaults.ClearDefaults();
 			}
 		};
