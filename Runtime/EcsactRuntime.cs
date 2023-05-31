@@ -2470,6 +2470,43 @@ public class EcsactRuntime {
 	public Static    @static => _static!;
 	public Wasm      wasm => _wasm!;
 
+	/// <summary>
+	/// Load a non-standard method from the Ecsact runtime library. Only use
+	/// this if you know what you're doing.
+	/// </summary>
+	public bool LoadNonStandardMethod<D>(
+		string name,
+		out    D? nonStandardMethodDelegate
+	)
+		where D : Delegate {
+		nonStandardMethodDelegate = null;
+
+		if(_libs == null) {
+			UnityEngine.Debug.LogError(
+				"EcsactRuntime.LoadNonStandardMethod used before loaded"
+			);
+			return false;
+		}
+
+		var foundMethod = false;
+
+		foreach(var lib in _libs) {
+			IntPtr addr;
+			if(NativeLibrary.TryGetExport(lib, name, out addr)) {
+				nonStandardMethodDelegate =
+					Marshal.GetDelegateForFunctionPointer<D>(addr);
+				if(foundMethod) {
+					UnityEngine.Debug.LogError(
+						$"Found method '{name}' across multiple Ecsact Runtime libraries. Only 1 will be used."
+					);
+				}
+				foundMethod = true;
+			}
+		}
+
+		return foundMethod;
+	}
+
 	[AOT.MonoPInvokeCallback(typeof(Wasm.ecsactsi_wasm_trap_handler))]
 	private static void DefaultWasmTrapHandler(Int32 systemId, [
 		MarshalAs(UnmanagedType.LPStr)
