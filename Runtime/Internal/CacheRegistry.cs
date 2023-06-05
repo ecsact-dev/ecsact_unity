@@ -14,19 +14,47 @@ internal class CacheRegistry {
 		});
 
 		runtime.OnInitComponent((entityId, componentId, component) => {
-			reg.AddComponent(entityId, componentId, component);
+			try {
+				if(reg.HasComponent(entityId, componentId)) {
+					reg.UpdateComponent(entityId, componentId, component);
+				} else {
+					reg.AddComponent(entityId, componentId, component);
+				}
+			} catch(global::System.Exception err) {
+				UnityEngine.Debug.LogException(err);
+			}
 		});
 
 		runtime.OnUpdateComponent((entityId, componentId, component) => {
-			reg.UpdateComponent(entityId, componentId, component);
+			try {
+				if(reg.HasComponent(entityId, componentId)) {
+					reg.UpdateComponent(entityId, componentId, component);
+				} else {
+					reg.AddComponent(entityId, componentId, component);
+				}
+			} catch(global::System.Exception err) {
+				UnityEngine.Debug.LogException(err);
+			}
 		});
 
 		runtime.OnRemoveComponent((entityId, componentId, component) => {
-			reg.RemoveComponent(entityId, componentId);
+			try {
+				if(reg.HasComponent(entityId, componentId)) {
+					reg.RemoveComponent(entityId, componentId);
+				}
+			} catch(global::System.Exception err) {
+				UnityEngine.Debug.LogException(err);
+			}
 		});
 
 		runtime.OnEntityDestroyed((entityId, placeholderId) => {
-			reg.DestroyEntity(entityId);
+			try {
+				if(reg.EntityExists(entityId)) {
+					reg.DestroyEntity(entityId);
+				}
+			} catch(global::System.Exception err) {
+				UnityEngine.Debug.LogException(err);
+			}
 		});
 	}
 };
