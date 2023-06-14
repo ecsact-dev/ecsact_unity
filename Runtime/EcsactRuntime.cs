@@ -17,6 +17,15 @@ class CurrentSystemExecutionState {
 
 namespace Ecsact {
 
+namespace Async {
+public enum ConnectState : Int32 {
+	NotConnected,
+	Loading,
+	Connected,
+	ConnectError,
+}
+}
+
 public enum AsyncError : Int32 {
 	PermissionDenied,
 	InvalidConnectionString,
@@ -788,8 +797,6 @@ public class EcsactRuntime {
 			"ecsact_async_flush_events",
 		};
 
-		public enum ConnectState { NotConnected, Loading, Connected, ConnectError }
-
 		internal delegate void ecsact_async_enqueue_execute_options_delegate(
 			CExecutionOptions executionOptions
 		);
@@ -834,10 +841,12 @@ public class EcsactRuntime {
 		private List<SystemErrorCallback> _sysErrCallbacks = new();
 		private EcsactRuntime             _owner;
 
-		public delegate void ConnectStateChangeHandler(ConnectState newState);
+		public delegate void ConnectStateChangeHandler(
+			Ecsact.Async.ConnectState newState
+		);
 		private Int32? connectRequestId = null;
-		public ConnectState connectState { get; private set; }
-		public event        ConnectStateChangeHandler? connectStateChange;
+		public Ecsact.Async.ConnectState connectState { get; private set; }
+		public event ConnectStateChangeHandler? connectStateChange;
 
 		internal Async(EcsactRuntime owner) {
 			_owner = owner;
@@ -865,7 +874,7 @@ public class EcsactRuntime {
 				for(int i = 0; requestIdsLength > i; ++i) {
 					if(connectReqId == requestIds[i]) {
 						self.connectRequestId = null;
-						self.connectState = ConnectState.ConnectError;
+						self.connectState = Ecsact.Async.ConnectState.ConnectError;
 						try {
 							self.connectStateChange?.Invoke(self.connectState);
 						} catch(global::System.Exception e) {
@@ -910,7 +919,7 @@ public class EcsactRuntime {
 				var connectReqId = self.connectRequestId.Value;
 				for(int i = 0; requestIdsLength > i; ++i) {
 					if(connectReqId == requestIds[i]) {
-						self.connectState = ConnectState.Connected;
+						self.connectState = Ecsact.Async.ConnectState.Connected;
 						self.connectStateChange?.Invoke(self.connectState);
 						break;
 					}
@@ -940,7 +949,7 @@ public class EcsactRuntime {
 			}
 
 			connectRequestId = ecsact_async_connect(connectionString);
-			connectState = ConnectState.Loading;
+			connectState = Ecsact.Async.ConnectState.Loading;
 			connectStateChange?.Invoke(connectState);
 		}
 
@@ -951,7 +960,7 @@ public class EcsactRuntime {
 			if(connectRequestId.HasValue) {
 				ecsact_async_disconnect();
 				connectRequestId = null;
-				connectState = ConnectState.NotConnected;
+				connectState = Ecsact.Async.ConnectState.NotConnected;
 				connectStateChange?.Invoke(connectState);
 			}
 		}
@@ -3013,7 +3022,7 @@ public class EcsactRuntime {
 		}
 
 		if(runtime._async != null) {
-			if(runtime._async.connectState == Async.ConnectState.Connected) {
+			if(runtime._async.connectState == Ecsact.Async.ConnectState.Connected) {
 				runtime._async.Disconnect();
 			}
 
