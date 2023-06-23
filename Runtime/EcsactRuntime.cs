@@ -870,12 +870,12 @@ public class EcsactRuntime {
 			IntPtr callbackUserData
 		) {
 			var self = (GCHandle.FromIntPtr(callbackUserData).Target as Async)!;
+			if(err == Ecsact.AsyncError.ConnectionClosed) {
+				self.connectState = Ecsact.Async.ConnectState.NotConnected;
+				self.connectStateChange?.Invoke(self.connectState);
+			}
 			if(self.connectRequestId.HasValue) {
 				var connectReqId = self.connectRequestId.Value;
-				if(err == Ecsact.AsyncError.ConnectionClosed) {
-					self.connectState = Ecsact.Async.ConnectState.NotConnected;
-					self.connectStateChange?.Invoke(self.connectState);
-				}
 				for(int i = 0; requestIdsLength > i; ++i) {
 					if(connectReqId == requestIds[i]) {
 						self.connectRequestId = null;
