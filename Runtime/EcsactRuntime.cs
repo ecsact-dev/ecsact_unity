@@ -27,10 +27,12 @@ public enum ConnectState : Int32 {
 }
 
 public enum AsyncError : Int32 {
+	Ok,
 	PermissionDenied,
 	InvalidConnectionString,
 	ConnectionClosed,
 	ExecutionMergeFailure,
+	NotConnected,
 }
 
 public enum ecsact_exec_systems_error {
@@ -868,9 +870,12 @@ public class EcsactRuntime {
 			IntPtr callbackUserData
 		) {
 			var self = (GCHandle.FromIntPtr(callbackUserData).Target as Async)!;
-
 			if(self.connectRequestId.HasValue) {
 				var connectReqId = self.connectRequestId.Value;
+				if(err == Ecsact.AsyncError.ConnectionClosed) {
+					self.connectState = Ecsact.Async.ConnectState.NotConnected;
+					self.connectStateChange?.Invoke(self.connectState);
+				}
 				for(int i = 0; requestIdsLength > i; ++i) {
 					if(connectReqId == requestIds[i]) {
 						self.connectRequestId = null;
