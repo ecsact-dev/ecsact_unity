@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## 0.10.1 - 2023-08-11
+#### Miscellaneous Chores
+- bump version - (852d7e3) - Ezekiel Warren
+- add missing .meta file - (4e42455) - Ezekiel Warren
+
+- - -
+
 ## 0.10.0 - 2023-06-24
 #### Bug Fixes
 - cache registy more resistent to runtime error (#93) - (61b726a) - Ezekiel Warren
