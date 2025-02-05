@@ -17,12 +17,29 @@ class CurrentSystemExecutionState {
 
 namespace Ecsact {
 
+public enum EntityExecutionStatus : Int32 {
+	Idle,
+	PendingLazy,
+}
+
+public enum StreamError : Int32 {
+	Ok,
+	/// An invalid or non-stream component ID was passed into the stream.
+	InvalidComponentId,
+}
+
 namespace Async {
 public enum ConnectState : Int32 {
 	NotConnected,
 	Loading,
 	Connected,
 	ConnectError,
+}
+
+public enum SessionEvent : Int32 {
+	Stopped = 0,
+	Pending = 1,
+	Start = 2,
 }
 }
 
@@ -33,6 +50,9 @@ public enum AsyncError : Int32 {
 	ConnectionClosed,
 	ExecutionMergeFailure,
 	NotConnected,
+	Internal = 99,
+	CustomBegin = 100,
+	CustomEnd = 200,
 }
 
 public enum ecsact_exec_systems_error {
@@ -734,14 +754,22 @@ public class EcsactRuntime {
 	);
 
 	public delegate void AsyncExecSystemErrorCallback(
+		Int32                            sessionId,
 		Ecsact.ecsact_exec_systems_error systemError,
 		IntPtr                           callbackUserData
 	);
 
 	public delegate void AsyncReqCompleteCallback(
+		Int32 sessionId,
 		Int32 requestIdsLength,
 		[MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 0)] Int32[] requestIds,
 		IntPtr callbackUserData
+	);
+
+	public delegate void AsyncSessionEventCallback(
+		Int32                     sessionId,
+		Ecsact.Async.SessionEvent sessionEvent,
+		IntPtr                    callbackUserData
 	);
 
 	public struct AsyncEventsCollector {
@@ -751,6 +779,8 @@ public class EcsactRuntime {
 		public IntPtr                       asyncExecErrorCallbackUserData;
 		public AsyncReqCompleteCallback     asyncReqCompleteCallback;
 		public IntPtr                       asyncReqCompleteCallbackUserData;
+		public AsyncSessionEventCallback    asyncSessionEventCallback;
+		public IntPtr                       asyncSessionEventCallbackUserData;
 	}
 
 	static EcsactRuntime() {
@@ -796,37 +826,57 @@ public class EcsactRuntime {
 
 	public class Async : ModuleBase {
 		public static string[] methods => new string[] {
-			"ecsact_async_connect",
-			"ecsact_async_disconnect",
-			"ecsact_async_enqueue_execution_options",
-			"ecsact_async_get_current_tick",
 			"ecsact_async_flush_events",
+			"ecsact_async_start",
+			"ecsact_async_stop",
+			"ecsact_async_stop_all",
+			"ecsact_async_force_reset",
+			"ecsact_async_get_current_tick",
+			"ecsact_async_stream",
+			"ecsact_async_enqueue_execution_options",
 		};
 
 		internal delegate void ecsact_async_enqueue_execute_options_delegate(
+			Int32             sessionId,
 			CExecutionOptions executionOptions
 		);
-
 		internal
 			ecsact_async_enqueue_execute_options_delegate? ecsact_async_enqueue_execution_options;
 
 		internal delegate void ecsact_async_flush_events_delegate(
+			Int32                       sessionId,
 			in ExecutionEventsCollector executionEventsCollector,
 			in AsyncEventsCollector     asyncEventsCollector
 		);
 		internal ecsact_async_flush_events_delegate? ecsact_async_flush_events;
 
-		internal delegate Int32 ecsact_async_connect_delegate([
-			MarshalAs(UnmanagedType.LPStr)
-		] string connectionString);
-		internal                ecsact_async_connect_delegate? ecsact_async_connect;
+		internal delegate Int32
+						 ecsact_async_start_delegate(sbyte[] data, Int32 dataLength);
+		internal ecsact_async_start_delegate? ecsact_async_start;
 
-		internal delegate void ecsact_async_disconnect_delegate();
-		internal ecsact_async_disconnect_delegate? ecsact_async_disconnect;
+		internal delegate void ecsact_async_stop_delegate(Int32 SessionId);
+		internal               ecsact_async_stop_delegate? ecsact_async_stop;
 
-		internal delegate int ecsact_async_get_current_tick_delegate();
+		internal delegate void ecsact_async_stop_all_delegate();
+		internal ecsact_async_stop_all_delegate? ecsact_async_stop_all;
+
+		internal delegate void ecsact_async_force_reset_delegate();
+		internal ecsact_async_force_reset_delegate? ecsact_async_force_reset;
+
+		internal delegate int ecsact_async_get_current_tick_delegate(
+			Int32 sesssionId
+		);
 		internal
 			ecsact_async_get_current_tick_delegate? ecsact_async_get_current_tick;
+
+		internal delegate void ecsact_async_stream_delegate(
+			Int32  sessionId,
+			Int32  entity,
+			Int32  componentId,
+			IntPtr componentData,
+			IntPtr indexedFieldValues
+		);
+		internal ecsact_async_stream_delegate? ecsact_async_stream;
 
 		public delegate void AsyncErrorCallback(
 			Ecsact.AsyncError err,
@@ -842,15 +892,15 @@ public class EcsactRuntime {
 			Int32  connectPort
 		);
 
-		private AsyncEventsCollector      _asyncEvs;
-		private List<AsyncErrorCallback>  _errCallbacks = new();
-		private List<SystemErrorCallback> _sysErrCallbacks = new();
-		private EcsactRuntime             _owner;
+		private AsyncEventsCollector            _asyncEvs;
+		private List<AsyncErrorCallback>        _errCallbacks = new();
+		private List<SystemErrorCallback>       _sysErrCallbacks = new();
+		private List<AsyncSessionEventCallback> _sessionEvCallbacks = new();
+		private EcsactRuntime                   _owner;
 
 		public delegate void ConnectStateChangeHandler(
 			Ecsact.Async.ConnectState newState
 		);
-		private Int32? connectRequestId = null;
 		public Ecsact.Async.ConnectState connectState { get; private set; }
 		public event ConnectStateChangeHandler? connectStateChange;
 
@@ -863,6 +913,8 @@ public class EcsactRuntime {
 				asyncExecErrorCallbackUserData = IntPtr.Zero,
 				asyncReqCompleteCallback = OnAsyncReqCompleteHandler,
 				asyncReqCompleteCallbackUserData = IntPtr.Zero,
+				asyncSessionEventCallback = OnAsyncSessionEventHandler,
+				asyncSessionEventCallbackUserData = IntPtr.Zero,
 			};
 		}
 
@@ -878,21 +930,6 @@ public class EcsactRuntime {
 				self.connectState = Ecsact.Async.ConnectState.NotConnected;
 				self.connectStateChange?.Invoke(self.connectState);
 			}
-			if(self.connectRequestId.HasValue) {
-				var connectReqId = self.connectRequestId.Value;
-				for(int i = 0; requestIdsLength > i; ++i) {
-					if(connectReqId == requestIds[i]) {
-						self.connectRequestId = null;
-						self.connectState = Ecsact.Async.ConnectState.ConnectError;
-						try {
-							self.connectStateChange?.Invoke(self.connectState);
-						} catch(global::System.Exception e) {
-							UnityEngine.Debug.LogException(e);
-						}
-						break;
-					}
-				}
-			}
 
 			foreach(var cb in self._errCallbacks) {
 				cb(err, requestIds);
@@ -907,6 +944,7 @@ public class EcsactRuntime {
 
 		[AOT.MonoPInvokeCallback(typeof(AsyncExecSystemErrorCallback))]
 		private static void OnAsyncExecutionErrorHandler(
+			Int32                            sessionId,
 			Ecsact.ecsact_exec_systems_error systemError,
 			IntPtr                           callbackUserData
 		) {
@@ -918,79 +956,105 @@ public class EcsactRuntime {
 
 		[AOT.MonoPInvokeCallback(typeof(AsyncReqCompleteCallback))]
 		public static void OnAsyncReqCompleteHandler(
+			Int32 sessionId,
 			Int32 requestIdsLength,
 			Int32[] requestIds,
 			IntPtr callbackUserData
 		) {
-			var self = (GCHandle.FromIntPtr(callbackUserData).Target as Async)!;
+			// TODO: report done requests
+		}
 
-			if(self.connectRequestId.HasValue) {
-				var connectReqId = self.connectRequestId.Value;
-				for(int i = 0; requestIdsLength > i; ++i) {
-					if(connectReqId == requestIds[i]) {
-						self.connectState = Ecsact.Async.ConnectState.Connected;
-						self.connectStateChange?.Invoke(self.connectState);
-						break;
-					}
-				}
-			}
-
-			// foreach(var cb in self._sysErrCallbacks) {
-			// 	cb(systemError);
+		[AOT.MonoPInvokeCallback(typeof(AsyncSessionEventCallback))]
+		public static void OnAsyncSessionEventHandler(
+			Int32                     sessionId,
+			Ecsact.Async.SessionEvent sessionEvent,
+			IntPtr                    callbackUserData
+		) {
+			// var self = (GCHandle.FromIntPtr(callbackUserData).Target as Async)!;
+			// foreach(var cb in self._sessionEvCallbacks) {
+			// 	cb(sessionId, sessionEvent);
 			// }
 		}
 
 		public Action OnSystemError(SystemErrorCallback callback) {
 			_sysErrCallbacks.Add(callback);
-
 			return () => { _sysErrCallbacks.Remove(callback); };
 		}
 
+		public delegate void AsyncSessionEventCallback(
+			Int32                     sessionId,
+			Ecsact.Async.SessionEvent sessionEvent
+		);
+
+		public Action OnSessionEvent(AsyncSessionEventCallback callback) {
+			_sessionEvCallbacks.Add(callback);
+			return () => { _sessionEvCallbacks.Remove(callback); };
+		}
+
 		/**
-		 *
+		 * Wrapper for `ecsact_async_start`
 		 */
-		public void Connect(string connectionString) {
-			if(ecsact_async_connect == null) {
-				throw new EcsactRuntimeMissingMethod("ecsact_async_connect");
-			}
-			if(connectRequestId.HasValue) {
-				Disconnect();
+		public Int32 Start(byte[] optionData) {
+			if(ecsact_async_start == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_async_start");
 			}
 
-			connectRequestId = ecsact_async_connect(connectionString);
-			connectState = Ecsact.Async.ConnectState.Loading;
-			connectStateChange?.Invoke(connectState);
+			return ecsact_async_start((sbyte[])(Array)optionData, optionData.Length);
 		}
 
-		public void Disconnect() {
-			if(ecsact_async_disconnect == null) {
-				throw new EcsactRuntimeMissingMethod("ecsact_async_disconnect");
+		/**
+		 * Wrapper for `ecsact_async_stop`
+		 */
+		public void Stop(Int32 sessionId) {
+			if(ecsact_async_stop == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_async_stop");
 			}
-			if(connectRequestId.HasValue) {
-				ecsact_async_disconnect();
-				connectRequestId = null;
-				connectState = Ecsact.Async.ConnectState.NotConnected;
-				connectStateChange?.Invoke(connectState);
-			}
+
+			ecsact_async_stop(sessionId);
 		}
 
-		public Int32 GetCurrentTick() {
+		/**
+		 * Wrapper for `ecsact_async_stop_all`
+		 */
+		public void StopAll() {
+			if(ecsact_async_stop_all == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_async_stop_all");
+			}
+
+			ecsact_async_stop_all();
+		}
+
+		/**
+		 * Wrapper for `ecsact_async_force_reset`
+		 */
+		public void ForceReset() {
+			if(ecsact_async_force_reset == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_async_force_reset");
+			}
+
+			ecsact_async_force_reset();
+		}
+
+		public Int32 GetCurrentTick(Int32 sessionId) {
 			if(ecsact_async_get_current_tick == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_async_get_current_tick");
 			}
-			return ecsact_async_get_current_tick();
+			return ecsact_async_get_current_tick(sessionId);
 		}
 
-		public void EnqueueExecutionOptions(CExecutionOptions executionOptions) {
+		public void EnqueueExecutionOptions(
+			Int32             sessionId,
+			CExecutionOptions executionOptions
+		) {
 			if(ecsact_async_enqueue_execution_options == null) {
 				throw new EcsactRuntimeMissingMethod(
 					"ecsact_async_enqueue_execution_options"
 				);
 			}
-			ecsact_async_enqueue_execution_options(executionOptions);
+			ecsact_async_enqueue_execution_options(sessionId, executionOptions);
 		}
 
-		public void Flush() {
+		public void Flush(Int32 sessionId) {
 			if(ecsact_async_flush_events == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_async_flush_events");
 			}
@@ -1010,7 +1074,8 @@ public class EcsactRuntime {
 				_asyncEvs.asyncExecErrorCallbackUserData = selfIntPtr;
 				_asyncEvs.errorCallbackUserData = selfIntPtr;
 				_asyncEvs.asyncReqCompleteCallbackUserData = selfIntPtr;
-				ecsact_async_flush_events(in _owner._execEvs, in _asyncEvs);
+				_asyncEvs.asyncSessionEventCallbackUserData = selfIntPtr;
+				ecsact_async_flush_events(sessionId, in _owner!._execEvs, in _asyncEvs);
 			} finally {
 				selfPinned.Free();
 				ownerPinned.Free();
@@ -1020,24 +1085,28 @@ public class EcsactRuntime {
 
 	public class Core : ModuleBase {
 		public static string[] methods => new string[] {
-			"ecsact_add_component",
-			"ecsact_clear_registry",
-			"ecsact_count_components",
-			"ecsact_count_entities",
-			"ecsact_create_entity",
 			"ecsact_create_registry",
-			"ecsact_destroy_entity",
 			"ecsact_destroy_registry",
-			"ecsact_each_component",
+			"ecsact_clone_registry",
+			"ecsact_hash_registry",
+			"ecsact_clear_registry",
+			"ecsact_create_entity",
 			"ecsact_ensure_entity",
 			"ecsact_entity_exists",
-			"ecsact_execute_systems",
-			"ecsact_get_component",
-			"ecsact_get_components",
+			"ecsact_destroy_entity",
+			"ecsact_count_entities",
 			"ecsact_get_entities",
+			"ecsact_add_component",
 			"ecsact_has_component",
-			"ecsact_remove_component",
+			"ecsact_get_component",
+			"ecsact_count_components",
+			"ecsact_get_components",
+			"ecsact_each_component",
 			"ecsact_update_component",
+			"ecsact_remove_component",
+			"ecsact_execute_systems",
+			"ecsact_get_entity_execution_status",
+			"ecsact_stream",
 		};
 
 		internal void AssertEntityExists(Int32 registryId, Int32 entityId) {
@@ -1074,9 +1143,21 @@ public class EcsactRuntime {
 #endif
 		}
 
-		internal delegate Int32 ecsact_create_registry_delegate(string registryName
+		internal delegate Int32 ecsact_create_registry_delegate( //
+			string registryName
 		);
 		internal ecsact_create_registry_delegate? ecsact_create_registry;
+
+		internal delegate Int32 ecsact_clone_registry_delegate( //
+			Int32  registry,
+			string registryName
+		);
+		internal ecsact_clone_registry_delegate? ecsact_clone_registry;
+
+		internal delegate Int64 ecsact_hash_registry_delegate( //
+			Int32 registry
+		);
+		internal                ecsact_hash_registry_delegate? ecsact_hash_registry;
 
 		internal delegate void ecsact_destroy_registry_delegate(Int32 registryId);
 		internal ecsact_destroy_registry_delegate? ecsact_destroy_registry;
@@ -1121,8 +1202,6 @@ public class EcsactRuntime {
 			ENTITY_INVALID = 1,
 			CONSTRAINT_BROKEN = 2
 		}
-
-		;
 
 		internal delegate ecsact_add_error ecsact_add_component_delegate(
 			Int32  registryId,
@@ -1207,6 +1286,24 @@ public class EcsactRuntime {
 				in ExecutionEventsCollector eventsCollector
 			);
 		internal ecsact_execute_systems_delegate? ecsact_execute_systems;
+
+		internal delegate
+			Ecsact.EntityExecutionStatus ecsact_get_entity_execution_status_delegate(
+				Int32 registry,
+				Int32 entity,
+				Int32 systemLikeId
+			);
+		internal
+			ecsact_get_entity_execution_status_delegate? ecsact_get_entity_execution_status;
+
+		internal delegate Ecsact.StreamError ecsact_stream_delegate(
+			Int32  registry,
+			Int32  entity,
+			Int32  component,
+			IntPtr componentData,
+			IntPtr indexedFieldValues
+		);
+		internal ecsact_stream_delegate? ecsact_stream;
 
 		private EcsactRuntime _owner;
 
@@ -1716,6 +1813,7 @@ public class EcsactRuntime {
 			"ecsact_system_execution_context_same",
 			"ecsact_system_execution_context_update",
 			"ecsact_system_execution_context_entity",
+			"ecsact_system_execution_context_stream_toggle",
 			"ecsact_system_generates_set_component",
 			"ecsact_system_generates_unset_component",
 			"ecsact_unset_system_association_capability",
@@ -1802,6 +1900,16 @@ public class EcsactRuntime {
 		ecsact_system_execution_context_entity_delegate(IntPtr context);
 		internal
 			ecsact_system_execution_context_entity_delegate? ecsact_system_execution_context_entity;
+
+		internal delegate void
+		ecsact_system_execution_context_stream_toggle_delegate(
+			IntPtr                             context,
+			Int32                              componentId,
+			[MarshalAs(UnmanagedType.I1)] bool streamingEnabled,
+			IntPtr                             indexedFieldValues
+		);
+		internal
+			ecsact_system_execution_context_stream_toggle_delegate? ecsact_system_execution_context_stream_toggle;
 
 		internal delegate void ecsact_set_system_execution_impl_delegate(
 			Int32                systemId,
@@ -2204,7 +2312,7 @@ public class EcsactRuntime {
 
 	// TODO(zaucy): This is misplaced here. It should be organized somewhere else
 	//              maybe in another package
-	// ecsactsi_* fns
+	// ecsact_si_* fns
 	public class Wasm : ModuleBase {
 		public enum ErrorCode {
 			Ok,
@@ -2223,18 +2331,18 @@ public class EcsactRuntime {
 		}
 
 		public static string[] methods => new string[] {
-			"ecsactsi_wasm_load",
-			"ecsactsi_wasm_load_file",
-			"ecsactsi_wasm_reset",
-			"ecsactsi_wasm_unload",
-			"ecsactsi_wasm_set_trap_handler",
-			"ecsactsi_wasm_last_error_message",
-			"ecsactsi_wasm_last_error_message_length",
-			"ecsactsi_wasm_consume_logs",
-			"ecsactsi_wasm_allow_file_read_access",
+			"ecsact_si_wasm_load",
+			"ecsact_si_wasm_load_file",
+			"ecsact_si_wasm_reset",
+			"ecsact_si_wasm_unload",
+			"ecsact_si_wasm_set_trap_handler",
+			"ecsact_si_wasm_last_error_message",
+			"ecsact_si_wasm_last_error_message_length",
+			"ecsact_si_wasm_consume_logs",
+			"ecsact_si_wasm_allow_file_read_access",
 		};
 
-		internal delegate ErrorCode ecsactsi_wasm_load_delegate(
+		internal delegate ErrorCode ecsact_si_wasm_load_delegate(
 			sbyte[] wasmData,
 			Int32 wasmDataSize,
 			Int32 systemsCount,
@@ -2242,59 +2350,59 @@ public class EcsactRuntime {
 			string[] wasmExports
 		);
 
-		internal ecsactsi_wasm_load_delegate? ecsactsi_wasm_load;
+		internal ecsact_si_wasm_load_delegate? ecsact_si_wasm_load;
 
-		internal delegate ErrorCode ecsactsi_wasm_load_file_delegate(
+		internal delegate ErrorCode ecsact_si_wasm_load_file_delegate(
 			[MarshalAs(UnmanagedType.LPStr)] string wasmFilePath,
 			Int32                                   systemsCount,
 			Int32[] systmIds,
 			string[] wasmExports
 		);
 
-		internal ecsactsi_wasm_load_file_delegate? ecsactsi_wasm_load_file;
+		internal ecsact_si_wasm_load_file_delegate? ecsact_si_wasm_load_file;
 
-		internal delegate void ecsactsi_wasm_unload_delegate(
+		internal delegate void ecsact_si_wasm_unload_delegate(
 			Int32 systemsCount,
 			Int32[] systemIds
 		);
 
-		internal ecsactsi_wasm_unload_delegate? ecsactsi_wasm_unload;
+		internal ecsact_si_wasm_unload_delegate? ecsact_si_wasm_unload;
 
-		internal delegate void ecsactsi_wasm_reset_delegate();
+		internal delegate void ecsact_si_wasm_reset_delegate();
 
-		internal ecsactsi_wasm_reset_delegate? ecsactsi_wasm_reset;
+		internal ecsact_si_wasm_reset_delegate? ecsact_si_wasm_reset;
 
-		internal delegate void ecsactsi_wasm_trap_handler(Int32 systemId, [
+		internal delegate void ecsact_si_wasm_trap_handler(Int32 systemId, [
 			MarshalAs(UnmanagedType.LPStr)
 		] string trapMessage);
 
-		internal delegate void ecsactsi_wasm_set_trap_handler_delegate(
-			ecsactsi_wasm_trap_handler handler
+		internal delegate void ecsact_si_wasm_set_trap_handler_delegate(
+			ecsact_si_wasm_trap_handler handler
 		);
 
 		internal
-			ecsactsi_wasm_set_trap_handler_delegate? ecsactsi_wasm_set_trap_handler;
+			ecsact_si_wasm_set_trap_handler_delegate? ecsact_si_wasm_set_trap_handler;
 
-		internal delegate Int32 ecsactsi_wasm_last_error_message_length_delegate();
+		internal delegate Int32 ecsact_si_wasm_last_error_message_length_delegate();
 		internal
-			ecsactsi_wasm_last_error_message_length_delegate? ecsactsi_wasm_last_error_message_length;
+			ecsact_si_wasm_last_error_message_length_delegate? ecsact_si_wasm_last_error_message_length;
 
-		internal delegate void ecsactsi_wasm_last_error_message_delegate(
+		internal delegate void ecsact_si_wasm_last_error_message_delegate(
 			IntPtr outMessage,
 			Int32  outMessageMaxLength
 		);
 		internal
-			ecsactsi_wasm_last_error_message_delegate? ecsactsi_wasm_last_error_message;
+			ecsact_si_wasm_last_error_message_delegate? ecsact_si_wasm_last_error_message;
 
-		internal delegate void ecsactsi_wasm_consume_logs_delegate(
+		internal delegate void ecsact_si_wasm_consume_logs_delegate(
 			LogConsumer consumer,
 			IntPtr      userData
 		);
-		internal ecsactsi_wasm_consume_logs_delegate? ecsactsi_wasm_consume_logs;
+		internal ecsact_si_wasm_consume_logs_delegate? ecsact_si_wasm_consume_logs;
 
-		internal delegate void ecsactsi_wasm_allow_file_read_access_delegate();
+		internal delegate void ecsact_si_wasm_allow_file_read_access_delegate();
 		internal
-			ecsactsi_wasm_allow_file_read_access_delegate? ecsactsi_wasm_allow_file_read_access;
+			ecsact_si_wasm_allow_file_read_access_delegate? ecsact_si_wasm_allow_file_read_access;
 
 		internal enum LogLevel : Int32 {
 			Info = 0,
@@ -2310,12 +2418,12 @@ public class EcsactRuntime {
 		);
 
 		private string LastErrorMessage() {
-			if(ecsactsi_wasm_last_error_message == null ||
-				 ecsactsi_wasm_last_error_message_length == null) {
+			if(ecsact_si_wasm_last_error_message == null ||
+				 ecsact_si_wasm_last_error_message_length == null) {
 				return "";
 			}
 
-			var errMessageLength = ecsactsi_wasm_last_error_message_length();
+			var errMessageLength = ecsact_si_wasm_last_error_message_length();
 			if(errMessageLength == 0) {
 				return "";
 			}
@@ -2325,7 +2433,7 @@ public class EcsactRuntime {
 
 			var errMessagePtr = Marshal.StringToHGlobalAnsi(errMessage);
 			try {
-				ecsactsi_wasm_last_error_message(errMessagePtr, errMessageLength);
+				ecsact_si_wasm_last_error_message(errMessagePtr, errMessageLength);
 				errMessage = Marshal.PtrToStringAnsi(errMessagePtr, errMessageLength);
 			} finally {
 				Marshal.FreeHGlobal(errMessagePtr);
@@ -2338,15 +2446,15 @@ public class EcsactRuntime {
 			Int32  systemId,
 			string exportName
 		) {
-			if(ecsactsi_wasm_load_file == null) {
-				throw new EcsactRuntimeMissingMethod("ecsactsi_wasm_load_file");
+			if(ecsact_si_wasm_load_file == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_si_wasm_load_file");
 			}
 
 			var systemIds = new Int32[] { systemId };
 			var exportNames = new string[] { exportName };
 
 			var errCode =
-				ecsactsi_wasm_load_file(wasmFilePath, 1, systemIds, exportNames);
+				ecsact_si_wasm_load_file(wasmFilePath, 1, systemIds, exportNames);
 
 			return new Error {
 				code = errCode,
@@ -2359,15 +2467,15 @@ public class EcsactRuntime {
 			Int32[] systemIds,
 			string[] exportNames
 		) {
-			if(ecsactsi_wasm_load_file == null) {
-				throw new EcsactRuntimeMissingMethod("ecsactsi_wasm_load_file");
+			if(ecsact_si_wasm_load_file == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_si_wasm_load_file");
 			}
 
 			if(systemIds.Length != exportNames.Length) {
 				throw new Exception("System IDs and exportNames length do not match");
 			}
 
-			var errCode = ecsactsi_wasm_load_file(
+			var errCode = ecsact_si_wasm_load_file(
 				wasmFilePath,
 				systemIds.Length,
 				systemIds,
@@ -2386,15 +2494,15 @@ public class EcsactRuntime {
 			string[] exportNames
 		) {
 			AssertPlayMode();
-			if(ecsactsi_wasm_load == null) {
-				throw new EcsactRuntimeMissingMethod("ecsactsi_wasm_load");
+			if(ecsact_si_wasm_load == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_si_wasm_load");
 			}
 
 			if(systemIds.Length != exportNames.Length) {
 				throw new Exception("System IDs and exportNames length do not match");
 			}
 
-			var errCode = ecsactsi_wasm_load(
+			var errCode = ecsact_si_wasm_load(
 				(sbyte[])(Array)wasmData,
 				wasmData.Length,
 				systemIds.Length,
@@ -2410,8 +2518,8 @@ public class EcsactRuntime {
 
 		public Error Load(byte[] wasmData, Int32 systemId, string exportName) {
 			AssertPlayMode();
-			if(ecsactsi_wasm_load == null) {
-				throw new EcsactRuntimeMissingMethod("ecsactsi_wasm_load");
+			if(ecsact_si_wasm_load == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_si_wasm_load");
 			}
 
 			var systemIds = new Int32[] { systemId };
@@ -2422,33 +2530,33 @@ public class EcsactRuntime {
 
 		void Unload(IEnumerable<Int32> systemIds) {
 			AssertPlayMode();
-			if(ecsactsi_wasm_unload == null) {
-				throw new EcsactRuntimeMissingMethod("ecsactsi_wasm_unload");
+			if(ecsact_si_wasm_unload == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_si_wasm_unload");
 			}
 
 			Int32[] systemIdsArr = systemIds.ToArray();
 
-			ecsactsi_wasm_unload(systemIdsArr.Count(), systemIdsArr);
+			ecsact_si_wasm_unload(systemIdsArr.Count(), systemIdsArr);
 		}
 
 		void Reset() {
 			AssertPlayMode();
-			if(ecsactsi_wasm_reset == null) {
-				throw new EcsactRuntimeMissingMethod("ecsactsi_wasm_reset");
+			if(ecsact_si_wasm_reset == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_si_wasm_reset");
 			}
 
-			ecsactsi_wasm_reset();
+			ecsact_si_wasm_reset();
 		}
 
 		/// <summary>
 		/// Convenience function to pipe Ecsact Wasm logs to the Unity logger
 		/// </summary>
 		public void PrintAndConsumeLogs() {
-			if(ecsactsi_wasm_consume_logs == null) {
+			if(ecsact_si_wasm_consume_logs == null) {
 				return;
 			}
 
-			ecsactsi_wasm_consume_logs(EcsactWasmUnityLoggerConsumer, IntPtr.Zero);
+			ecsact_si_wasm_consume_logs(EcsactWasmUnityLoggerConsumer, IntPtr.Zero);
 		}
 
 		[AOT.MonoPInvokeCallback(typeof(LogConsumer))]
@@ -2526,7 +2634,7 @@ public class EcsactRuntime {
 		return foundMethod;
 	}
 
-	[AOT.MonoPInvokeCallback(typeof(Wasm.ecsactsi_wasm_trap_handler))]
+	[AOT.MonoPInvokeCallback(typeof(Wasm.ecsact_si_wasm_trap_handler))]
 	private static void DefaultWasmTrapHandler(Int32 systemId, [
 		MarshalAs(UnmanagedType.LPStr)
 	] string trapMessage) {
@@ -2587,431 +2695,99 @@ public class EcsactRuntime {
 			libraryPaths.Select(path => NativeLibrary.Load(path)).ToArray();
 
 		foreach(var lib in runtime._libs) {
+			// clang-format off
 			// Load async methods
-			LoadDelegate(
-				lib,
-				"ecsact_async_enqueue_execution_options",
-				out runtime._async.ecsact_async_enqueue_execution_options,
-				runtime._async
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_async_flush_events",
-				out runtime._async.ecsact_async_flush_events,
-				runtime._async
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_async_connect",
-				out runtime._async.ecsact_async_connect,
-				runtime._async
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_async_disconnect",
-				out runtime._async.ecsact_async_disconnect,
-				runtime._async
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_async_get_current_tick",
-				out runtime._async.ecsact_async_get_current_tick,
-				runtime._async
-			);
+			LoadDelegate(lib, "ecsact_async_flush_events", out runtime._async.ecsact_async_flush_events, runtime._async);
+			LoadDelegate(lib, "ecsact_async_start", out runtime._async.ecsact_async_start, runtime._async);
+			LoadDelegate(lib, "ecsact_async_stop", out runtime._async.ecsact_async_stop, runtime._async);
+			LoadDelegate(lib, "ecsact_async_stop_all", out runtime._async.ecsact_async_stop_all, runtime._async);
+			LoadDelegate(lib, "ecsact_async_force_reset", out runtime._async.ecsact_async_force_reset, runtime._async);
+			LoadDelegate(lib, "ecsact_async_get_current_tick", out runtime._async.ecsact_async_get_current_tick, runtime._async);
+			LoadDelegate(lib, "ecsact_async_stream", out runtime._async.ecsact_async_stream, runtime._async);
+			LoadDelegate(lib, "ecsact_async_enqueue_execution_options", out runtime._async.ecsact_async_enqueue_execution_options, runtime._async);
 
 			// Load core methods
-			LoadDelegate(
-				lib,
-				"ecsact_create_registry",
-				out runtime._core.ecsact_create_registry,
-				runtime._core
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_destroy_registry",
-				out runtime._core.ecsact_destroy_registry,
-				runtime._core
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_clear_registry",
-				out runtime._core.ecsact_clear_registry,
-				runtime._core
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_create_entity",
-				out runtime._core.ecsact_create_entity,
-				runtime._core
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_ensure_entity",
-				out runtime._core.ecsact_ensure_entity,
-				runtime._core
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_entity_exists",
-				out runtime._core.ecsact_entity_exists,
-				runtime._core
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_destroy_entity",
-				out runtime._core.ecsact_destroy_entity,
-				runtime._core
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_count_entities",
-				out runtime._core.ecsact_count_entities,
-				runtime._core
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_get_entities",
-				out runtime._core.ecsact_get_entities,
-				runtime._core
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_add_component",
-				out runtime._core.ecsact_add_component,
-				runtime._core
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_has_component",
-				out runtime._core.ecsact_has_component,
-				runtime._core
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_get_component",
-				out runtime._core.ecsact_get_component,
-				runtime._core
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_each_component",
-				out runtime._core.ecsact_each_component,
-				runtime._core
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_count_components",
-				out runtime._core.ecsact_count_components,
-				runtime._core
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_get_components",
-				out runtime._core.ecsact_get_components,
-				runtime._core
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_update_component",
-				out runtime._core.ecsact_update_component,
-				runtime._core
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_remove_component",
-				out runtime._core.ecsact_remove_component,
-				runtime._core
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_execute_systems",
-				out runtime._core.ecsact_execute_systems,
-				runtime._core
-			);
+			LoadDelegate(lib, "ecsact_create_registry", out runtime._core.ecsact_create_registry, runtime._core);
+			LoadDelegate(lib, "ecsact_destroy_registry", out runtime._core.ecsact_destroy_registry, runtime._core);
+			LoadDelegate(lib, "ecsact_clone_registry", out runtime._core.ecsact_clone_registry, runtime._core);
+			LoadDelegate(lib, "ecsact_hash_registry", out runtime._core.ecsact_hash_registry, runtime._core);
+			LoadDelegate(lib, "ecsact_clear_registry", out runtime._core.ecsact_clear_registry, runtime._core);
+			LoadDelegate(lib, "ecsact_create_entity", out runtime._core.ecsact_create_entity, runtime._core);
+			LoadDelegate(lib, "ecsact_ensure_entity", out runtime._core.ecsact_ensure_entity, runtime._core);
+			LoadDelegate(lib, "ecsact_entity_exists", out runtime._core.ecsact_entity_exists, runtime._core);
+			LoadDelegate(lib, "ecsact_destroy_entity", out runtime._core.ecsact_destroy_entity, runtime._core);
+			LoadDelegate(lib, "ecsact_count_entities", out runtime._core.ecsact_count_entities, runtime._core);
+			LoadDelegate(lib, "ecsact_get_entities", out runtime._core.ecsact_get_entities, runtime._core);
+			LoadDelegate(lib, "ecsact_add_component", out runtime._core.ecsact_add_component, runtime._core);
+			LoadDelegate(lib, "ecsact_has_component", out runtime._core.ecsact_has_component, runtime._core);
+			LoadDelegate(lib, "ecsact_get_component", out runtime._core.ecsact_get_component, runtime._core);
+			LoadDelegate(lib, "ecsact_count_components", out runtime._core.ecsact_count_components, runtime._core);
+			LoadDelegate(lib, "ecsact_get_components", out runtime._core.ecsact_get_components, runtime._core);
+			LoadDelegate(lib, "ecsact_each_component", out runtime._core.ecsact_each_component, runtime._core);
+			LoadDelegate(lib, "ecsact_update_component", out runtime._core.ecsact_update_component, runtime._core);
+			LoadDelegate(lib, "ecsact_remove_component", out runtime._core.ecsact_remove_component, runtime._core);
+			LoadDelegate(lib, "ecsact_execute_systems", out runtime._core.ecsact_execute_systems, runtime._core);
+			LoadDelegate(lib, "ecsact_get_entity_execution_status", out runtime._core.ecsact_get_entity_execution_status, runtime._core);
+			LoadDelegate(lib, "ecsact_stream", out runtime._core.ecsact_stream, runtime._core);
 
 			// Load dynamic methods
-			LoadDelegate(
-				lib,
-				"ecsact_system_execution_context_action",
-				out runtime._dynamic.ecsact_system_execution_context_action,
-				runtime._dynamic
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_system_execution_context_add",
-				out runtime._dynamic.ecsact_system_execution_context_add,
-				runtime._dynamic
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_system_execution_context_remove",
-				out runtime._dynamic.ecsact_system_execution_context_remove,
-				runtime._dynamic
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_system_execution_context_update",
-				out runtime._dynamic.ecsact_system_execution_context_update,
-				runtime._dynamic
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_system_execution_context_get",
-				out runtime._dynamic.ecsact_system_execution_context_get,
-				runtime._dynamic
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_system_execution_context_has",
-				out runtime._dynamic.ecsact_system_execution_context_has,
-				runtime._dynamic
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_system_execution_context_generate",
-				out runtime._dynamic.ecsact_system_execution_context_generate,
-				runtime._dynamic
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_system_execution_context_parent",
-				out runtime._dynamic.ecsact_system_execution_context_parent,
-				runtime._dynamic
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_system_execution_context_same",
-				out runtime._dynamic.ecsact_system_execution_context_same,
-				runtime._dynamic
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_system_execution_context_entity",
-				out runtime._dynamic.ecsact_system_execution_context_entity,
-				runtime._dynamic
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_create_system",
-				out runtime._dynamic.ecsact_create_system,
-				runtime._dynamic
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_set_system_execution_impl",
-				out runtime._dynamic.ecsact_set_system_execution_impl,
-				runtime._dynamic
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_create_action",
-				out runtime._dynamic.ecsact_create_action,
-				runtime._dynamic
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_create_component",
-				out runtime._dynamic.ecsact_create_component,
-				runtime._dynamic
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_destroy_component",
-				out runtime._dynamic.ecsact_destroy_component,
-				runtime._dynamic
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_system_execution_context_id",
-				out runtime._dynamic.ecsact_system_execution_context_id,
-				runtime._dynamic
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_system_execution_context_other",
-				out runtime._dynamic.ecsact_system_execution_context_other,
-				runtime._dynamic
-			);
+			// NOTE: not all methods are here.
+			LoadDelegate(lib, "ecsact_system_execution_context_action", out runtime._dynamic.ecsact_system_execution_context_action, runtime._dynamic);
+			LoadDelegate(lib, "ecsact_system_execution_context_add", out runtime._dynamic.ecsact_system_execution_context_add, runtime._dynamic);
+			LoadDelegate(lib, "ecsact_system_execution_context_remove", out runtime._dynamic.ecsact_system_execution_context_remove, runtime._dynamic);
+			LoadDelegate(lib, "ecsact_system_execution_context_get", out runtime._dynamic.ecsact_system_execution_context_get, runtime._dynamic);
+			LoadDelegate(lib, "ecsact_system_execution_context_update", out runtime._dynamic.ecsact_system_execution_context_update, runtime._dynamic);
+			LoadDelegate(lib, "ecsact_system_execution_context_has", out runtime._dynamic.ecsact_system_execution_context_has, runtime._dynamic);
+			LoadDelegate(lib, "ecsact_system_execution_context_stream_toggle", out runtime._dynamic.ecsact_system_execution_context_stream_toggle, runtime._dynamic);
+			LoadDelegate(lib, "ecsact_system_execution_context_generate", out runtime._dynamic.ecsact_system_execution_context_generate, runtime._dynamic);
+			LoadDelegate(lib, "ecsact_system_execution_context_parent", out runtime._dynamic.ecsact_system_execution_context_parent, runtime._dynamic);
+			LoadDelegate(lib, "ecsact_system_execution_context_same", out runtime._dynamic.ecsact_system_execution_context_same, runtime._dynamic);
+			LoadDelegate(lib, "ecsact_system_execution_context_other", out runtime._dynamic.ecsact_system_execution_context_other, runtime._dynamic);
+			LoadDelegate(lib, "ecsact_system_execution_context_entity", out runtime._dynamic.ecsact_system_execution_context_entity, runtime._dynamic);
+			LoadDelegate(lib, "ecsact_system_execution_context_id", out runtime._dynamic.ecsact_system_execution_context_id, runtime._dynamic);
+			LoadDelegate(lib, "ecsact_set_system_execution_impl", out runtime._dynamic.ecsact_set_system_execution_impl, runtime._dynamic);
 
 			// Load meta methods
-			LoadDelegate(
-				lib,
-				"ecsact_meta_registry_name",
-				out runtime._meta.ecsact_meta_registry_name,
-				runtime._meta
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_meta_component_name",
-				out runtime._meta.ecsact_meta_component_name,
-				runtime._meta
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_meta_action_name",
-				out runtime._meta.ecsact_meta_action_name,
-				runtime._meta
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_meta_system_name",
-				out runtime._meta.ecsact_meta_system_name,
-				runtime._meta
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_meta_system_capabilities_count",
-				out runtime._meta.ecsact_meta_system_capabilities_count,
-				runtime._meta
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_meta_system_capabilities",
-				out runtime._meta.ecsact_meta_system_capabilities,
-				runtime._meta
-			);
+			LoadDelegate(lib, "ecsact_meta_registry_name", out runtime._meta.ecsact_meta_registry_name, runtime._meta);
+			LoadDelegate(lib, "ecsact_meta_component_name", out runtime._meta.ecsact_meta_component_name, runtime._meta);
+			LoadDelegate(lib, "ecsact_meta_action_name", out runtime._meta.ecsact_meta_action_name, runtime._meta);
+			LoadDelegate(lib, "ecsact_meta_system_name", out runtime._meta.ecsact_meta_system_name, runtime._meta);
+			LoadDelegate(lib, "ecsact_meta_system_capabilities_count", out runtime._meta.ecsact_meta_system_capabilities_count, runtime._meta);
+			LoadDelegate(lib, "ecsact_meta_system_capabilities", out runtime._meta.ecsact_meta_system_capabilities, runtime._meta);
 
 			// Load serialize methods
-			LoadDelegate(
-				lib,
-				"ecsact_serialize_action_size",
-				out runtime._serialize.ecsact_serialize_action_size,
-				runtime._serialize
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_serialize_component_size",
-				out runtime._serialize.ecsact_serialize_component_size,
-				runtime._serialize
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_serialize_action",
-				out runtime._serialize.ecsact_serialize_action,
-				runtime._serialize
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_serialize_component",
-				out runtime._serialize.ecsact_serialize_component,
-				runtime._serialize
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_deserialize_action",
-				out runtime._serialize.ecsact_deserialize_action,
-				runtime._serialize
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_deserialize_component",
-				out runtime._serialize.ecsact_deserialize_component,
-				runtime._serialize
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_dump_entities",
-				out runtime._serialize.ecsact_dump_entities,
-				runtime._serialize
-			);
+			LoadDelegate(lib, "ecsact_serialize_action_size", out runtime._serialize.ecsact_serialize_action_size, runtime._serialize);
+			LoadDelegate(lib, "ecsact_serialize_component_size", out runtime._serialize.ecsact_serialize_component_size, runtime._serialize);
+			LoadDelegate(lib, "ecsact_serialize_action", out runtime._serialize.ecsact_serialize_action, runtime._serialize);
+			LoadDelegate(lib, "ecsact_serialize_component", out runtime._serialize.ecsact_serialize_component, runtime._serialize);
+			LoadDelegate(lib, "ecsact_deserialize_action", out runtime._serialize.ecsact_deserialize_action, runtime._serialize);
+			LoadDelegate(lib, "ecsact_deserialize_component", out runtime._serialize.ecsact_deserialize_component, runtime._serialize);
+			LoadDelegate(lib, "ecsact_dump_entities", out runtime._serialize.ecsact_dump_entities, runtime._serialize);
 
 			// Load static methods
-			LoadDelegate(
-				lib,
-				"ecsact_static_components",
-				out runtime._static.ecsact_static_components,
-				runtime._static
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_static_systems",
-				out runtime._static.ecsact_static_systems,
-				runtime._static
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_static_actions",
-				out runtime._static.ecsact_static_actions,
-				runtime._static
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_static_on_reload",
-				out runtime._static.ecsact_static_on_reload,
-				runtime._static
-			);
-			LoadDelegate(
-				lib,
-				"ecsact_static_off_reload",
-				out runtime._static.ecsact_static_off_reload,
-				runtime._static
-			);
+			LoadDelegate(lib, "ecsact_static_components", out runtime._static.ecsact_static_components, runtime._static);
+			LoadDelegate(lib, "ecsact_static_systems", out runtime._static.ecsact_static_systems, runtime._static);
+			LoadDelegate(lib, "ecsact_static_actions", out runtime._static.ecsact_static_actions, runtime._static);
+			LoadDelegate(lib, "ecsact_static_on_reload", out runtime._static.ecsact_static_on_reload, runtime._static);
+			LoadDelegate(lib, "ecsact_static_off_reload", out runtime._static.ecsact_static_off_reload, runtime._static);
 
 			// Load system implementation wasm methods
-			LoadDelegate(
-				lib,
-				"ecsactsi_wasm_load",
-				out runtime._wasm.ecsactsi_wasm_load,
-				runtime._wasm
-			);
-			LoadDelegate(
-				lib,
-				"ecsactsi_wasm_load_file",
-				out runtime._wasm.ecsactsi_wasm_load_file,
-				runtime._wasm
-			);
-			LoadDelegate(
-				lib,
-				"ecsactsi_wasm_reset",
-				out runtime._wasm.ecsactsi_wasm_reset,
-				runtime._wasm
-			);
-			LoadDelegate(
-				lib,
-				"ecsactsi_wasm_unload",
-				out runtime._wasm.ecsactsi_wasm_unload,
-				runtime._wasm
-			);
-			LoadDelegate(
-				lib,
-				"ecsactsi_wasm_set_trap_handler",
-				out runtime._wasm.ecsactsi_wasm_set_trap_handler,
-				runtime._wasm
-			);
-			LoadDelegate(
-				lib,
-				"ecsactsi_wasm_last_error_message",
-				out runtime._wasm.ecsactsi_wasm_last_error_message,
-				runtime._wasm
-			);
-			LoadDelegate(
-				lib,
-				"ecsactsi_wasm_last_error_message_length",
-				out runtime._wasm.ecsactsi_wasm_last_error_message_length,
-				runtime._wasm
-			);
-			LoadDelegate(
-				lib,
-				"ecsactsi_wasm_consume_logs",
-				out runtime._wasm.ecsactsi_wasm_consume_logs,
-				runtime._wasm
-			);
-			LoadDelegate(
-				lib,
-				"ecsactsi_wasm_allow_file_read_access",
-				out runtime._wasm.ecsactsi_wasm_allow_file_read_access,
-				runtime._wasm
-			);
-			LoadDelegate(
-				lib,
-				"ecsactsi_wasm_allow_file_read_access",
-				out runtime._wasm.ecsactsi_wasm_allow_file_read_access,
-				runtime._wasm
-			);
+			LoadDelegate(lib, "ecsact_si_wasm_load", out runtime._wasm.ecsact_si_wasm_load, runtime._wasm);
+			LoadDelegate(lib, "ecsact_si_wasm_load_file", out runtime._wasm.ecsact_si_wasm_load_file, runtime._wasm);
+			LoadDelegate(lib, "ecsact_si_wasm_reset", out runtime._wasm.ecsact_si_wasm_reset, runtime._wasm);
+			LoadDelegate(lib, "ecsact_si_wasm_unload", out runtime._wasm.ecsact_si_wasm_unload, runtime._wasm);
+			LoadDelegate(lib, "ecsact_si_wasm_set_trap_handler", out runtime._wasm.ecsact_si_wasm_set_trap_handler, runtime._wasm);
+			LoadDelegate(lib, "ecsact_si_wasm_last_error_message", out runtime._wasm.ecsact_si_wasm_last_error_message, runtime._wasm);
+			LoadDelegate(lib, "ecsact_si_wasm_last_error_message_length", out runtime._wasm.ecsact_si_wasm_last_error_message_length, runtime._wasm);
+			LoadDelegate(lib, "ecsact_si_wasm_consume_logs", out runtime._wasm.ecsact_si_wasm_consume_logs, runtime._wasm);
+			LoadDelegate(lib, "ecsact_si_wasm_allow_file_read_access", out runtime._wasm.ecsact_si_wasm_allow_file_read_access, runtime._wasm);
+			LoadDelegate(lib, "ecsact_si_wasm_allow_file_read_access", out runtime._wasm.ecsact_si_wasm_allow_file_read_access, runtime._wasm);
+
+			// clang-format on
 		}
 
-		if(runtime._wasm.ecsactsi_wasm_set_trap_handler != null) {
-			runtime._wasm.ecsactsi_wasm_set_trap_handler(DefaultWasmTrapHandler);
+		if(runtime._wasm.ecsact_si_wasm_set_trap_handler != null) {
+			runtime._wasm.ecsact_si_wasm_set_trap_handler(DefaultWasmTrapHandler);
 		}
 
 		return runtime;
@@ -3029,20 +2805,26 @@ public class EcsactRuntime {
 		}
 
 		if(runtime._async != null) {
-			if(runtime._async.connectState == Ecsact.Async.ConnectState.Connected) {
-				runtime._async.Disconnect();
+			if(runtime._async.ecsact_async_force_reset != null) {
+				runtime._async.ecsact_async_force_reset();
+			} else if(runtime._async.ecsact_async_stop_all != null) {
+				runtime._async.ecsact_async_stop_all();
 			}
 
 			runtime._async.ecsact_async_flush_events = null;
-			runtime._async.ecsact_async_connect = null;
-			runtime._async.ecsact_async_disconnect = null;
-			runtime._async.ecsact_async_enqueue_execution_options = null;
+			runtime._async.ecsact_async_start = null;
+			runtime._async.ecsact_async_stop = null;
+			runtime._async.ecsact_async_stop_all = null;
+			runtime._async.ecsact_async_force_reset = null;
 			runtime._async.ecsact_async_get_current_tick = null;
+			runtime._async.ecsact_async_stream = null;
 		}
 
 		if(runtime._core != null) {
 			runtime._core.ecsact_create_registry = null;
 			runtime._core.ecsact_destroy_registry = null;
+			runtime._core.ecsact_clone_registry = null;
+			runtime._core.ecsact_hash_registry = null;
 			runtime._core.ecsact_clear_registry = null;
 			runtime._core.ecsact_create_entity = null;
 			runtime._core.ecsact_ensure_entity = null;
@@ -3053,37 +2835,39 @@ public class EcsactRuntime {
 			runtime._core.ecsact_add_component = null;
 			runtime._core.ecsact_has_component = null;
 			runtime._core.ecsact_get_component = null;
-			runtime._core.ecsact_each_component = null;
 			runtime._core.ecsact_count_components = null;
 			runtime._core.ecsact_get_components = null;
+			runtime._core.ecsact_each_component = null;
 			runtime._core.ecsact_update_component = null;
 			runtime._core.ecsact_remove_component = null;
 			runtime._core.ecsact_execute_systems = null;
+			runtime._core.ecsact_get_entity_execution_status = null;
+			runtime._core.ecsact_stream = null;
 		}
 
 		if(runtime._wasm != null) {
-			var hasWasmLoadFn = runtime._wasm.ecsactsi_wasm_load != null ||
-				runtime._wasm.ecsactsi_wasm_load != null;
+			var hasWasmLoadFn = runtime._wasm.ecsact_si_wasm_load != null ||
+				runtime._wasm.ecsact_si_wasm_load != null;
 			if(hasWasmLoadFn) {
-				if(runtime._wasm.ecsactsi_wasm_reset != null) {
-					runtime._wasm.ecsactsi_wasm_reset();
+				if(runtime._wasm.ecsact_si_wasm_reset != null) {
+					runtime._wasm.ecsact_si_wasm_reset();
 				} else {
 					UnityEngine.Debug.LogWarning(
-						"ecsactsi_wasm_reset method unavailable. Unity may become " +
+						"ecsact_si_wasm_reset method unavailable. Unity may become " +
 						"unstable after unloading the Ecsact runtime."
 					);
 				}
 			}
 
-			runtime._wasm.ecsactsi_wasm_load = null;
-			runtime._wasm.ecsactsi_wasm_load_file = null;
-			runtime._wasm.ecsactsi_wasm_reset = null;
-			runtime._wasm.ecsactsi_wasm_unload = null;
-			runtime._wasm.ecsactsi_wasm_set_trap_handler = null;
-			runtime._wasm.ecsactsi_wasm_last_error_message_length = null;
-			runtime._wasm.ecsactsi_wasm_last_error_message = null;
-			runtime._wasm.ecsactsi_wasm_consume_logs = null;
-			runtime._wasm.ecsactsi_wasm_allow_file_read_access = null;
+			runtime._wasm.ecsact_si_wasm_load = null;
+			runtime._wasm.ecsact_si_wasm_load_file = null;
+			runtime._wasm.ecsact_si_wasm_reset = null;
+			runtime._wasm.ecsact_si_wasm_unload = null;
+			runtime._wasm.ecsact_si_wasm_set_trap_handler = null;
+			runtime._wasm.ecsact_si_wasm_last_error_message_length = null;
+			runtime._wasm.ecsact_si_wasm_last_error_message = null;
+			runtime._wasm.ecsact_si_wasm_consume_logs = null;
+			runtime._wasm.ecsact_si_wasm_allow_file_read_access = null;
 		}
 
 		if(runtime._dynamic != null) {
@@ -3096,20 +2880,17 @@ public class EcsactRuntime {
 			runtime._dynamic.ecsact_system_execution_context_action = null;
 			runtime._dynamic.ecsact_system_execution_context_add = null;
 			runtime._dynamic.ecsact_system_execution_context_remove = null;
-			runtime._dynamic.ecsact_system_execution_context_update = null;
 			runtime._dynamic.ecsact_system_execution_context_get = null;
+			runtime._dynamic.ecsact_system_execution_context_update = null;
 			runtime._dynamic.ecsact_system_execution_context_has = null;
+			runtime._dynamic.ecsact_system_execution_context_stream_toggle = null;
 			runtime._dynamic.ecsact_system_execution_context_generate = null;
 			runtime._dynamic.ecsact_system_execution_context_parent = null;
 			runtime._dynamic.ecsact_system_execution_context_same = null;
-			runtime._dynamic.ecsact_system_execution_context_entity = null;
-			runtime._dynamic.ecsact_create_system = null;
-			runtime._dynamic.ecsact_set_system_execution_impl = null;
-			runtime._dynamic.ecsact_create_action = null;
-			runtime._dynamic.ecsact_create_component = null;
-			runtime._dynamic.ecsact_destroy_component = null;
-			runtime._dynamic.ecsact_system_execution_context_id = null;
 			runtime._dynamic.ecsact_system_execution_context_other = null;
+			runtime._dynamic.ecsact_system_execution_context_entity = null;
+			runtime._dynamic.ecsact_system_execution_context_id = null;
+			runtime._dynamic.ecsact_set_system_execution_impl = null;
 		}
 
 		if(runtime._meta != null) {

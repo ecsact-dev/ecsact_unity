@@ -156,8 +156,8 @@ public static class EcsactRuntimeBuilder {
 		};
 
 		proc.OutputDataReceived += (_, ev) => {
+			var line = ev.Data;
 			try {
-				var line = ev.Data;
 				if(!string.IsNullOrWhiteSpace(line)) {
 					var baseMessage = JsonUtility.FromJson<MessageBase>(line);
 					switch(baseMessage.type) {
@@ -241,6 +241,9 @@ public static class EcsactRuntimeBuilder {
 					}
 				}
 			} catch(System.Exception err) {
+				UnityEngine.Debug.LogError(
+					$"Exception occured while processing this line: {line}"
+				);
 				UnityEngine.Debug.LogException(err);
 			}
 		};
@@ -297,6 +300,15 @@ public static class EcsactRuntimeBuilder {
 		proc.StartInfo.Arguments += " ";
 
 		if(_settings.ecsactBuildEnabled) {
+			if(_settings.recipes.Count == 0) {
+				UnityEngine.Debug.LogError(
+					"No ecsact build recipes selected - please check your Ecsact Unity " +
+					"settings"
+				);
+				Progress.Finish(progressId, Progress.Status.Failed);
+				return;
+			}
+
 			foreach(var recipe in _settings.recipes) {
 				if(!string.IsNullOrEmpty(recipe)) {
 					proc.StartInfo.Arguments += " --recipe=\"";
@@ -318,7 +330,10 @@ public static class EcsactRuntimeBuilder {
 		proc.Exited +=
 			new System.EventHandler(delegate(object sender, System.EventArgs e) {
 				if(proc.ExitCode != 0) {
-					UnityEngine.Debug.Log("Ecsact build failed");
+					UnityEngine.Debug.LogError("Ecsact build failed");
+					UnityEngine.Debug.Log(
+						$"From Command: ecsact {proc.StartInfo.Arguments}"
+					);
 				} else {
 					UnityEngine.Debug.Log("Ecsact build succeeded");
 				}
