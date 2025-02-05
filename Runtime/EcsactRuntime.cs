@@ -754,11 +754,13 @@ public class EcsactRuntime {
 	);
 
 	public delegate void AsyncExecSystemErrorCallback(
+		Int32                            sessionId,
 		Ecsact.ecsact_exec_systems_error systemError,
 		IntPtr                           callbackUserData
 	);
 
 	public delegate void AsyncReqCompleteCallback(
+		Int32 sessionId,
 		Int32 requestIdsLength,
 		[MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 0)] Int32[] requestIds,
 		IntPtr callbackUserData
@@ -831,6 +833,7 @@ public class EcsactRuntime {
 			"ecsact_async_force_reset",
 			"ecsact_async_get_current_tick",
 			"ecsact_async_stream",
+			"ecsact_async_enqueue_execution_options",
 		};
 
 		internal delegate void ecsact_async_enqueue_execute_options_delegate(
@@ -848,7 +851,7 @@ public class EcsactRuntime {
 		internal ecsact_async_flush_events_delegate? ecsact_async_flush_events;
 
 		internal delegate Int32
-						 ecsact_async_start_delegate(IntPtr data, Int32 dataLength);
+						 ecsact_async_start_delegate(sbyte[] data, Int32 dataLength);
 		internal ecsact_async_start_delegate? ecsact_async_start;
 
 		internal delegate void ecsact_async_stop_delegate(Int32 SessionId);
@@ -941,6 +944,7 @@ public class EcsactRuntime {
 
 		[AOT.MonoPInvokeCallback(typeof(AsyncExecSystemErrorCallback))]
 		private static void OnAsyncExecutionErrorHandler(
+			Int32                            sessionId,
 			Ecsact.ecsact_exec_systems_error systemError,
 			IntPtr                           callbackUserData
 		) {
@@ -952,11 +956,11 @@ public class EcsactRuntime {
 
 		[AOT.MonoPInvokeCallback(typeof(AsyncReqCompleteCallback))]
 		public static void OnAsyncReqCompleteHandler(
+			Int32 sessionId,
 			Int32 requestIdsLength,
 			Int32[] requestIds,
 			IntPtr callbackUserData
 		) {
-			var self = (GCHandle.FromIntPtr(callbackUserData).Target as Async)!;
 			// TODO: report done requests
 		}
 
@@ -966,10 +970,10 @@ public class EcsactRuntime {
 			Ecsact.Async.SessionEvent sessionEvent,
 			IntPtr                    callbackUserData
 		) {
-			var self = (GCHandle.FromIntPtr(callbackUserData).Target as Async)!;
-			foreach(var cb in self._sessionEvCallbacks) {
-				cb(sessionId, sessionEvent);
-			}
+			// var self = (GCHandle.FromIntPtr(callbackUserData).Target as Async)!;
+			// foreach(var cb in self._sessionEvCallbacks) {
+			// 	cb(sessionId, sessionEvent);
+			// }
 		}
 
 		public Action OnSystemError(SystemErrorCallback callback) {
@@ -995,7 +999,7 @@ public class EcsactRuntime {
 				throw new EcsactRuntimeMissingMethod("ecsact_async_start");
 			}
 
-			throw new Exception("TODO");
+			return ecsact_async_start((sbyte[])(Array)optionData, optionData.Length);
 		}
 
 		/**
@@ -1070,7 +1074,8 @@ public class EcsactRuntime {
 				_asyncEvs.asyncExecErrorCallbackUserData = selfIntPtr;
 				_asyncEvs.errorCallbackUserData = selfIntPtr;
 				_asyncEvs.asyncReqCompleteCallbackUserData = selfIntPtr;
-				ecsact_async_flush_events(sessionId, in _owner._execEvs, in _asyncEvs);
+				_asyncEvs.asyncSessionEventCallbackUserData = selfIntPtr;
+				ecsact_async_flush_events(sessionId, in _owner!._execEvs, in _asyncEvs);
 			} finally {
 				selfPinned.Free();
 				ownerPinned.Free();
@@ -1808,6 +1813,7 @@ public class EcsactRuntime {
 			"ecsact_system_execution_context_same",
 			"ecsact_system_execution_context_update",
 			"ecsact_system_execution_context_entity",
+			"ecsact_system_execution_context_stream_toggle",
 			"ecsact_system_generates_set_component",
 			"ecsact_system_generates_unset_component",
 			"ecsact_unset_system_association_capability",
@@ -2698,6 +2704,7 @@ public class EcsactRuntime {
 			LoadDelegate(lib, "ecsact_async_force_reset", out runtime._async.ecsact_async_force_reset, runtime._async);
 			LoadDelegate(lib, "ecsact_async_get_current_tick", out runtime._async.ecsact_async_get_current_tick, runtime._async);
 			LoadDelegate(lib, "ecsact_async_stream", out runtime._async.ecsact_async_stream, runtime._async);
+			LoadDelegate(lib, "ecsact_async_enqueue_execution_options", out runtime._async.ecsact_async_enqueue_execution_options, runtime._async);
 
 			// Load core methods
 			LoadDelegate(lib, "ecsact_create_registry", out runtime._core.ecsact_create_registry, runtime._core);
