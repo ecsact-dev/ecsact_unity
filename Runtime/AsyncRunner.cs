@@ -9,6 +9,8 @@ namespace Ecsact {
 public class AsyncRunner : EcsactRunner {
 	private EcsactRuntime? runtime;
 
+	public global::System.Int32? SessionId;
+
 	private void Enqueue() {
 		var localExecutionOptions = executionOptions;
 
@@ -21,6 +23,7 @@ public class AsyncRunner : EcsactRunner {
 				localExecutionOptions.create_entities_placeholders.ToArray();
 			localExecutionOptions.Alloc();
 			Ecsact.Defaults.Runtime.async.EnqueueExecutionOptions(
+				SessionId.Value!,
 				localExecutionOptions.C()
 			);
 		} finally {
@@ -29,11 +32,15 @@ public class AsyncRunner : EcsactRunner {
 	}
 
 	void Update() {
+		if(!SessionId.HasValue) {
+			return;
+		}
+
 		if(Ecsact.Defaults.Runtime != null) {
 			if(!executionOptions.isEmpty()) {
 				Enqueue();
 			}
-			Ecsact.Defaults.Runtime.async.Flush();
+			Ecsact.Defaults.Runtime.async.Flush(SessionId.Value);
 		}
 	}
 }

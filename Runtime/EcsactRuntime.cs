@@ -17,6 +17,17 @@ class CurrentSystemExecutionState {
 
 namespace Ecsact {
 
+public enum EntityExecutionStatus : Int32 {
+	Idle,
+	PendingLazy,
+}
+
+public enum StreamError : Int32 {
+	Ok,
+	/// An invalid or non-stream component ID was passed into the stream.
+	InvalidComponentId,
+}
+
 namespace Async {
 public enum ConnectState : Int32 {
 	NotConnected,
@@ -753,6 +764,12 @@ public class EcsactRuntime {
 		IntPtr callbackUserData
 	);
 
+	public delegate void AsyncSessionEventCallback(
+		Int32                     sessionId,
+		Ecsact.Async.SessionEvent sessionEvent,
+		IntPtr                    callbackUserData
+	);
+
 	public struct AsyncEventsCollector {
 		public AsyncErrorCallback           errorCallback;
 		public IntPtr                       errorCallbackUserData;
@@ -760,6 +777,8 @@ public class EcsactRuntime {
 		public IntPtr                       asyncExecErrorCallbackUserData;
 		public AsyncReqCompleteCallback     asyncReqCompleteCallback;
 		public IntPtr                       asyncReqCompleteCallbackUserData;
+		public AsyncSessionEventCallback    asyncSessionEventCallback;
+		public IntPtr                       asyncSessionEventCallbackUserData;
 	}
 
 	static EcsactRuntime() {
@@ -815,23 +834,25 @@ public class EcsactRuntime {
 		};
 
 		internal delegate void ecsact_async_enqueue_execute_options_delegate(
-			Int32 sessionId,
+			Int32             sessionId,
 			CExecutionOptions executionOptions
 		);
-		internal ecsact_async_enqueue_execute_options_delegate? ecsact_async_enqueue_execution_options;
+		internal
+			ecsact_async_enqueue_execute_options_delegate? ecsact_async_enqueue_execution_options;
 
 		internal delegate void ecsact_async_flush_events_delegate(
-			Int32 sessionId,
+			Int32                       sessionId,
 			in ExecutionEventsCollector executionEventsCollector,
 			in AsyncEventsCollector     asyncEventsCollector
 		);
 		internal ecsact_async_flush_events_delegate? ecsact_async_flush_events;
 
-		internal delegate Int32 ecsact_async_start_delegate(IntPtr data, Int32 dataLength);
+		internal delegate Int32
+						 ecsact_async_start_delegate(IntPtr data, Int32 dataLength);
 		internal ecsact_async_start_delegate? ecsact_async_start;
 
 		internal delegate void ecsact_async_stop_delegate(Int32 SessionId);
-		internal ecsact_async_stop_delegate? ecsact_async_stop;
+		internal               ecsact_async_stop_delegate? ecsact_async_stop;
 
 		internal delegate void ecsact_async_stop_all_delegate();
 		internal ecsact_async_stop_all_delegate? ecsact_async_stop_all;
@@ -839,8 +860,11 @@ public class EcsactRuntime {
 		internal delegate void ecsact_async_force_reset_delegate();
 		internal ecsact_async_force_reset_delegate? ecsact_async_force_reset;
 
-		internal delegate int ecsact_async_get_current_tick_delegate(Int32 sesssionId);
-		internal ecsact_async_get_current_tick_delegate? ecsact_async_get_current_tick;
+		internal delegate int ecsact_async_get_current_tick_delegate(
+			Int32 sesssionId
+		);
+		internal
+			ecsact_async_get_current_tick_delegate? ecsact_async_get_current_tick;
 
 		internal delegate void ecsact_async_stream_delegate(
 			Int32  sessionId,
@@ -850,7 +874,6 @@ public class EcsactRuntime {
 			IntPtr indexedFieldValues
 		);
 		internal ecsact_async_stream_delegate? ecsact_async_stream;
-
 
 		public delegate void AsyncErrorCallback(
 			Ecsact.AsyncError err,
@@ -866,10 +889,11 @@ public class EcsactRuntime {
 			Int32  connectPort
 		);
 
-		private AsyncEventsCollector      _asyncEvs;
-		private List<AsyncErrorCallback>  _errCallbacks = new();
-		private List<SystemErrorCallback> _sysErrCallbacks = new();
-		private EcsactRuntime             _owner;
+		private AsyncEventsCollector            _asyncEvs;
+		private List<AsyncErrorCallback>        _errCallbacks = new();
+		private List<SystemErrorCallback>       _sysErrCallbacks = new();
+		private List<AsyncSessionEventCallback> _sessionEvCallbacks = new();
+		private EcsactRuntime                   _owner;
 
 		public delegate void ConnectStateChangeHandler(
 			Ecsact.Async.ConnectState newState
@@ -886,6 +910,8 @@ public class EcsactRuntime {
 				asyncExecErrorCallbackUserData = IntPtr.Zero,
 				asyncReqCompleteCallback = OnAsyncReqCompleteHandler,
 				asyncReqCompleteCallbackUserData = IntPtr.Zero,
+				asyncSessionEventCallback = OnAsyncSessionEventHandler,
+				asyncSessionEventCallbackUserData = IntPtr.Zero,
 			};
 		}
 
@@ -934,10 +960,31 @@ public class EcsactRuntime {
 			// TODO: report done requests
 		}
 
+		[AOT.MonoPInvokeCallback(typeof(AsyncSessionEventCallback))]
+		public static void OnAsyncSessionEventHandler(
+			Int32                     sessionId,
+			Ecsact.Async.SessionEvent sessionEvent,
+			IntPtr                    callbackUserData
+		) {
+			var self = (GCHandle.FromIntPtr(callbackUserData).Target as Async)!;
+			foreach(var cb in self._sessionEvCallbacks) {
+				cb(sessionId, sessionEvent);
+			}
+		}
+
 		public Action OnSystemError(SystemErrorCallback callback) {
 			_sysErrCallbacks.Add(callback);
-
 			return () => { _sysErrCallbacks.Remove(callback); };
+		}
+
+		public delegate void AsyncSessionEventCallback(
+			Int32                     sessionId,
+			Ecsact.Async.SessionEvent sessionEvent
+		);
+
+		public Action OnSessionEvent(AsyncSessionEventCallback callback) {
+			_sessionEvCallbacks.Add(callback);
+			return () => { _sessionEvCallbacks.Remove(callback); };
 		}
 
 		/**
@@ -947,6 +994,8 @@ public class EcsactRuntime {
 			if(ecsact_async_start == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_async_start");
 			}
+
+			throw new Exception("TODO");
 		}
 
 		/**
@@ -960,6 +1009,28 @@ public class EcsactRuntime {
 			ecsact_async_stop(sessionId);
 		}
 
+		/**
+		 * Wrapper for `ecsact_async_stop_all`
+		 */
+		public void StopAll() {
+			if(ecsact_async_stop_all == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_async_stop_all");
+			}
+
+			ecsact_async_stop_all();
+		}
+
+		/**
+		 * Wrapper for `ecsact_async_force_reset`
+		 */
+		public void ForceReset() {
+			if(ecsact_async_force_reset == null) {
+				throw new EcsactRuntimeMissingMethod("ecsact_async_force_reset");
+			}
+
+			ecsact_async_force_reset();
+		}
+
 		public Int32 GetCurrentTick(Int32 sessionId) {
 			if(ecsact_async_get_current_tick == null) {
 				throw new EcsactRuntimeMissingMethod("ecsact_async_get_current_tick");
@@ -967,7 +1038,10 @@ public class EcsactRuntime {
 			return ecsact_async_get_current_tick(sessionId);
 		}
 
-		public void EnqueueExecutionOptions(Int32 sessionId, CExecutionOptions executionOptions) {
+		public void EnqueueExecutionOptions(
+			Int32             sessionId,
+			CExecutionOptions executionOptions
+		) {
 			if(ecsact_async_enqueue_execution_options == null) {
 				throw new EcsactRuntimeMissingMethod(
 					"ecsact_async_enqueue_execution_options"
@@ -1064,9 +1138,21 @@ public class EcsactRuntime {
 #endif
 		}
 
-		internal delegate Int32 ecsact_create_registry_delegate(string registryName
+		internal delegate Int32 ecsact_create_registry_delegate( //
+			string registryName
 		);
 		internal ecsact_create_registry_delegate? ecsact_create_registry;
+
+		internal delegate Int32 ecsact_clone_registry_delegate( //
+			Int32  registry,
+			string registryName
+		);
+		internal ecsact_clone_registry_delegate? ecsact_clone_registry;
+
+		internal delegate Int64 ecsact_hash_registry_delegate( //
+			Int32 registry
+		);
+		internal                ecsact_hash_registry_delegate? ecsact_hash_registry;
 
 		internal delegate void ecsact_destroy_registry_delegate(Int32 registryId);
 		internal ecsact_destroy_registry_delegate? ecsact_destroy_registry;
@@ -1195,6 +1281,24 @@ public class EcsactRuntime {
 				in ExecutionEventsCollector eventsCollector
 			);
 		internal ecsact_execute_systems_delegate? ecsact_execute_systems;
+
+		internal delegate
+			Ecsact.EntityExecutionStatus ecsact_get_entity_execution_status_delegate(
+				Int32 registry,
+				Int32 entity,
+				Int32 systemLikeId
+			);
+		internal
+			ecsact_get_entity_execution_status_delegate? ecsact_get_entity_execution_status;
+
+		internal delegate Ecsact.StreamError ecsact_stream_delegate(
+			Int32  registry,
+			Int32  entity,
+			Int32  component,
+			IntPtr componentData,
+			IntPtr indexedFieldValues
+		);
+		internal ecsact_stream_delegate? ecsact_stream;
 
 		private EcsactRuntime _owner;
 
@@ -1790,6 +1894,16 @@ public class EcsactRuntime {
 		ecsact_system_execution_context_entity_delegate(IntPtr context);
 		internal
 			ecsact_system_execution_context_entity_delegate? ecsact_system_execution_context_entity;
+
+		internal delegate void
+		ecsact_system_execution_context_stream_toggle_delegate(
+			IntPtr                             context,
+			Int32                              componentId,
+			[MarshalAs(UnmanagedType.I1)] bool streamingEnabled,
+			IntPtr                             indexedFieldValues
+		);
+		internal
+			ecsact_system_execution_context_stream_toggle_delegate? ecsact_system_execution_context_stream_toggle;
 
 		internal delegate void ecsact_set_system_execution_impl_delegate(
 			Int32                systemId,
@@ -2665,7 +2779,6 @@ public class EcsactRuntime {
 			// clang-format on
 		}
 
-
 		if(runtime._wasm.ecsact_si_wasm_set_trap_handler != null) {
 			runtime._wasm.ecsact_si_wasm_set_trap_handler(DefaultWasmTrapHandler);
 		}
@@ -2685,8 +2798,10 @@ public class EcsactRuntime {
 		}
 
 		if(runtime._async != null) {
-			if(runtime._async.connectState == Ecsact.Async.ConnectState.Connected) {
-				runtime._async.Stop();
+			if(runtime._async.ecsact_async_force_reset != null) {
+				runtime._async.ecsact_async_force_reset();
+			} else if(runtime._async.ecsact_async_stop_all != null) {
+				runtime._async.ecsact_async_stop_all();
 			}
 
 			runtime._async.ecsact_async_flush_events = null;
